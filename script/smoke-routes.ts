@@ -98,6 +98,7 @@ async function main() {
 
   // 5. Public
   await check("public-api", "/api/public/marie-dupont");
+  await check("public-availability", "/api/public/marie-dupont/availability");
   await check("public-page", "/p/marie-dupont");
 
   console.log("");

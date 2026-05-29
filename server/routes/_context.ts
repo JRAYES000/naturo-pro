@@ -1,17 +1,17 @@
 /**
- * server/routes/_context.ts — SQUELETTE (Phase 4.0 split par domaine)
+ * server/routes/_context.ts — contexte partagé injecté aux modules de routes (Phase 4.0)
  *
- * Définit le "contexte" partagé injecté à chaque module de routes :
- * les rate limiters + la config dérivée de l'environnement.
- *
- * ⚠️ Pas encore consommé pendant l'étape 0 : server/routes.ts conserve ses
- * limiters inline (comportement strictement identique). Ce module sera adopté
- * au fur et à mesure de la migration des domaines, qui appelleront
- * register<Domaine>(app, ctx).
+ * Bundle les rate limiters (singletons de ./limiters) + la config dérivée de
+ * l'environnement, passé à register<Domaine>(app, ctx) pour les domaines qui en
+ * ont besoin (public/booking/manage → bookingLimiter + APP_URL ; auth → authLimiter
+ * à l'étape 13). Les limiters NE sont PAS redéfinis ici : on réexpose les mêmes
+ * instances que celles utilisées dans routes.ts (app.use) → comportement identique.
  */
 
-import rateLimit from "express-rate-limit";
 import type { RequestHandler } from "express";
+import {
+  authLimiter, bookingLimiter, apiLimiter, publicLimiter, adminLimiter,
+} from "./limiters";
 
 export interface RouteContext {
   authLimiter: RequestHandler;
@@ -25,43 +25,6 @@ export interface RouteContext {
 }
 
 export function createContext(): RouteContext {
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de tentatives, réessayez dans quelques minutes." },
-  });
-  const bookingLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de réservations depuis cette adresse." },
-  });
-  const apiLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de requêtes, ralentissez un peu." },
-    skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
-  });
-  const publicLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de requêtes publiques." },
-  });
-  const adminLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Trop de requêtes admin." },
-  });
-
   return {
     authLimiter,
     bookingLimiter,
