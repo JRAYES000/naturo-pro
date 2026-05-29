@@ -58,23 +58,11 @@ import { startCrons } from "./routes/cron";
 import { registerCategoryRoutes } from "./routes/categories";
 import { registerAvailabilityRoutes } from "./routes/availability";
 import { registerProfileRoutes } from "./routes/profile";
+import { registerClientRoutes } from "./routes/clients";
 
 // ── Mass-assignment whitelists (Phase 3 Lot 1 — security hardening) ─────────
 // Ces schémas Zod limitent les champs modifiables via PATCH/POST, empêchant
 // un attaquant de transférer une ressource vers un autre user via {userId:X}.
-const patchClientSchema = z.object({
-  firstName: z.string().min(1).max(255).optional(),
-  lastName: z.string().min(1).max(255).optional(),
-  email: z.string().email().nullable().optional().or(z.literal("")),
-  phone: z.string().max(50).nullable().optional(),
-  dateOfBirth: z.string().max(20).nullable().optional(),
-  address: z.string().nullable().optional(),
-  allergies: z.string().nullable().optional(),
-  antecedents: z.string().nullable().optional(),
-  lifestyleNotes: z.string().nullable().optional(),
-  penseBete: z.string().nullable().optional(),
-}).strict();
-
 const patchAppointmentSchema = z.object({
   clientId: z.number().int().nullable().optional(),
   categoryId: z.number().int().nullable().optional(),
@@ -623,47 +611,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerAvailabilityRoutes(app);
 
   // ---------- CLIENTS ----------
-  app.get("/api/clients", requireAuth, async (req: AuthedRequest, res) => {
-    const search = String(req.query.search || "");
-    res.json(await storage.listClients(req.userId!, search));
-  });
-  app.get("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
-    const c = await storage.getClient(Number(req.params.id));
-    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    res.json(c);
-  });
-  app.post("/api/clients", requireAuth, async (req: AuthedRequest, res) => {
-    const parsed = insertClientSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
-    res.json(await storage.createClient(req.userId!, parsed.data));
-  });
-  app.patch("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
-    const id = Number(req.params.id);
-    const c = await storage.getClient(id);
-    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    const parsed = patchClientSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
-    res.json(await storage.updateClient(id, parsed.data as any));
-  });
-  app.delete("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
-    const id = Number(req.params.id);
-    const c = await storage.getClient(id);
-    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    await storage.deleteClient(id);
-    res.json({ ok: true });
-  });
-  app.get("/api/clients/:id/appointments", requireAuth, async (req: AuthedRequest, res) => {
-    const id = Number(req.params.id);
-    const c = await storage.getClient(id);
-    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    res.json(await storage.listClientAppointments(id));
-  });
-  app.get("/api/clients/:id/notes", requireAuth, async (req: AuthedRequest, res) => {
-    const id = Number(req.params.id);
-    const c = await storage.getClient(id);
-    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    res.json(await storage.listClientNotes(id));
-  });
+  registerClientRoutes(app);
 
   // ---------- APPOINTMENTS ----------
   app.get("/api/appointments", requireAuth, async (req: AuthedRequest, res) => {
