@@ -19,12 +19,14 @@
 | 4 | clients | `server/routes/clients.ts` |
 | 5 | appointments | `server/routes/appointments.ts` |
 | 6 | email-templates | `server/routes/email-templates.ts` |
+| 7 | reminders | `server/routes/reminders.ts` |
 
 ### Étapes restantes (ordre)
-`7. reminders` → `invoices` → `admin` → `google` → `internal`+crons → **`public`/booking/manage` (dernier — PRÉVENIR l'utilisateur avant d'attaquer).
+`8. invoices` → `admin` → `google` → `internal`+crons → **`public`/booking/manage` (dernier — PRÉVENIR l'utilisateur avant d'attaquer).
 
-- `appointments` (fait) : routes CRUD + détail + `/:id/note` + `/api/notes/:id`, avec `patchAppointmentSchema` et `noteContentSchema`. Importe `syncApptToGoogle` + `createInvoiceFromAppointment` depuis `server/routes/helpers/`. ⚠️ `/api/appointments/:id/send-reminder` migre avec le domaine `reminders` (étape 7), pas `appointments`.
+- `appointments` (fait) : routes CRUD + détail + `/:id/note` + `/api/notes/:id`, avec `patchAppointmentSchema` et `noteContentSchema`. Importe `syncApptToGoogle` + `createInvoiceFromAppointment` depuis `server/routes/helpers/`.
 - `email-templates` (fait) : 4 routes `/api/email-templates*`. `defaults.ts`/`render.ts` sont des feuilles sans imports → repassées en imports statiques (le lazy `await import` "anti-cycle" était superflu). Aucun seed au démarrage.
+- `reminders` (fait) : `/api/reminders/log`, `/api/reminders/stats`, et `/api/appointments/:id/send-reminder` (rappel manuel PHASE 3.5-D, migré ici). Le rappel manuel construit son email inline (`renderReminderEmail`) → n'utilise PAS `helpers/reminders.ts`. ⚠️ Les crons `/api/internal/send-reminders` + `/api/internal/send-daily-recap` (qui consomment `helpers/reminders.ts`) **restent dans `routes.ts`** → domaine `internal`+crons.
 - `clients` confirmé **séparable** d'`appointments` (déjà migré).
 
 ## Pattern de migration (par étape)
