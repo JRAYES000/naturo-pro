@@ -94,6 +94,7 @@ async function main() {
   await check("invoice-detail-404", "/api/invoices/999999999", { withCookie: true, expect: 404 });
   await check("admin-me", "/api/admin/me", { withCookie: true });
   await check("admin-users-403", "/api/admin/users", { withCookie: true, expect: 403 });
+  await check("google-status", "/api/google/status", { withCookie: true });
 
   // 5. Public
   await check("public-api", "/api/public/marie-dupont");
