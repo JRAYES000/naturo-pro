@@ -56,6 +56,7 @@ import { getEmailConfigForUser, sendBookingConfirmationEmail } from "./routes/he
 import { sendRemindersForUser, sendDailyRecapForUser } from "./routes/helpers/reminders";
 import { startCrons } from "./routes/cron";
 import { registerCategoryRoutes } from "./routes/categories";
+import { registerAvailabilityRoutes } from "./routes/availability";
 
 // ── Mass-assignment whitelists (Phase 3 Lot 1 — security hardening) ─────────
 // Ces schémas Zod limitent les champs modifiables via PATCH/POST, empêchant
@@ -671,20 +672,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerCategoryRoutes(app);
 
   // ---------- AVAILABILITY ----------
-  app.get("/api/availability", requireAuth, async (req: AuthedRequest, res) => {
-    res.json(await storage.listAvailability(req.userId!));
-  });
-  app.put("/api/availability", requireAuth, async (req: AuthedRequest, res) => {
-    const arrSchema = z.array(z.object({
-      dayOfWeek: z.number().int().min(0).max(6),
-      startTime: z.string().regex(/^\d{2}:\d{2}$/),
-      endTime: z.string().regex(/^\d{2}:\d{2}$/),
-    }));
-    const parsed = arrSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
-    const slots = parsed.data.map(s => ({ ...s, userId: req.userId! }));
-    res.json(await storage.replaceAvailability(req.userId!, slots));
-  });
+  registerAvailabilityRoutes(app);
 
   // ---------- CLIENTS ----------
   app.get("/api/clients", requireAuth, async (req: AuthedRequest, res) => {
