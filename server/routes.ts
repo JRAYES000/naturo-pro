@@ -65,6 +65,7 @@ import { registerReminderRoutes } from "./routes/reminders";
 import { registerInvoiceRoutes } from "./routes/invoices";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerGoogleRoutes } from "./routes/google";
+import { registerInternalRoutes } from "./routes/internal";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -486,26 +487,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Expose for cron module
   (registerRoutes as any).__importFromGoogleForUser = importFromGoogleForUser;
 
-  // ---------- Internal cron-trigger endpoint (token-protected) ----------
-  // Called by Hostinger cron every 15 minutes via curl with X-Internal-Token header.
-  app.post("/api/internal/sync-google-all", async (req, res) => {
-    const expected = process.env.INTERNAL_CRON_TOKEN;
-    if (!expected) return res.status(500).json({ message: "INTERNAL_CRON_TOKEN missing" });
-    const provided = req.header("X-Internal-Token") || req.query.token;
-    if (provided !== expected) return res.status(403).json({ message: "Forbidden" });
-
-    const usersWithToken = await storage.listUsersWithGoogleToken();
-    const results: any[] = [];
-    for (const u of usersWithToken) {
-      try {
-        const stats = await importFromGoogleForUser(u.id);
-        results.push({ userId: u.id, email: u.email, ...stats });
-      } catch (e: any) {
-        results.push({ userId: u.id, email: u.email, error: e?.message || String(e) });
-      }
-    }
-    res.json({ ok: true, processedAt: Date.now(), results });
-  });
+  // ---------- INTERNAL (déclencheurs cron HTTP, token-gated) ----------
+  registerInternalRoutes(app);
 
   // ---------- PROFILE ----------
   registerProfileRoutes(app);
@@ -659,7 +642,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerAdminRoutes(app);
 
   const APP_URL = process.env.APP_URL || "https://app.ecole-naturo.fr";
-  const INTERNAL_TOKEN = process.env.INTERNAL_CRON_TOKEN;
 
   app.get("/api/rdv/confirm/:token", async (req, res) => {
     const token = req.params.token;
@@ -742,50 +724,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       "Rendez-vous annulé",
       `Votre rendez-vous du ${escapeHtmlMin(dateText)} a bien été annulé. Votre praticienne a été prévenue. À bientôt.`,
     ));
-  });
-
-  // ─── Endpoints internes (X-Internal-Token gated) ────────────────────────────
-  function checkInternalToken(req: any, res: any): boolean {
-    if (!INTERNAL_TOKEN) {
-      res.status(500).json({ message: "INTERNAL_CRON_TOKEN non configuré côté serveur" });
-      return false;
-    }
-    const token = req.headers["x-internal-token"];
-    if (token !== INTERNAL_TOKEN) {
-      res.status(401).json({ message: "Unauthorized" });
-      return false;
-    }
-    return true;
-  }
-
-  app.post("/api/internal/send-reminders", async (req, res) => {
-    if (!checkInternalToken(req, res)) return;
-    const users = await storage.listUsersWithEmailConfig();
-    const results: any[] = [];
-    for (const u of users) {
-      try {
-        const r = await sendRemindersForUser(u);
-        results.push({ userId: u.id, ...r });
-      } catch (e: any) {
-        results.push({ userId: u.id, error: e?.message || String(e) });
-      }
-    }
-    res.json({ ok: true, totalUsers: users.length, results });
-  });
-
-  app.post("/api/internal/send-daily-recap", async (req, res) => {
-    if (!checkInternalToken(req, res)) return;
-    const users = await storage.listUsersWithEmailConfig();
-    const results: any[] = [];
-    for (const u of users) {
-      try {
-        const r = await sendDailyRecapForUser(u);
-        results.push({ userId: u.id, ...r });
-      } catch (e: any) {
-        results.push({ userId: u.id, error: e?.message || String(e) });
-      }
-    }
-    res.json({ ok: true, totalUsers: users.length, results });
   });
 
   // ────── PHASE 3 — Reminders UI endpoints (+ rappel manuel PHASE 3.5-D) ──────
