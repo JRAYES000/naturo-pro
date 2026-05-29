@@ -12,13 +12,13 @@
  * Les types et noms d'exports sont identiques entre les deux schémas.
  */
 
+import * as sqliteSchema from "./schema";
+import * as mysqlSchema from "./schema-mysql";
+
 const DB_DRIVER = (process.env.DB_DRIVER ?? "sqlite").toLowerCase();
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const activeSchema: any =
-  DB_DRIVER === "mysql"
-    ? require("./schema-mysql")
-    : require("./schema");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const activeSchema: any = DB_DRIVER === "mysql" ? mysqlSchema : sqliteSchema;
 
 // Tables
 export const users = activeSchema.users;

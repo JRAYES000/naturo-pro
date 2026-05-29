@@ -124,6 +124,39 @@ Bundle prod : md5 `c8f31972505f82e08b19fdf372fe614f`
 
 ---
 
+## Compat Windows / dual ESM-CJS (premier setup dev sous Claude Code)
+
+**Contexte** : reprise du projet sur une machine Windows 11 / PowerShell / Node 24, sans WSL. Le projet (développé sous Linux) ne démarrait pas en l'état. Corrections de portabilité, sans changement fonctionnel.
+
+### Le hack `import.meta.url || __filename`
+
+Le projet est en `"type": "module"` (ESM). En dev, `tsx` exécute du vrai ESM où `import.meta.url` existe. Mais le build prod bundle en **CJS** (`dist/index.cjs` via esbuild), format dans lequel `import.meta` n'existe pas : esbuild le remplace par un objet vide `{}`, donc `import.meta.url` devient `undefined`.
+
+Les drivers DB et `googleapis` sont chargés via un `require()` paresseux (volontaire : éviter de charger `mysql2` en dev SQLite et `better-sqlite3` en prod MySQL). En ESM, `require` n'existe pas → on le recrée avec `createRequire(...)`. D'où le pattern, dans `server/db.ts`, `server/storage.ts`, `server/google.ts` :
+
+```ts
+const require = createRequire(import.meta.url || __filename);
+```
+
+- **Dev (tsx/ESM)** : `import.meta.url` est une URL `file://…` valide → utilisée. `__filename` (absent en ESM) n'est jamais évalué grâce au court-circuit `||`.
+- **Prod (esbuild/CJS)** : `import.meta.url` → `undefined` → fallback sur `__filename`, natif en CJS.
+
+⚠️ **Sans le fallback `__filename`, le bundle crashait au boot** (`TypeError: createRequire(undefined)`) — un build « réussi » mais non déployable. Toujours valider un build via `node dist/index.cjs` (DB_DRIVER=sqlite) avant deploy.
+
+### 3 warnings esbuild attendus (cosmétiques)
+
+Le build émet 3 × `"import.meta" is not available with the "cjs" output format and will be empty`. **Normaux et sans impact** : le token `import.meta.url` reste dans la source, mais le runtime est correct via `__filename`. Ce hack pourra disparaître si le bundle passe un jour en format ESM (voir ROADMAP Phase 4.0).
+
+### Autres corrections de portabilité
+
+- `cross-env` dans les scripts `dev`/`start` (Windows ne reconnaît pas `NODE_ENV=x` en préfixe).
+- `require()` → imports ESM statiques dans `shared/schema-active.ts`.
+- `reusePort: process.platform === "linux"` dans `server/index.ts` (ENOTSUP sur Windows/macOS).
+- `better-sqlite3` + `@types/better-sqlite3` ajoutés en devDependencies (volontairement hors deps prod = MySQL).
+- `.gitignore` : ajout des fichiers SQLite WAL/SHM/journal.
+
+---
+
 ## Convention de versioning interne
 
 Pas de tags git semantic-version. Les "phases" sont des jalons internes informels :

@@ -1,6 +1,10 @@
 // Google Calendar wrapper — full implementation with calendar event push/update/delete.
 // Gracefully no-ops when credentials are missing.
 import crypto from "crypto";
+import { createRequire } from "node:module";
+// Compat dual ESM/CJS : tsx (dev) utilise import.meta.url ; esbuild bundle en CJS
+// où import.meta vaut {} → fallback sur __filename (natif CJS).
+const require = createRequire(import.meta.url || __filename);
 
 let google: any = null;
 try { google = require("googleapis").google; } catch {}

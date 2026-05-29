@@ -15,6 +15,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { createRequire } from "node:module";
 import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, emailLog, invoices, invoiceItems, emailTemplates,
@@ -27,6 +28,10 @@ import type {
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
+
+// Compat dual ESM/CJS : tsx (dev) utilise import.meta.url ; esbuild bundle en CJS
+// où import.meta vaut {} → fallback sur __filename (natif CJS).
+const require = createRequire(import.meta.url || __filename);
 
 // Re-export db so that routes.ts can import it directly (backwards-compat)
 export { db };

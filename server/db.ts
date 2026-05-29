@@ -17,7 +17,14 @@
  * own typed helper functions.
  */
 
+import { createRequire } from "node:module";
+import * as schema from "@shared/schema-active";
+
 export const DB_DRIVER = (process.env.DB_DRIVER ?? "sqlite").toLowerCase();
+
+// Compat dual ESM/CJS : tsx (dev) utilise import.meta.url ; esbuild bundle en CJS
+// où import.meta vaut {} → fallback sur __filename (natif CJS).
+const require = createRequire(import.meta.url || __filename);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _db: any;
@@ -28,8 +35,6 @@ if (DB_DRIVER === "mysql") {
   const mysql2 = require("mysql2/promise");
   // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
   const { drizzle } = require("drizzle-orm/mysql2");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-  const schema = require("@shared/schema-active");
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   const pool = mysql2.createPool({
@@ -53,8 +58,6 @@ if (DB_DRIVER === "mysql") {
   const BetterSqlite3 = require("better-sqlite3") as typeof import("better-sqlite3");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { drizzle } = require("drizzle-orm/better-sqlite3") as typeof import("drizzle-orm/better-sqlite3");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const schema = require("@shared/schema-active");
 
   const sqlite = new BetterSqlite3("data.db");
   sqlite.pragma("journal_mode = WAL");

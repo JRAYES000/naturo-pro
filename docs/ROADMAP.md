@@ -17,6 +17,10 @@ Petites tâches à faire idéalement dans les premières sessions Claude Code po
 | **Rate limiting** sur `/api/login` + `/api/public/*/book` (via `express-rate-limit`) | ~1h | Haute (sécurité) |
 | **Helmet + CORS strict** + CSP headers | ~1h | Moyenne |
 
+- Type-check : 6 erreurs `tsc` préexistantes dans `server/routes.ts` (regex es5, types `email_log.userId`, query params Express). À fixer pendant le split du fichier.
+- Bootstrap DDL obsolète dans `server/storage.ts` (`CREATE TABLE IF NOT EXISTS`) : ne reflète plus `shared/schema.ts` (manque `resend_api_key`, `billing_*`, multi-tenant Phase 3...). À décider : (a) supprimer le DDL bootstrap et faire de `npm run db:push` une étape obligatoire de setup dev, ou (b) régénérer le DDL depuis le schéma. Piège actuel : un nouveau dev sans `db:push` obtient des tables incomplètes silencieusement.
+- Build bundle CJS → ESM : éliminerait le hack `import.meta.url || __filename` et les 3 warnings esbuild. Demande de revoir `build.ts`, l'extension `.cjs` → `.mjs`, et le script `start` côté Hostinger.
+
 ---
 
 ## Moyen terme — Features business (Phase 4-5)
