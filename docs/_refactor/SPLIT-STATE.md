@@ -7,7 +7,7 @@
 
 - Branche : **`refactor/split-routes`** (créée depuis `main`). **Rien n'est poussé.**
 - `main` intacte : `f53e989` "fix: compat Windows/dev local + bundle CJS" — ne jamais y toucher sans accord explicite.
-- `server/routes.ts` : 2877 → ~1815 lignes (rétréci au fil des étapes).
+- `server/routes.ts` : 2877 → ~1513 lignes (rétréci au fil des étapes).
 
 ### Étapes faites
 | Étape | Domaine | Module créé |
@@ -18,11 +18,13 @@
 | 3 | profile | `server/routes/profile.ts` |
 | 4 | clients | `server/routes/clients.ts` |
 | 5 | appointments | `server/routes/appointments.ts` |
+| 6 | email-templates | `server/routes/email-templates.ts` |
 
 ### Étapes restantes (ordre)
-`6. email-templates` → `reminders` → `invoices` → `admin` → `google` → `internal`+crons → **`public`/booking/manage` (dernier — PRÉVENIR l'utilisateur avant d'attaquer).
+`7. reminders` → `invoices` → `admin` → `google` → `internal`+crons → **`public`/booking/manage` (dernier — PRÉVENIR l'utilisateur avant d'attaquer).
 
-- `appointments` (fait) : routes CRUD + détail + `/:id/note` + `/api/notes/:id`, avec `patchAppointmentSchema` et `noteContentSchema`. Importe `syncApptToGoogle` + `createInvoiceFromAppointment` depuis `server/routes/helpers/`. ⚠️ `/api/appointments/:id/send-reminder` est resté dans `routes.ts` (domaine `reminders`).
+- `appointments` (fait) : routes CRUD + détail + `/:id/note` + `/api/notes/:id`, avec `patchAppointmentSchema` et `noteContentSchema`. Importe `syncApptToGoogle` + `createInvoiceFromAppointment` depuis `server/routes/helpers/`. ⚠️ `/api/appointments/:id/send-reminder` migre avec le domaine `reminders` (étape 7), pas `appointments`.
+- `email-templates` (fait) : 4 routes `/api/email-templates*`. `defaults.ts`/`render.ts` sont des feuilles sans imports → repassées en imports statiques (le lazy `await import` "anti-cycle" était superflu). Aucun seed au démarrage.
 - `clients` confirmé **séparable** d'`appointments` (déjà migré).
 
 ## Pattern de migration (par étape)
