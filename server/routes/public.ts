@@ -12,13 +12,12 @@
  *
  * `ctx` (RouteContext) fournit APP_URL (liens email) et bookingLimiter.
  *
- * ⚠️ DISCORDANCE À TRANCHER (voir recap étape 12) : dans routes.ts, `bookingLimiter`
- * était DÉFINI mais JAMAIS appliqué à POST /:slug/book. Pour préserver le comportement
- * runtime à l'identique (et garder l'inventaire 75=75, mêmes middlewares), il N'est
- * PAS appliqué ici non plus. `ctx.bookingLimiter` reste disponible si on décide de le
- * brancher dans un commit séparé et assumé (changement de comportement).
+ * Note historique : `bookingLimiter` était défini mais JAMAIS appliqué à
+ * POST /:slug/book (dead code détecté au refactor étape 12). Branché à l'étape 12.5
+ * (commit séparé, changement de comportement assumé) → 1er changement d'inventaire
+ * depuis l'étape 0. Endpoint public non-auth créant des données DB = cible spam.
  *
- * Le rate-limit /api/public reste assuré par `app.use("/api/public", publicLimiter)`
+ * Le rate-limit /api/public reste aussi assuré par `app.use("/api/public", publicLimiter)`
  * côté routes.ts ; les routes /api/rdv/* ne sont couvertes que par l'apiLimiter global.
  */
 
@@ -113,8 +112,10 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     res.json({ slotsByDay });
   });
 
-  app.post("/api/public/:slug/book", async (req, res) => {
-    const u = await storage.getUserBySlug(req.params.slug);
+  app.post("/api/public/:slug/book", ctx.bookingLimiter, async (req, res) => {
+    // String() : coercion type-only (no-op runtime). L'ajout du middleware fait
+    // inférer req.params.slug en string|string[] par les typings Express → cast.
+    const u = await storage.getUserBySlug(String(req.params.slug));
     if (!u || !u.publicPageEnabled) return res.status(404).json({ message: "Page introuvable" });
 
     const schema = z.object({

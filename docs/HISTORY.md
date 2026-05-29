@@ -157,6 +157,23 @@ Le build émet 3 × `"import.meta" is not available with the "cjs" output format
 
 ---
 
+## Hardening — bookingLimiter activé sur `/api/public/:slug/book`
+
+Découvert pendant le refactor (split de `server/routes.ts`, étape 12) : le rate-limiter
+`bookingLimiter` était **défini mais jamais appliqué** (dead code). Activé à l'étape 12.5
+dans un commit isolé (changement de comportement, distinct du refactor verbatim).
+
+- **Pourquoi** : `POST /api/public/:slug/book` est un endpoint **public non-authentifié** qui
+  **crée des données en DB** (un RDV) → cible évidente de spam/abus.
+- **Seuils** (inchangés depuis la définition d'origine, voir `server/routes/limiters.ts`) :
+  `windowMs: 60 * 60 * 1000` (1 h), `max: 30` réservations / IP / heure,
+  `standardHeaders: true`, `legacyHeaders: false`,
+  message : « Trop de réservations depuis cette adresse. »
+- **Impact inventaire** : 1er changement de `routes-inventory.txt` depuis le début du split —
+  la ligne `POST /api/public/:slug/book` passe de `[]` à `[ctx.bookingLimiter]`.
+
+---
+
 ## Convention de versioning interne
 
 Pas de tags git semantic-version. Les "phases" sont des jalons internes informels :
