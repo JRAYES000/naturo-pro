@@ -7,7 +7,7 @@
 
 - Branche : **`refactor/split-routes`** (créée depuis `main`). **Rien n'est poussé.**
 - `main` intacte : `f53e989` "fix: compat Windows/dev local + bundle CJS" — ne jamais y toucher sans accord explicite.
-- `server/routes.ts` : 2877 → ~456 lignes (rétréci au fil des étapes ; reste cœur middlewares + AUTH + orchestration).
+- `server/routes.ts` : 2877 → ~175 lignes (rétréci au fil des étapes ; reste cœur middlewares + orchestration, AUTH désormais extrait).
 
 ### Étapes faites
 | Étape | Domaine | Module créé |
@@ -25,9 +25,16 @@
 | 10 | google | `server/routes/google.ts` |
 | 11 | internal+crons | `server/routes/internal.ts` (les crons in-process vivent déjà dans `cron.ts`, étape 0) |
 | 12 | public/booking/manage | `server/routes/public.ts` + `server/routes/limiters.ts` + `_context.ts` complété |
+| 12.5 | (sécurité) bookingLimiter activé sur `/book` — hors refactor verbatim |
+| 13 | auth | `server/routes/auth.ts` |
 
 ### Étapes restantes (ordre)
-`13. auth` (extraire `/api/auth/*` dans `server/routes/auth.ts`, `registerAuthRoutes(app, ctx)` avec `ctx.authLimiter`) → `14. final` (routes.ts ne contient plus que middlewares + hack + startCrons + orchestration ; décider : supprimer routes.ts au profit de routes/index.ts, ou garder un orchestrateur minimal ; recommandation à proposer + suppression de `docs/_refactor/`).
+`14. final` — à cadrer avec Julien :
+  1. **routes.ts** : suppression vs orchestrateur minimal. État actuel : ne contient plus que middlewares globaux + `app.use` limiters + `createContext()` + 13 `register<Domaine>(app[, ctx])` + le hack + `startCrons()` + `return httpServer`. ~190 lignes.
+  2. **hack `__importFromGoogleForUser`** : confirmé mort (cron.ts importe le helper directement) → proposer suppression.
+  3. **imports morts** accumulés dans routes.ts (`authLimiter`, `htmlFeedbackPage`, `escapeHtmlMin`, `syncApptToGoogle`, `formatRdvDate`/`formatRdvTime`, `getEmailConfigForUser`, `sendBookingConfirmationEmail`, `renderClientCancellationEmail`, `renderUserTemplate`, `TemplateVars`, `getSystemEmailConfig`, `renderWelcomeVerifyEmail`, `renderPasswordResetEmail`, `slugify`/`publicUser`, schémas inserts, etc.) → nettoyage.
+  4. **`docs/_refactor/`** : inventory + ce fichier sont éphémères. Décider ce qu'on garde (ex. `routes-inventory.ts`/`smoke-routes.ts` peuvent rester comme filet permanent ; le dossier `_refactor/` disparaît).
+  5. Éventuel renommage `routes/index.ts` → point d'entrée si on supprime routes.ts.
 
 - `appointments` (fait) : routes CRUD + détail + `/:id/note` + `/api/notes/:id`, avec `patchAppointmentSchema` et `noteContentSchema`. Importe `syncApptToGoogle` + `createInvoiceFromAppointment` depuis `server/routes/helpers/`.
 - `email-templates` (fait) : 4 routes `/api/email-templates*`. `defaults.ts`/`render.ts` sont des feuilles sans imports → repassées en imports statiques (le lazy `await import` "anti-cycle" était superflu). Aucun seed au démarrage.
@@ -38,6 +45,7 @@
 - `admin` (fait) : les 2 blocs (email-log scoped + users/impersonate/extend-trial/me) consolidés dans `server/routes/admin.ts`, register placé à l'emplacement du 1er bloc (admin/users remonte ~140 lignes — sans danger, aucune route non-admin entre les deux ne partage de path/method). `userWithStats` + schemas déplacés avec. `adminLimiter` reste en `app.use("/api/admin", …)` dans routes.ts → pas de ctx. L'erreur tsc préexistante du `email-log` a migré routes.ts → admin.ts (total constant 6).
 
 - `google` (fait) : 5 routes (`/api/auth/google`, `/callback`, `/api/google/status`, `/disconnect`, `/sync-import`) dans `server/routes/google.ts`. ⚠️ Le hack `(registerRoutes as any).__importFromGoogleForUser = importFromGoogleForUser;` **est resté dans `routes.ts`** (verbatim, juste après le register call).
+- `auth` (fait, étape 13) : 11 routes `/api/auth/*` (register, verify-email/:token, resend-verification, forgot/reset-password, onboarding, login, logout, me, me/export, DELETE me) + 5 schémas locaux dans `server/routes/auth.ts` (`registerAuthRoutes(app, ctx)`). ⚠️ Les routes OAuth `/api/auth/google*` ne sont PAS ici (déjà dans google.ts, étape 10). **ctx** fournit le limiter ; pour garder l'inventaire **strictement vide**, on déstructure `const { authLimiter } = ctx;` → l'identifiant nu `authLimiter` matche l'ancien token d'inventaire (même instance singleton). `verify-email/:token` utilisait déjà `String(req.params.token)` → aucun nouveau cast nécessaire. `ctx` créé UNE fois dans routes.ts (juste avant le register auth), réutilisé par public.
 - `internal`+crons (fait) : les 3 endpoints (`/api/internal/sync-google-all`, `/send-reminders`, `/send-daily-recap`) dans `server/routes/internal.ts` (`registerInternalRoutes`). **Deux styles de protection conservés verbatim** : sync-google-all check inline `process.env.INTERNAL_CRON_TOKEN` (403/query-fallback) ; les 2 autres via `checkInternalToken`+const `INTERNAL_TOKEN` (401, header `x-internal-token`). Const `INTERNAL_TOKEN` retirée de routes.ts (devenue morte ; `APP_URL` reste, utilisée par `/api/rdv/cancel`). **Découverte** : `cron.ts` (étape 0) importe `importFromGoogleForUser` directement → le hack `__importFromGoogleForUser` est en réalité **mort** (personne ne le lit), mais conservé verbatim sur demande de Julien. `startCrons()` reste appelé depuis routes.ts.
 
 - `public`/booking/manage (fait) : 10 routes dans `server/routes/public.ts` (`registerPublicRoutes(app, ctx)`), regroupant les 3 blocs jadis dispersés (page publique+booking, tokens `/api/rdv/*`, manage `/api/public/manage/*`). Tout remonté à l'emplacement du 1er bloc public — ordre Express sûr (aucun chevauchement de path avec les routes non-publiques intercalées). **Limiters** : extraits en singletons dans `server/routes/limiters.ts` ; `routes.ts` les importe (au lieu de les définir inline) ; `_context.ts.createContext()` réexpose les **mêmes instances** + `APP_URL`. **`req.tenantUserId`** : déjà dans `AuthedRequest` (`server/auth.ts`), pas d'augmentation inline → rien à déplacer (pas de `express.d.ts`). **APP_URL** : retiré de routes.ts (devenu mort), fourni via `ctx.APP_URL`.
