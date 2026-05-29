@@ -7,7 +7,7 @@
 
 - Branche : **`refactor/split-routes`** (créée depuis `main`). **Rien n'est poussé.**
 - `main` intacte : `f53e989` "fix: compat Windows/dev local + bundle CJS" — ne jamais y toucher sans accord explicite.
-- `server/routes.ts` : 2877 → ~1103 lignes (rétréci au fil des étapes).
+- `server/routes.ts` : 2877 → ~1024 lignes (rétréci au fil des étapes).
 
 ### Étapes faites
 | Étape | Domaine | Module créé |
@@ -21,9 +21,10 @@
 | 6 | email-templates | `server/routes/email-templates.ts` |
 | 7 | reminders | `server/routes/reminders.ts` |
 | 8 | invoices | `server/routes/invoices.ts` |
+| 9 | admin | `server/routes/admin.ts` |
 
 ### Étapes restantes (ordre)
-`9. admin` → `google` → `internal`+crons → **`public`/booking/manage` (dernier — PRÉVENIR l'utilisateur avant d'attaquer).
+`10. google` → `internal`+crons → **`public`/booking/manage` (dernier — PRÉVENIR l'utilisateur avant d'attaquer).
 
 - `appointments` (fait) : routes CRUD + détail + `/:id/note` + `/api/notes/:id`, avec `patchAppointmentSchema` et `noteContentSchema`. Importe `syncApptToGoogle` + `createInvoiceFromAppointment` depuis `server/routes/helpers/`.
 - `email-templates` (fait) : 4 routes `/api/email-templates*`. `defaults.ts`/`render.ts` sont des feuilles sans imports → repassées en imports statiques (le lazy `await import` "anti-cycle" était superflu). Aucun seed au démarrage.
@@ -31,8 +32,9 @@
 - `invoices` (fait) : CRUD `/api/invoices*` + `from-appointment/:id` + `:id/pdf` (stream binaire, verbatim) + `:id/send`. Importe la lib `../invoices` + helpers `createInvoiceFromAppointment` & `getEmailConfigForUser`.
 - `clients` confirmé **séparable** d'`appointments` (déjà migré).
 
+- `admin` (fait) : les 2 blocs (email-log scoped + users/impersonate/extend-trial/me) consolidés dans `server/routes/admin.ts`, register placé à l'emplacement du 1er bloc (admin/users remonte ~140 lignes — sans danger, aucune route non-admin entre les deux ne partage de path/method). `userWithStats` + schemas déplacés avec. `adminLimiter` reste en `app.use("/api/admin", …)` dans routes.ts → pas de ctx. L'erreur tsc préexistante du `email-log` a migré routes.ts → admin.ts (total constant 6).
+
 ### Cartographie des domaines restants (relevé étape 8 — pour anticiper)
-- ⚠️ **`admin` n'est PAS contigu** : 2 blocs séparés dans `routes.ts` — (a) `/api/admin/email-log` (scoped user, `requireAuth` **seul**, fait des `import()` dynamiques de `db`/`emailLog`/`eq`) ; (b) `/api/admin/users*` + `impersonate` + `extend-trial` + `/api/admin/me` (`requireAuth`+`requireAdmin`). Entre les deux : routes publiques `/api/rdv/*` + internes. `requireAdmin`/`isAdminEmail` viennent déjà de `../auth` (exportés proprement, pas inline). Le bloc admin/users s'appuie sur un helper `userWithStats(...)` défini dans `routes.ts` → à déplacer dans le module admin avec lui (vérifier ses dépendances).
 - **`google`** : routes `/api/auth/google` + `/api/auth/google/callback` (dans la section AUTH), `/api/google/status`, `/api/google/disconnect`, `/api/google/sync-import`. ⚠️ Le hack `(registerRoutes as any).__importFromGoogleForUser = importFromGoogleForUser;` **RESTE dans `routes.ts`** (registerRoutes pas en scope ailleurs ; lu par le module cron). `/api/internal/sync-google-all` → domaine internal+crons.
 - **`internal`+crons** : `/api/internal/sync-google-all`, `/api/internal/send-reminders`, `/api/internal/send-daily-recap` — protégées par token `X-Internal-Token` (const `INTERNAL_TOKEN`). Consomment `importFromGoogleForUser`, `sendRemindersForUser`, `sendDailyRecapForUser` (helpers Étape 0).
 
