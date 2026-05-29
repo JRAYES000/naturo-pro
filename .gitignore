@@ -1,0 +1,73 @@
+# Deps
+node_modules/
+
+# Build output
+dist/
+
+# SQLite local
+db.sqlite
+db.sqlite-journal
+*.db
+*.sqlite
+*.sqlite-journal
+
+# Env vars (ne JAMAIS commit)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+stderr.log
+console.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archives / ZIPs
+*.zip
+*.tar.gz
+*.tar
+
+# Backups
+*.bak
+*.bak.*
+dist.bak.*
+
+# Clés SSH et secrets (NE JAMAIS COMMIT)
+deploy-keys/
+*.pem
+*.key
+id_rsa*
+*_deploy
+*_deploy.pub
+.ssh/
+
+# Caches divers
+.cache/
+.parcel-cache/
+.turbo/
+.next/
+
+# Tests / coverage
+coverage/
+.nyc_output/
+
+# Documents et notes locaux (peuvent contenir des secrets)
+MIGRATION_NOTES.md
+SECRETS.md
+NOTES.md
+TODO.local.md
+*-secrets.md

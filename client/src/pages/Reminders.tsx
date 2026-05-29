@@ -1,0 +1,360 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import {
+  Bell,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
+import { AppLayout } from "@/components/AppLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { apiRequest } from "@/lib/queryClient";
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type ReminderStatus = "sent" | "pending" | "disabled" | "past";
+
+interface ReminderLogEntry {
+  id: number;
+  clientName: string;
+  clientEmail: string | null;
+  scheduledAt: number;
+  status: ReminderStatus;
+  reminderSentAt: number | null;
+}
+
+interface ReminderStats {
+  sentThisMonth: number;
+  sentTotal: number;
+  pendingCount: number;
+  nextSendAt: number | null;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function fmtDate(tsMs: number): string {
+  return format(new Date(tsMs), "d MMM yyyy, HH:mm", { locale: fr });
+}
+
+function fmtDateShort(tsMs: number): string {
+  return format(new Date(tsMs), "d MMM yyyy", { locale: fr });
+}
+
+const STATUS_CONFIG: Record<
+  ReminderStatus,
+  { label: string; className: string; icon: React.ElementType }
+> = {
+  sent: {
+    label: "Envoyé",
+    className: "bg-[#dcfce7] text-[#166534] border-0",
+    icon: CheckCircle2,
+  },
+  pending: {
+    label: "En attente",
+    className: "bg-orange-100 text-orange-700 border-0",
+    icon: Clock,
+  },
+  disabled: {
+    label: "Sans email",
+    className: "bg-gray-100 text-gray-500 border-0",
+    icon: XCircle,
+  },
+  past: {
+    label: "Passé",
+    className: "bg-red-100 text-red-600 border-0",
+    icon: AlertCircle,
+  },
+};
+
+// ── Skeleton loaders ───────────────────────────────────────────────────────────
+
+function StatCardSkeleton() {
+  return (
+    <Card className="card-naturo rounded-[15px]">
+      <CardHeader className="pb-2">
+        <Skeleton className="h-4 w-28" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-8 w-16" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full rounded-md" />
+      ))}
+    </div>
+  );
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div
+      className="flex flex-col items-center justify-center py-16 text-center gap-4"
+      data-testid="text-empty-reminders"
+    >
+      {/* Illustration légère */}
+      <div className="relative">
+        <div className="w-20 h-20 rounded-full bg-[#dcfce7] flex items-center justify-center">
+          <Bell className="h-10 w-10 text-[#186749] opacity-60" />
+        </div>
+        <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+          <span className="text-gray-400 text-xs font-bold">0</span>
+        </div>
+      </div>
+      <div>
+        <p className="text-base font-semibold text-foreground">
+          Aucun rappel programmé pour le moment
+        </p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          Les rappels J-1 s'envoient automatiquement lorsque vous avez des
+          rendez-vous à venir avec des clients ayant une adresse email.
+        </p>
+      </div>
+      <Button asChild variant="outline" size="sm" className="mt-2">
+        <Link href="/app/settings" data-testid="button-configure-reminders">
+          Configurer les rappels
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+// ── Stat Card ──────────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  iconColor?: string;
+  "data-testid"?: string;
+}
+
+function StatCard({ title, value, icon: Icon, iconColor = "text-[#186749]", ...props }: StatCardProps) {
+  return (
+    <Card className="card-naturo rounded-[15px]" {...props}>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-sm font-semibold text-muted-foreground">
+          {title}
+        </CardTitle>
+        <Icon className={`h-4 w-4 ${iconColor}`} />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-foreground py-6 font-bold">
+          {value}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Status Badge ───────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: ReminderStatus }) {
+  const cfg = STATUS_CONFIG[status];
+  const Icon = cfg.icon;
+  return (
+    <Badge className={`${cfg.className} flex items-center gap-1 w-fit text-xs font-semibold`}>
+      <Icon className="h-3 w-3" />
+      {cfg.label}
+    </Badge>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+
+export default function Reminders() {
+  const {
+    data: stats,
+    isLoading: statsLoading,
+  } = useQuery<ReminderStats>({
+    queryKey: ["/api/reminders/stats"],
+    queryFn: () => apiRequest("GET", "/api/reminders/stats").then((r) => r.json()),
+  });
+
+  const {
+    data: log,
+    isLoading: logLoading,
+  } = useQuery<ReminderLogEntry[]>({
+    queryKey: ["/api/reminders/log"],
+    queryFn: () => apiRequest("GET", "/api/reminders/log").then((r) => r.json()),
+  });
+
+  // Calcule le libellé du prochain envoi
+  const nextSendLabel: string = (() => {
+    if (!stats?.nextSendAt) return "—";
+    const d = new Date(stats.nextSendAt);
+    const now = new Date();
+    if (d < now) return "Aujourd'hui";
+    return fmtDateShort(stats.nextSendAt);
+  })();
+
+  const isEmpty = !logLoading && (!log || log.length === 0);
+
+  return (
+    <AppLayout>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-[15px] bg-[#186749] flex items-center justify-center flex-shrink-0">
+            <Bell className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground" data-testid="text-page-title">
+              Rappels email
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Suivi des rappels J-1 envoyés à vos clients
+            </p>
+          </div>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/app/settings" data-testid="button-configure-settings">
+            Configurer les rappels
+          </Link>
+        </Button>
+      </div>
+
+      {/* ── Stats cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statsLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Envoyés ce mois"
+              value={stats?.sentThisMonth ?? 0}
+              icon={CheckCircle2}
+              iconColor="text-[#186749]"
+              data-testid="text-stat-sent-month"
+            />
+            <StatCard
+              title="Total envoyés"
+              value={stats?.sentTotal ?? 0}
+              icon={Bell}
+              iconColor="text-[#186749]"
+              data-testid="text-stat-sent-total"
+            />
+            <StatCard
+              title="En attente"
+              value={stats?.pendingCount ?? 0}
+              icon={Clock}
+              iconColor="text-orange-500"
+              data-testid="text-stat-pending"
+            />
+            <StatCard
+              title="Prochain envoi"
+              value={nextSendLabel}
+              icon={AlertCircle}
+              iconColor="text-[#17EC9B]"
+              data-testid="text-stat-next-send"
+            />
+          </>
+        )}
+      </div>
+
+      {/* ── Tableau ── */}
+      <Card className="card-naturo rounded-[15px]">
+        <CardHeader className="border-b border-border pb-4">
+          <CardTitle className="text-base font-bold">
+            Derniers rappels (J-7 → J+30)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4 px-0">
+          {logLoading ? (
+            <div className="px-6">
+              <TableSkeleton />
+            </div>
+          ) : isEmpty ? (
+            <EmptyState />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-6">Date RDV</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead className="hidden sm:table-cell">Email</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="hidden md:table-cell pr-6">
+                    Envoyé le
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(log ?? []).slice(0, 20).map((entry) => (
+                  <TableRow key={entry.id} data-testid={`row-reminder-${entry.id}`}>
+                    <TableCell className="pl-6 font-medium text-sm">
+                      <span data-testid={`text-scheduled-${entry.id}`}>
+                        {fmtDate(entry.scheduledAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <span data-testid={`text-client-${entry.id}`}>
+                        {entry.clientName}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                      <span data-testid={`text-email-${entry.id}`}>
+                        {entry.clientEmail ?? (
+                          <span className="italic text-gray-400">—</span>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={entry.status} />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground pr-6">
+                      <span data-testid={`text-sent-at-${entry.id}`}>
+                        {entry.reminderSentAt
+                          ? fmtDate(entry.reminderSentAt)
+                          : <span className="text-gray-400">—</span>}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Lien configurateur en bas ── */}
+      <p className="text-xs text-muted-foreground mt-4 text-center">
+        Pour activer ou désactiver les rappels, rendez-vous dans{" "}
+        <Link
+          href="/app/settings"
+          className="underline text-[#186749] hover:text-[#1b4332]"
+          data-testid="link-settings-reminders"
+        >
+          Paramètres → Resend
+        </Link>
+        .
+      </p>
+    </AppLayout>
+  );
+}
