@@ -64,7 +64,37 @@ if (DB_DRIVER !== "mysql") {
       email_reminders_enabled INTEGER DEFAULT 1,
       public_page_enabled INTEGER DEFAULT 1,
       primary_color TEXT DEFAULT '#186749',
-      accent_color TEXT DEFAULT '#17EC9B'
+      accent_color TEXT DEFAULT '#17EC9B',
+      resend_api_key TEXT,
+      email_from_address TEXT,
+      email_from_name TEXT,
+      daily_recap_enabled INTEGER DEFAULT 1,
+      reminder_hour_local INTEGER DEFAULT 10,
+      recap_hour_local INTEGER DEFAULT 10,
+      billing_company_name TEXT,
+      billing_siret TEXT,
+      billing_address TEXT,
+      billing_postal_code TEXT,
+      billing_city TEXT,
+      billing_country TEXT DEFAULT 'France',
+      billing_iban TEXT,
+      billing_bic TEXT,
+      billing_logo_base64 TEXT,
+      billing_vat_enabled INTEGER DEFAULT 0,
+      billing_vat_rate INTEGER DEFAULT 2000,
+      billing_legal_mention TEXT,
+      billing_payment_terms TEXT,
+      auto_invoice_on_completed INTEGER DEFAULT 0,
+      invoice_counter_year INTEGER DEFAULT 0,
+      invoice_counter_value INTEGER DEFAULT 0,
+      plan TEXT NOT NULL DEFAULT 'trial',
+      trial_ends_at INTEGER,
+      email_verified_at INTEGER,
+      email_verify_token TEXT,
+      email_verify_expires_at INTEGER,
+      password_reset_token TEXT,
+      password_reset_expires_at INTEGER,
+      onboarding_completed_at INTEGER
     );
     CREATE TABLE IF NOT EXISTS appointment_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,6 +145,14 @@ if (DB_DRIVER !== "mysql") {
       location TEXT,
       google_event_id TEXT,
       reminder_sent INTEGER DEFAULT 0,
+      reminder_sent_at INTEGER,
+      confirm_token TEXT,
+      cancel_token TEXT,
+      client_confirmed_at INTEGER,
+      client_cancelled_at INTEGER,
+      payment_status TEXT DEFAULT 'unpaid',
+      payment_amount_cents INTEGER DEFAULT 0,
+      source TEXT DEFAULT 'manual',
       created_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS consultation_notes (
@@ -229,6 +267,32 @@ if (DB_DRIVER !== "mysql") {
     "invoice_counter_value INTEGER DEFAULT 0",
   ];
   for (const col of billingCols) {
+    try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
+  }
+  // Phase 0.7 — colonnes email Resend sur users (best-effort migration SQLite)
+  const resendCols = [
+    "resend_api_key TEXT",
+    "email_from_address TEXT",
+    "email_from_name TEXT",
+    "daily_recap_enabled INTEGER DEFAULT 1",
+    "reminder_hour_local INTEGER DEFAULT 10",
+    "recap_hour_local INTEGER DEFAULT 10",
+  ];
+  for (const col of resendCols) {
+    try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
+  }
+  // Phase 3 Lot 1 — colonnes SaaS sur users (best-effort migration SQLite)
+  const saasCols = [
+    "plan TEXT NOT NULL DEFAULT 'trial'",
+    "trial_ends_at INTEGER",
+    "email_verified_at INTEGER",
+    "email_verify_token TEXT",
+    "email_verify_expires_at INTEGER",
+    "password_reset_token TEXT",
+    "password_reset_expires_at INTEGER",
+    "onboarding_completed_at INTEGER",
+  ];
+  for (const col of saasCols) {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
   }
   raw.close();
