@@ -129,6 +129,8 @@ export default function PublicPage() {
   // Phase 3 Lot 2 — sur un sous-domaine, les liens internes utilisent /book ;
   // sinon ils utilisent /p/:slug/book (compat URLs partagées).
   const bookHref = onSub ? "/book" : `/p/${naturo.slug}/book`;
+  // Couleur personnalisée de la praticienne (fallback sur le thème par défaut).
+  const primary = naturo.primaryColor || "#186749";
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,7 +160,8 @@ export default function PublicPage() {
               />
             ) : (
               <div
-                className="h-44 w-44 sm:h-56 sm:w-56 rounded-full bg-secondary text-primary flex items-center justify-center text-5xl sm:text-6xl font-extrabold border-4 border-card shadow-xl"
+                className="h-44 w-44 sm:h-56 sm:w-56 rounded-full text-white flex items-center justify-center text-5xl sm:text-6xl font-extrabold border-4 border-card shadow-xl"
+                style={{ background: primary }}
                 aria-label={`Initiale de ${naturo.name}`}
               >
                 {naturo.name[0]}
@@ -169,7 +172,7 @@ export default function PublicPage() {
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Naturopathe certifié(e)</p>
             <h1
               className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4 leading-tight"
-              style={{ color: "#1b4332" }}
+              style={{ color: primary }}
               data-testid="text-practitioner-name"
             >
               {naturo.name}
@@ -186,13 +189,13 @@ export default function PublicPage() {
             {naturo.specialties.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {naturo.specialties.map(s => (
-                  <span key={s} className="bg-secondary text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                  <span key={s} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: `${primary}1a`, color: primary }}>
                     {s}
                   </span>
                 ))}
               </div>
             )}
-            <Link href={bookHref} className="btn-primary-naturo" data-testid="cta-hero-book">
+            <Link href={bookHref} className="btn-primary-naturo" style={{ background: primary }} data-testid="cta-hero-book">
               Prendre rendez-vous <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
