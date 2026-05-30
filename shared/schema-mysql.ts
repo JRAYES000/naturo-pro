@@ -184,7 +184,8 @@ export const appointments = mysqlTable("appointments", {
 export const consultationNotes = mysqlTable("consultation_notes", {
   id: int("id").autoincrement().primaryKey(),
   appointmentId: int("appointment_id"),
-  clientId: int("client_id").notNull(),
+  // Nullable : une note peut concerner un RDV "walk-in" sans fiche client liée.
+  clientId: int("client_id"),
   userId: int("user_id").notNull(),
   motif: text("motif"),
   anamnese: text("anamnese"),

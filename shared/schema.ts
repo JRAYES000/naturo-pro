@@ -173,7 +173,8 @@ export const appointments = sqliteTable("appointments", {
 export const consultationNotes = sqliteTable("consultation_notes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   appointmentId: integer("appointment_id"),
-  clientId: integer("client_id").notNull(),
+  // Nullable : une note peut concerner un RDV "walk-in" sans fiche client liée.
+  clientId: integer("client_id"),
   userId: integer("user_id").notNull(),
   motif: text("motif"),
   anamnese: text("anamnese"),

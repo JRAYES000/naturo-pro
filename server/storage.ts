@@ -158,7 +158,7 @@ if (DB_DRIVER !== "mysql") {
     CREATE TABLE IF NOT EXISTS consultation_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       appointment_id INTEGER,
-      client_id INTEGER NOT NULL,
+      client_id INTEGER,
       user_id INTEGER NOT NULL,
       motif TEXT,
       anamnese TEXT,

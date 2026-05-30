@@ -128,7 +128,7 @@ export function registerAppointmentRoutes(app: Express): void {
     const note = await storage.createNote({
       ...parsed.data,
       appointmentId: apptId,
-      clientId: a.clientId!,
+      clientId: a.clientId ?? null,
       userId: req.userId!,
       createdAt: tnow, updatedAt: tnow,
     } as any);
