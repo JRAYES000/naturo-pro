@@ -49,7 +49,6 @@ const TABLES: string[] = [
   "appointments",
   "consultation_notes",
   "sessions",
-  "email_log",
 ];
 
 // ── Type helpers ──────────────────────────────────────────────────────────────
@@ -64,7 +63,6 @@ const BIGINT_COLS: Record<string, string[]> = {
   appointments:         ["start_at", "end_at", "created_at"],
   consultation_notes:   ["created_at", "updated_at"],
   sessions:             ["expires_at"],
-  email_log:            ["sent_at"],
 };
 
 /**

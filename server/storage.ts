@@ -18,12 +18,12 @@ import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
-  consultationNotes, sessions, emailLog, invoices, invoiceItems, emailTemplates,
+  consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
   InsertAvailability, Client, InsertClient, Appointment, InsertAppointment,
-  ConsultationNote, InsertNote, Session, EmailLog, Invoice, InsertInvoice,
+  ConsultationNote, InsertNote, Session, Invoice, InsertInvoice,
   InvoiceItem, InsertInvoiceItem, EmailTemplate,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
@@ -176,14 +176,6 @@ if (DB_DRIVER !== "mysql") {
       token TEXT NOT NULL UNIQUE,
       expires_at INTEGER NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS email_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      to_address TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      body TEXT NOT NULL,
-      sent_at INTEGER NOT NULL,
-      status TEXT DEFAULT 'logged'
-    );
     CREATE TABLE IF NOT EXISTS invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -231,8 +223,6 @@ if (DB_DRIVER !== "mysql") {
       UNIQUE(user_id, kind)
     );
   `);
-  // Best-effort migration
-  try { raw.exec("ALTER TABLE email_log ADD COLUMN user_id INTEGER"); } catch { /* already exists */ }
   // PHASE 3.5-B — Manage token : colonnes appointments (best-effort migration SQLite)
   const apptMigCols = [
     "reminder_sent_at INTEGER",
@@ -426,9 +416,6 @@ export interface IStorage {
   listClientNotes(clientId: number): Promise<ConsultationNote[]>;
   createNote(data: InsertNote & { createdAt: number; updatedAt: number }): Promise<ConsultationNote>;
   updateNote(id: number, patch: Partial<ConsultationNote>): Promise<ConsultationNote | undefined>;
-
-  // Email log
-  logEmail(toAddr: string, subject: string, body: string): Promise<EmailLog>;
 
   // Phase 3 Lot 5 — GDPR : export + cascade delete
   listNotesForUser(userId: number): Promise<ConsultationNote[]>;
@@ -766,17 +753,6 @@ export class DatabaseStorage implements IStorage {
 
   async updateNote(id: number, patch: Partial<ConsultationNote>): Promise<ConsultationNote | undefined> {
     return dbUpdateReturning<ConsultationNote>(consultationNotes, id, { ...patch, updatedAt: Date.now() });
-  }
-
-  // ── Email log ──────────────────────────────────────────────────────────────
-  async logEmail(toAddr: string, subject: string, body: string): Promise<EmailLog> {
-    return dbInsertReturning<EmailLog>(emailLog, {
-      toAddress: toAddr,
-      subject,
-      body,
-      sentAt: Date.now(),
-      status: "logged",
-    });
   }
 
   // ── Invoices ──────────────────────────────────────────────────────────────

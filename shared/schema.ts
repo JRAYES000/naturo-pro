@@ -194,16 +194,6 @@ export const sessions = sqliteTable("sessions", {
   expiresAt: integer("expires_at").notNull(),
 });
 
-// Email log (fallback when SMTP not configured)
-export const emailLog = sqliteTable("email_log", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  toAddress: text("to_address").notNull(),
-  subject: text("subject").notNull(),
-  body: text("body").notNull(),
-  sentAt: integer("sent_at").notNull(),
-  status: text("status").default("logged"),
-});
-
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -228,7 +218,6 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type ConsultationNote = typeof consultationNotes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Session = typeof sessions.$inferSelect;
-export type EmailLog = typeof emailLog.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;

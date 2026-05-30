@@ -25,20 +25,6 @@ import {
 import { publicUser } from "./helpers/tokens";
 
 export function registerAdminRoutes(app: Express): void {
-  // ---------- ADMIN: emails log (scoped to current user only) ----------
-  app.get("/api/admin/email-log", requireAuth, async (req: AuthedRequest, res) => {
-    const { db } = await import("../storage");
-    const { emailLog } = await import("@shared/schema-active");
-    const { eq } = await import("drizzle-orm");
-    // TODO(roadmap #1/#4 — unification schémas) : `email_log.userId` n'existe ni dans le schéma
-    // Drizzle SQLite ni MySQL (seulement via un ALTER best-effort SQLite jamais alimenté par
-    // logEmail), donc ce scoping renvoie toujours 0 ligne. Cast pour garder le type vert sans
-    // changer le comportement ; à recâbler proprement (ajout colonne userId + logEmail(userId))
-    // quand on s'attaquera à l'unification des schémas.
-    const rows = (db as any).select().from(emailLog).where(eq((emailLog as any).userId, req.userId!)).all();
-    res.json(rows);
-  });
-
   // ---------- ADMIN (Phase 3 Lot 4) ----------
   // Toutes les routes ci-dessous nécessitent requireAuth + requireAdmin.
   // L'admin est défini par la whitelist ADMIN_EMAILS (défaut: jrayes000@gmail.com).

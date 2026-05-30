@@ -205,16 +205,6 @@ export const sessions = mysqlTable("sessions", {
   expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
 });
 
-// ─── Email log ────────────────────────────────────────────────────────────────
-export const emailLog = mysqlTable("email_log", {
-  id: int("id").autoincrement().primaryKey(),
-  toAddress: varchar("to_address", { length: 255 }).notNull(),
-  subject: varchar("subject", { length: 500 }).notNull(),
-  body: text("body").notNull(),
-  sentAt: bigint("sent_at", { mode: "number" }).notNull(),
-  status: varchar("status", { length: 20 }).default("logged"),
-});
-
 // PHASE 3.5-C — Email templates
 export const emailTemplates = mysqlTable("email_templates", {
   id: int("id").autoincrement().primaryKey(),
@@ -250,7 +240,6 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type ConsultationNote = typeof consultationNotes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Session = typeof sessions.$inferSelect;
-export type EmailLog = typeof emailLog.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;

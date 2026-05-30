@@ -24,7 +24,6 @@ const TABLE_PAIRS: Array<[string, any, any]> = [
   ["appointments",         sqlite.appointments,         mysql.appointments],
   ["consultationNotes",    sqlite.consultationNotes,    mysql.consultationNotes],
   ["sessions",             sqlite.sessions,             mysql.sessions],
-  ["emailLog",             sqlite.emailLog,             mysql.emailLog],
   ["invoices",             sqlite.invoices,             mysql.invoices],
   ["invoiceItems",         sqlite.invoiceItems,         mysql.invoiceItems],
   ["emailTemplates",       sqlite.emailTemplates,       mysql.emailTemplates],

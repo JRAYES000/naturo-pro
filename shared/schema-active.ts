@@ -28,7 +28,6 @@ export const clients = activeSchema.clients;
 export const appointments = activeSchema.appointments;
 export const consultationNotes = activeSchema.consultationNotes;
 export const sessions = activeSchema.sessions;
-export const emailLog = activeSchema.emailLog;
 export const invoices = activeSchema.invoices;
 export const invoiceItems = activeSchema.invoiceItems;
 // PHASE 3.5-C — Email templates
@@ -51,7 +50,7 @@ export const insertEmailTemplateSchema = activeSchema.insertEmailTemplateSchema;
 export type {
   User, InsertUser, PublicUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
   InsertAvailability, Client, InsertClient, Appointment, InsertAppointment,
-  ConsultationNote, InsertNote, Session, EmailLog,
+  ConsultationNote, InsertNote, Session,
   Invoice, InsertInvoice, InvoiceItem, InsertInvoiceItem,
   EmailTemplate, InsertEmailTemplate,
 } from "./schema";
