@@ -53,6 +53,7 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         city: u.city, address: u.address,
         specialties: JSON.parse(u.specialties || "[]"),
         primaryColor: u.primaryColor, accentColor: u.accentColor,
+        instagram: u.instagram || null, facebook: u.facebook || null, websiteUrl: u.websiteUrl || null,
       },
       categories: cats,
     });
@@ -68,6 +69,7 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         city: u.city, address: u.address,
         specialties: JSON.parse(u.specialties || "[]"),
         primaryColor: u.primaryColor, accentColor: u.accentColor,
+        instagram: u.instagram || null, facebook: u.facebook || null, websiteUrl: u.websiteUrl || null,
       },
       categories: cats,
     });
