@@ -190,7 +190,7 @@ export async function sendDailyRecapForUser(user: any): Promise<{ ok: boolean; r
       clientName: clientName.trim() || "(sans nom)",
       categoryName: cat?.name || null,
       location: a.location || cat?.location || null,
-      status: a.status,
+      status: a.status ?? "",
       clientConfirmed: !!(a as any).clientConfirmedAt,
       clientCancelled: !!(a as any).clientCancelledAt,
     });

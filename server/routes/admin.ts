@@ -30,7 +30,12 @@ export function registerAdminRoutes(app: Express): void {
     const { db } = await import("../storage");
     const { emailLog } = await import("@shared/schema");
     const { eq } = await import("drizzle-orm");
-    const rows = (db as any).select().from(emailLog).where(eq(emailLog.userId, req.userId!)).all();
+    // TODO(roadmap #1/#4 — unification schémas) : `email_log.userId` n'existe ni dans le schéma
+    // Drizzle SQLite ni MySQL (seulement via un ALTER best-effort SQLite jamais alimenté par
+    // logEmail), donc ce scoping renvoie toujours 0 ligne. Cast pour garder le type vert sans
+    // changer le comportement ; à recâbler proprement (ajout colonne userId + logEmail(userId))
+    // quand on s'attaquera à l'unification des schémas.
+    const rows = (db as any).select().from(emailLog).where(eq((emailLog as any).userId, req.userId!)).all();
     res.json(rows);
   });
 

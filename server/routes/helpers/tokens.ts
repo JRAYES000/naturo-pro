@@ -13,7 +13,9 @@ export function genToken(): string {
 }
 
 export function slugify(s: string) {
-  return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "")
+  // Marques diacritiques combinantes (U+0300–U+036F) produites par la décomposition NFD.
+  // Équivalent à \p{Diacritic} mais sans le flag `u` (qui exige un target ≥ ES2015).
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "naturo";
 }
 

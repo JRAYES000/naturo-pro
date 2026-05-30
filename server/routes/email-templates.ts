@@ -22,8 +22,8 @@ import { renderTemplate } from "../email-templates/render";
 const VALID_KINDS = ["confirmation", "reminder_d1", "cancellation"] as const;
 type ValidKind = typeof VALID_KINDS[number];
 
-function isValidKind(k: string): k is ValidKind {
-  return (VALID_KINDS as readonly string[]).includes(k);
+function isValidKind(k: unknown): k is ValidKind {
+  return typeof k === "string" && (VALID_KINDS as readonly string[]).includes(k);
 }
 
 export function registerEmailTemplateRoutes(app: Express): void {
