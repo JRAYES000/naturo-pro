@@ -9,7 +9,7 @@
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "smoke": "cross-env DB_DRIVER=sqlite tsx script/smoke-routes.ts",
-    "test": "cross-env DB_DRIVER=sqlite tsx --test \"server/**/*.test.ts\"",
+    "test": "cross-env DB_DRIVER=sqlite tsx --test \"server/**/*.test.ts\" \"shared/**/*.test.ts\"",
     "routes:inventory": "tsx script/routes-inventory.ts",
     "db:push": "drizzle-kit push",
     "db:push:mysql": "drizzle-kit push --config=drizzle.config.mysql.ts"

@@ -41,13 +41,15 @@ export const insertAvailabilitySchema = activeSchema.insertAvailabilitySchema;
 export const insertClientSchema = activeSchema.insertClientSchema;
 export const insertAppointmentSchema = activeSchema.insertAppointmentSchema;
 export const insertNoteSchema = activeSchema.insertNoteSchema;
+export const insertInvoiceSchema = activeSchema.insertInvoiceSchema;
+export const insertInvoiceItemSchema = activeSchema.insertInvoiceItemSchema;
 export const insertEmailTemplateSchema = activeSchema.insertEmailTemplateSchema;
 
 // Re-exports types : on importe toujours depuis le schéma SQLite pour les types
 // (ils sont identiques entre les deux schémas, et TypeScript a besoin d'imports
 // statiques pour résoudre les types).
 export type {
-  User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
+  User, InsertUser, PublicUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
   InsertAvailability, Client, InsertClient, Appointment, InsertAppointment,
   ConsultationNote, InsertNote, Session, EmailLog,
   Invoice, InsertInvoice, InvoiceItem, InsertInvoiceItem,

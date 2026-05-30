@@ -28,7 +28,7 @@ export function registerAdminRoutes(app: Express): void {
   // ---------- ADMIN: emails log (scoped to current user only) ----------
   app.get("/api/admin/email-log", requireAuth, async (req: AuthedRequest, res) => {
     const { db } = await import("../storage");
-    const { emailLog } = await import("@shared/schema");
+    const { emailLog } = await import("@shared/schema-active");
     const { eq } = await import("drizzle-orm");
     // TODO(roadmap #1/#4 — unification schémas) : `email_log.userId` n'existe ni dans le schéma
     // Drizzle SQLite ni MySQL (seulement via un ALTER best-effort SQLite jamais alimenté par
