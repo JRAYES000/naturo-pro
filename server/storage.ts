@@ -288,6 +288,27 @@ if (DB_DRIVER !== "mysql") {
   raw.close();
 }
 
+// ── MySQL-only: migrations best-effort au démarrage ──────────────────────────
+// Équivalent des `ALTER TABLE` best-effort SQLite ci-dessus, pour la prod MySQL.
+// Fire-and-forget : ne bloque pas le démarrage du serveur, et un échec (colonne
+// déjà migrée, droits, etc.) est silencieux — au pire la migration n'a pas lieu,
+// jamais de crash. Idempotent : ré-appliquer un MODIFY au même type ne fait rien.
+if (DB_DRIVER === "mysql") {
+  void (async () => {
+    // Migration 1.1 — consultation_notes.client_id nullable (RDV walk-in sans client).
+    // Cf. migrations/1.1-consultation-note-nullable-client.sql
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (db as any).execute(
+        sql`ALTER TABLE consultation_notes MODIFY client_id INT NULL`,
+      );
+      console.log("[db][migrate] consultation_notes.client_id → NULL (ok ou déjà appliqué)");
+    } catch (e: any) {
+      console.warn("[db][migrate] consultation_notes.client_id MODIFY échoué (best-effort):", e?.message || e);
+    }
+  })();
+}
+
 // ── Dual-driver write helpers ─────────────────────────────────────────────────
 
 /**
