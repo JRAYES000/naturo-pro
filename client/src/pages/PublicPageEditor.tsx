@@ -10,8 +10,28 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import { SpecialtiesInput } from "@/components/SpecialtiesInput";
 // Phase 3 Lot 2 — URL publique (path-based en mode actif, sous-domaine en attente DNS)
 import { tenantPathUrl } from "@/lib/tenant";
+
+// Suggestions de spécialités naturo courantes (alignées sur l'onboarding).
+const SPECIALTY_SUGGESTIONS = [
+  "Alimentation", "Gestion du stress", "Sommeil", "Détox", "Immunité",
+  "Digestion", "Féminin / hormonal", "Sportif", "Émotionnel", "Énergie",
+  "Phytothérapie", "Aromathérapie",
+];
+
+/** Parse défensif des spécialités stockées (JSON array en DB). Ne plante jamais. */
+function parseSpecialties(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
+  if (typeof raw !== "string" || !raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function PublicPageEditor() {
   const { toast } = useToast();
@@ -43,7 +63,7 @@ export default function PublicPageEditor() {
         address: data.user.address || "",
         city: data.user.city || "",
         publicPageEnabled: !!data.user.publicPageEnabled,
-        specialties: JSON.parse(data.user.specialties || "[]"),
+        specialties: parseSpecialties(data.user.specialties),
       });
     }
   }, [data]);
@@ -141,7 +161,22 @@ export default function PublicPageEditor() {
             </div>
           </div>
 
-          <div><Label>Photo (URL)</Label><Input value={draft.photoUrl || ""} onChange={e => setDraft({ ...draft, photoUrl: e.target.value })} placeholder="https://…" data-testid="input-photo" /></div>
+          <div>
+            <Label>Photo (URL)</Label>
+            <div className="flex items-center gap-3">
+              {draft.photoUrl ? (
+                <img
+                  src={draft.photoUrl}
+                  alt="Aperçu"
+                  className="h-14 w-14 rounded-full object-cover border border-input shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = ""; }}
+                  data-testid="img-photo-preview"
+                />
+              ) : null}
+              <Input value={draft.photoUrl || ""} onChange={e => setDraft({ ...draft, photoUrl: e.target.value })} placeholder="https://…" data-testid="input-photo" />
+            </div>
+          </div>
           <div><Label>Bio / présentation</Label><Textarea rows={5} value={draft.bio || ""} onChange={e => setDraft({ ...draft, bio: e.target.value })} data-testid="input-bio" /></div>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -151,12 +186,15 @@ export default function PublicPageEditor() {
           <div><Label>Adresse cabinet</Label><Input value={draft.address || ""} onChange={e => setDraft({ ...draft, address: e.target.value })} data-testid="input-address" /></div>
 
           <div>
-            <Label>Spécialités (séparées par des virgules)</Label>
-            <Input
-              value={(draft.specialties || []).join(", ")}
-              onChange={e => setDraft({ ...draft, specialties: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-              data-testid="input-specialties"
+            <Label>Spécialités</Label>
+            <SpecialtiesInput
+              value={draft.specialties || []}
+              onChange={(next) => setDraft({ ...draft, specialties: next })}
+              suggestions={SPECIALTY_SUGGESTIONS}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tapez une spécialité puis Entrée, ou cliquez une suggestion. Ces étiquettes s'affichent sur votre page publique.
+            </p>
           </div>
 
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-public-page">
