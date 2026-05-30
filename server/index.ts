@@ -10,11 +10,36 @@ import { seedIfEmpty } from "./seed";
 const app = express();
 const httpServer = createServer(app);
 
-// Security headers (CSP relaxed to keep CDN fonts and inline styles working with Vite output)
+// En-têtes de sécurité — CSP différenciée dev/prod
+const isDev = process.env.NODE_ENV !== "production";
+
 app.use(
   helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
+    crossOriginEmbedderPolicy: false, // OAuth Google + ressources cross-origin
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // Prod : Vite bundle tout en .js statiques (pas d'inline/eval).
+        // Dev : React Fast Refresh exige 'unsafe-eval', Vite injecte de l'inline.
+        scriptSrc: isDev
+          ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+          : ["'self'"],
+        // 'unsafe-inline' obligatoire : shadcn/Radix injectent des style="" inline
+        // (positionnement popovers/dropdowns/drawers). Google Fonts (CSS Nunito).
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
+        // Dev : WebSocket HMR Vite (/vite-hmr).
+        connectSrc: isDev
+          ? ["'self'", "ws://localhost:*", "wss://localhost:*"]
+          : ["'self'"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        ...(isDev ? {} : { upgradeInsecureRequests: [] }),
+      },
+    },
   }),
 );
 
