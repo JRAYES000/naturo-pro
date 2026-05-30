@@ -32,6 +32,10 @@ export const users = mysqlTable("users", {
   publicPageEnabled: boolean("public_page_enabled").notNull().default(true),
   primaryColor: varchar("primary_color", { length: 20 }).default("#186749"),
   accentColor: varchar("accent_color", { length: 20 }).default("#17EC9B"),
+  // Réseaux sociaux affichés sur la page publique (optionnels).
+  instagram: varchar("instagram", { length: 255 }),
+  facebook: varchar("facebook", { length: 255 }),
+  websiteUrl: varchar("website_url", { length: 255 }),
   // Phase 0.7 — Email rappels via Resend
   resendApiKey: varchar("resend_api_key", { length: 255 }),
   emailFromAddress: varchar("email_from_address", { length: 255 }),
