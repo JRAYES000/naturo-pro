@@ -17,7 +17,7 @@ Application **monolithique fullstack TypeScript** : un seul process Node.js sert
 │                                                              │
 │   ┌────────────┐  ┌─────────────┐  ┌──────────────────────┐ │
 │   │   /api/*   │  │  /assets/*  │  │  fallback → index.html│ │
-│   │  routes.ts │  │  static.ts  │  │       (SPA)           │ │
+│   │  routes/** │  │  static.ts  │  │       (SPA)           │ │
 │   └─────┬──────┘  └─────────────┘  └──────────────────────┘ │
 │         │                                                    │
 │         ▼                                                    │
@@ -58,7 +58,7 @@ Toutes les URLs frontend sont en `/#/...` (ex: `/#/agenda`, `/#/clients/42`). Po
 ## Modules backend
 
 ### `server/index.ts`
-Entry point : créé l'app Express, charge `.env`, branche `auth.ts` puis `routes.ts`, démarre le HTTP server.
+Entry point : créé l'app Express, charge `.env`, branche `auth.ts` puis `routes/index.ts`, démarre le HTTP server.
 
 ### `server/auth.ts`
 - Sessions Express avec `express-session` + `connect-better-sqlite3` (ou table MySQL en prod).
@@ -72,21 +72,60 @@ Connexion DB selon `DB_DRIVER`. Exporte `db` (instance Drizzle) consommé par `s
 ### `server/storage.ts`
 **Couche d'accès données** — toutes les requêtes Drizzle vivent ici. Interface `IStorage` typée. Pattern : `getX(id)`, `listX(filters)`, `createX(input)`, `updateX(id, patch)`, `deleteX(id)`.
 
-### `server/routes.ts` ⚠️
-**3000+ lignes** — toutes les routes API dans un seul fichier, organisées par phase. Sections actuelles (de mémoire, ordre approximatif) :
-- Auth (`/api/login`, `/api/register`, `/api/me`, ...)
-- Catégories / prestations
-- Disponibilités / congés
-- Clients
-- Appointments / agenda
-- Booking public (`/api/public/:slug/...`)
-- Page de gestion publique (`/api/public/manage/:token/...`)
-- Rappels (auto cron + manuel)
-- Templates email
-- Facturation
-- Google Calendar OAuth
+### `server/routes/` — routes API splittées par domaine ✅
 
-**Candidat clair à la modularisation** — voir `ROADMAP.md`.
+Anciennement un `server/routes.ts` monolithique de **2877 lignes**, découpé domaine par
+domaine (Phase 4.0, étapes 0→14). Plus aucune route déclarée inline dans l'orchestrateur.
+
+```
+server/routes/
+├─ index.ts            ← orchestrateur : middlewares globaux + câblage des domaines
+│                         (registerRoutes(httpServer, app), importé par server/index.ts)
+├─ _context.ts         ← RouteContext + createContext() (limiters + config env)
+├─ limiters.ts         ← rate-limiters (singletons : auth/booking/api/public/admin)
+├─ cron.ts             ← crons in-process (poll Google + reminders/recap), startCrons()
+├─ auth.ts             ← /api/auth/* (login, register, verify-email, reset, me, RGPD)  [ctx]
+├─ google.ts           ← /api/auth/google + /api/google/* (OAuth + sync manuel)
+├─ internal.ts         ← /api/internal/* (déclencheurs cron HTTP, token-gated)
+├─ profile.ts          ← /api/profile
+├─ categories.ts       ← /api/categories
+├─ availability.ts     ← /api/availability
+├─ clients.ts          ← /api/clients (+ sous-ressources lecture)
+├─ appointments.ts     ← /api/appointments (+ /:id/note, /api/notes/:id)
+├─ public.ts           ← /api/public/* + /api/rdv/* (page publique, booking, manage)  [ctx]
+├─ invoices.ts         ← /api/invoices/* (CRUD + PDF + envoi email)
+├─ admin.ts            ← /api/admin/* (email-log, users, impersonate, extend-trial)
+├─ reminders.ts        ← /api/reminders/* + rappel manuel
+├─ email-templates.ts  ← /api/email-templates/*
+└─ helpers/            ← logique partagée non-route :
+   ├─ tokens.ts          (genToken, slugify, publicUser)
+   ├─ html.ts            (htmlFeedbackPage, escapeHtmlMin)
+   ├─ google-sync.ts     (syncApptToGoogle, importFromGoogleForUser)
+   ├─ invoices.ts        (createInvoiceFromAppointment)
+   ├─ email-sending.ts   (getEmailConfigForUser, sendBookingConfirmationEmail)
+   └─ reminders.ts       (sendRemindersForUser, sendDailyRecapForUser, helpers TZ)
+```
+
+**Convention par module** : `export function register<Domaine>(app[, ctx])`. `ctx` (de
+`_context.ts`) n'est passé qu'aux domaines qui ont besoin d'un limiter ou de config env
+(actuellement `auth` → `authLimiter`, `public` → `bookingLimiter` + `APP_URL`). Les autres
+prennent juste `app`. Handlers verbatim : le split n'a changé aucun comportement (sauf
+l'activation assumée de `bookingLimiter`, voir HISTORY.md).
+
+**Filet de sécurité** (outils permanents) :
+- `npm run routes:inventory` (`script/routes-inventory.ts`) → régénère `docs/routes-inventory.txt`,
+  l'inventaire normalisé `METHOD path [middlewares]` de toutes les routes (file-agnostic).
+  Un diff non vide après un refactor = une route/un middleware a bougé.
+- `npm run smoke` (`script/smoke-routes.ts`) → frappe les routes critiques sur le dev server.
+
+#### Ajouter un nouveau domaine de routes
+1. Créer `server/routes/<domaine>.ts` exportant `register<Domaine>Routes(app[, ctx])`.
+   Tout passe par `storage` (pas de Drizzle direct), validation Zod sur les bodies.
+2. Importer et appeler `register<Domaine>Routes(app[, ctx])` dans `server/routes/index.ts`
+   (l'ordre des appels = ordre de matching Express, à choisir si des paths se recouvrent).
+3. Si le domaine a besoin d'un limiter / de `APP_URL` / `BASE_DOMAIN`, le récupérer via `ctx`
+   (l'ajouter à `RouteContext`/`createContext` dans `_context.ts` si nouveau).
+4. `npm run routes:inventory && npm run check && npm run smoke` pour valider.
 
 ### `server/email.ts`
 Wrapper Mailjet SMTP via `nodemailer`. Helper `sendEmail(cfg, to, subject, html, text, attachments)`.
@@ -193,8 +232,8 @@ Voir `shared/schema.ts` et `shared/schema-mysql.ts` pour la définition exacte.
 
 ## Points d'attention
 
-1. **`server/routes.ts` géant** — à splitter en sous-fichiers (~6-8 fichiers).
+1. ~~**`server/routes.ts` géant**~~ — ✅ **fait** (Phase 4.0) : splitté en `server/routes/` (15 domaines + helpers + infra). Voir « Modules backend ».
 2. **3 schémas DB à synchroniser** — alternative : générer le schéma MySQL depuis le SQLite via un script, ou utiliser uniquement MySQL en dev aussi.
-3. **Pas de tests automatisés** — à ajouter (Vitest pour unit, Playwright pour E2E sur les flows critiques : booking, login, annulation).
+3. **Pas de tests automatisés** — à ajouter (Vitest pour unit, Playwright pour E2E sur les flows critiques : booking, login, annulation). NB : un filet de smoke existe (`npm run smoke`).
 4. **Sessions stockées en DB** — OK pour scale modeste, à surveiller à 100+ users actifs concurrents.
-5. **Aucun rate limiting** — à ajouter sur `/api/login`, `/api/public/*/book` pour prévenir abuse.
+5. ~~**Aucun rate limiting**~~ — ✅ rate-limiters en place (`server/routes/limiters.ts`) : `authLimiter` (login/register/reset), `bookingLimiter` (`/api/public/:slug/book`), `publicLimiter`/`adminLimiter`/`apiLimiter` globaux.

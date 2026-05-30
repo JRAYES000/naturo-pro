@@ -15,9 +15,8 @@
  *   - send-reminders / send-daily-recap : helper checkInternalToken via la const
  *     INTERNAL_TOKEN, header `x-internal-token`, 500 si non configuré / 401 si mismatch.
  *
- * NB : le cron in-process (cron.ts) importe directement importFromGoogleForUser ; il
- * n'utilise PAS le hack `(registerRoutes as any).__importFromGoogleForUser` (resté dans
- * routes.ts par sécurité). startCrons() reste appelé depuis routes.ts.
+ * NB : le cron in-process (cron.ts) importe directement importFromGoogleForUser depuis
+ * helpers/google-sync. startCrons() est câblé depuis server/routes/index.ts.
  */
 
 import type { Express } from "express";

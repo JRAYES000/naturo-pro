@@ -10,14 +10,14 @@ Petites tâches à faire idéalement dans les premières sessions Claude Code po
 
 | Tâche | Effort | Priorité |
 |---|---|---|
-| **Splitter `server/routes.ts`** (3000+ lignes) en `server/routes/{auth,booking,clients,categories,availability,reminders,email-templates,public,invoices}.ts` + un `index.ts` qui les enregistre | ~3-4h | Haute |
+| ✅ **Splitter `server/routes.ts`** (2877 lignes) en `server/routes/` par domaine + `index.ts` orchestrateur — **FAIT** (étapes 0→14, mai 2026 ; voir HISTORY.md) | — | — |
+| ✅ **Rate limiting** sur `/api/login` + `/api/public/:slug/book` (`express-rate-limit`) — **FAIT** (`server/routes/limiters.ts` ; bookingLimiter activé étape 12.5) | — | — |
 | **Unifier les schémas DB** : générer `schema-mysql.ts` depuis `schema.ts` via un script, ou décider d'utiliser MySQL aussi en dev | ~2h | Moyenne |
 | **Ajouter tests Vitest** sur `storage.ts` (au moins les fonctions critiques : booking, ensureCancelToken, getEmailTemplate) | ~3h | Moyenne |
 | **Ajouter tests Playwright E2E** sur 3 flows : login, booking public, annulation /manage | ~4h | Moyenne |
-| **Rate limiting** sur `/api/login` + `/api/public/*/book` (via `express-rate-limit`) | ~1h | Haute (sécurité) |
 | **Helmet + CORS strict** + CSP headers | ~1h | Moyenne |
 
-- Type-check : 6 erreurs `tsc` préexistantes dans `server/routes.ts` (regex es5, types `email_log.userId`, query params Express). À fixer pendant le split du fichier.
+- Type-check : 6 erreurs `tsc` préexistantes (regex es5, types `email_log.userId`, query params Express), désormais réparties dans `server/routes/{admin,email-templates}.ts` + `helpers/{reminders,tokens}.ts` après le split. Total inchangé (6) — à fixer indépendamment.
 - Bootstrap DDL obsolète dans `server/storage.ts` (`CREATE TABLE IF NOT EXISTS`) : ne reflète plus `shared/schema.ts` (manque `resend_api_key`, `billing_*`, multi-tenant Phase 3...). À décider : (a) supprimer le DDL bootstrap et faire de `npm run db:push` une étape obligatoire de setup dev, ou (b) régénérer le DDL depuis le schéma. Piège actuel : un nouveau dev sans `db:push` obtient des tables incomplètes silencieusement.
 - Build bundle CJS → ESM : éliminerait le hack `import.meta.url || __filename` et les 3 warnings esbuild. Demande de revoir `build.ts`, l'extension `.cjs` → `.mjs`, et le script `start` côté Hostinger.
 

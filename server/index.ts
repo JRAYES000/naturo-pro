@@ -2,7 +2,7 @@ import "dotenv/config";
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import helmet from "helmet";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes/index";
 import { serveStatic } from "./static";
 import { createServer } from "node:http";
 import { seedIfEmpty } from "./seed";

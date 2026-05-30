@@ -157,6 +157,41 @@ Le build émet 3 × `"import.meta" is not available with the "cjs" output format
 
 ---
 
+## Phase 4.0 — Refactor routes complet (split par domaine, étapes 0→14)
+
+Découpage de l'ancien `server/routes.ts` **monolithique (2877 lignes)** en une arborescence
+`server/routes/` par domaine. Réalisé en 14 étapes incrémentales, **un commit atomique par
+domaine**, chacun avec garde-fou complet (inventaire de routes + `tsc` + build + smoke).
+
+**Bilan**
+- `server/routes.ts` (2877 l.) → supprimé, remplacé par `server/routes/index.ts` (orchestrateur ~130 l.).
+- **13 modules domaines** : `auth, google, internal, profile, categories, availability, clients,
+  appointments, public, invoices, admin, reminders, email-templates`.
+- **4 modules infra** : `index.ts` (orchestrateur), `_context.ts` (RouteContext + createContext),
+  `limiters.ts` (rate-limiters singletons), `cron.ts` (crons in-process).
+- **6 helpers** (`routes/helpers/`) : `tokens, html, google-sync, invoices, email-sending, reminders`.
+- Convention : `register<Domaine>(app[, ctx])`, `ctx` seulement pour `auth` (authLimiter) et
+  `public` (bookingLimiter + APP_URL).
+
+**Méthode / garde-fous**
+- Handlers déplacés **verbatim** (zéro changement de comportement), sauf l'activation assumée de
+  `bookingLimiter` (étape 12.5, ci-dessous).
+- Filet objectif : `script/routes-inventory.ts` (inventaire normalisé `METHOD path [middlewares]`,
+  file-agnostic) — diff strictement vide à chaque étape (sauf 12.5, le seul changement voulu) ;
+  `script/smoke-routes.ts` (frappe les routes critiques sur le dev server). **Conservés comme outils
+  permanents** (`npm run routes:inventory`, `npm run smoke`).
+- `tsc` resté à **6 erreurs préexistantes** (réparties entre fichiers, total constant), 0 nouvelle.
+
+**Nettoyages associés (étape 14)**
+- Hack `(registerRoutes as any).__importFromGoogleForUser` **supprimé** : mort confirmé (le cron
+  in-process importe `importFromGoogleForUser` directement depuis `helpers/google-sync.ts` ; aucun
+  autre consommateur dans le repo).
+- ~15 imports devenus inutilisés retirés de l'orchestrateur (prouvés morts : `tsc` reste à 6).
+- Artefacts de travail (`docs/_refactor/`) supprimés ; l'inventaire vit désormais en permanent
+  dans `docs/routes-inventory.txt`.
+
+---
+
 ## Hardening — bookingLimiter activé sur `/api/public/:slug/book`
 
 Découvert pendant le refactor (split de `server/routes.ts`, étape 12) : le rate-limiter

@@ -9,10 +9,8 @@
  *   - POST /api/google/disconnect     (efface les tokens)
  *   - POST /api/google/sync-import    (déclencheur manuel d'import depuis l'UI)
  *
- * ⚠️ RESTENT dans routes.ts (ne PAS migrer ici) :
- *   - le hack `(registerRoutes as any).__importFromGoogleForUser = importFromGoogleForUser`
- *     (registerRoutes n'est pas en scope ici ; lu par le module cron) ;
- *   - POST /api/internal/sync-google-all (domaine internal+crons, étape 11).
+ * NB : POST /api/internal/sync-google-all vit dans le domaine internal+crons
+ * (server/routes/internal.ts), pas ici.
  */
 
 import type { Express } from "express";

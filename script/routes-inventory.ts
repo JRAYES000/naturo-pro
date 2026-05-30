@@ -1,7 +1,7 @@
 /**
  * script/routes-inventory.ts
  *
- * Génère docs/_refactor/routes-inventory.txt : l'inventaire normalisé de TOUTES les
+ * Génère docs/routes-inventory.txt : l'inventaire normalisé de TOUTES les
  * routes Express déclarées dans server/routes.ts + server/routes/**.
  *
  * Format par ligne : METHOD  /path  [middlewares]  handler
@@ -17,7 +17,7 @@ import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from "n
 import { join } from "node:path";
 
 const ROOT = process.cwd();
-const OUT = join(ROOT, "docs", "_refactor", "routes-inventory.txt");
+const OUT = join(ROOT, "docs", "routes-inventory.txt");
 
 function collectFiles(): string[] {
   const files: string[] = [];
@@ -77,6 +77,6 @@ const header = `# Inventaire des routes Express — généré par script/routes-
 # Le diff de ce fichier doit rester STRICTEMENT VIDE à travers le split de routes.ts.
 `;
 
-mkdirSync(join(ROOT, "docs", "_refactor"), { recursive: true });
+mkdirSync(join(ROOT, "docs"), { recursive: true });
 writeFileSync(OUT, header + "\n" + lines.join("\n") + "\n", "utf-8");
 console.log(`[routes-inventory] ${all.length} routes → ${OUT}`);
