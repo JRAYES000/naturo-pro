@@ -30,6 +30,9 @@ export function registerProfileRoutes(app: Express): void {
     emailRemindersEnabled: z.boolean().optional(),
     primaryColor: z.string().optional(),
     accentColor: z.string().optional(),
+    instagram: z.string().nullable().optional(),
+    facebook: z.string().nullable().optional(),
+    websiteUrl: z.string().nullable().optional(),
     // Phase 0.7 — config email Resend
     resendApiKey: z.string().nullable().optional(),
     emailFromAddress: z.string().email().nullable().optional(),

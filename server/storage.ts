@@ -65,6 +65,9 @@ if (DB_DRIVER !== "mysql") {
       public_page_enabled INTEGER DEFAULT 1,
       primary_color TEXT DEFAULT '#186749',
       accent_color TEXT DEFAULT '#17EC9B',
+      instagram TEXT,
+      facebook TEXT,
+      website_url TEXT,
       resend_api_key TEXT,
       email_from_address TEXT,
       email_from_name TEXT,
@@ -285,6 +288,11 @@ if (DB_DRIVER !== "mysql") {
   for (const col of saasCols) {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
   }
+  // Réseaux sociaux sur users (best-effort migration SQLite)
+  const socialCols = ["instagram TEXT", "facebook TEXT", "website_url TEXT"];
+  for (const col of socialCols) {
+    try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
+  }
   raw.close();
 }
 
@@ -305,6 +313,23 @@ if (DB_DRIVER === "mysql") {
       console.log("[db][migrate] consultation_notes.client_id → NULL (ok ou déjà appliqué)");
     } catch (e: any) {
       console.warn("[db][migrate] consultation_notes.client_id MODIFY échoué (best-effort):", e?.message || e);
+    }
+    // Migration 1.2 — colonnes réseaux sociaux sur users (page publique).
+    // Cf. migrations/1.2-user-socials.sql. ADD COLUMN n'est pas idempotent en MySQL
+    // → chaque colonne dans son try/catch (échoue silencieusement si déjà présente).
+    for (const ddl of [
+      "ALTER TABLE users ADD COLUMN instagram VARCHAR(255) NULL",
+      "ALTER TABLE users ADD COLUMN facebook VARCHAR(255) NULL",
+      "ALTER TABLE users ADD COLUMN website_url VARCHAR(255) NULL",
+    ]) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (db as any).execute(sql.raw(ddl));
+        console.log(`[db][migrate] ${ddl} (ok)`);
+      } catch (e: any) {
+        // Colonne déjà présente = cas normal après la 1re exécution.
+        console.warn(`[db][migrate] ${ddl} ignoré (best-effort):`, e?.message || e);
+      }
     }
   })();
 }

@@ -23,6 +23,10 @@ export const users = sqliteTable("users", {
   publicPageEnabled: integer("public_page_enabled", { mode: "boolean" }).default(true),
   primaryColor: text("primary_color").default("#186749"),
   accentColor: text("accent_color").default("#17EC9B"),
+  // Réseaux sociaux affichés sur la page publique (optionnels).
+  instagram: text("instagram"),
+  facebook: text("facebook"),
+  websiteUrl: text("website_url"),
   // Phase 0.7 — Email rappels via Resend
   resendApiKey: text("resend_api_key"),                       // clé personnelle de la praticienne (chiffrée plus tard)
   emailFromAddress: text("email_from_address"),               // ex "noreply@ecole-naturo.fr"

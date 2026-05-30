@@ -95,6 +95,9 @@ export default function PublicPageEditor() {
         specialties: parseSpecialties(data.user.specialties),
         primaryColor: data.user.primaryColor || DEFAULT_PRIMARY,
         accentColor: data.user.accentColor || DEFAULT_ACCENT,
+        instagram: data.user.instagram || "",
+        facebook: data.user.facebook || "",
+        websiteUrl: data.user.websiteUrl || "",
       });
     }
   }, [data]);
@@ -269,6 +272,13 @@ export default function PublicPageEditor() {
               <p className="text-xs text-muted-foreground mt-1">
                 Tapez une spécialité puis Entrée, ou cliquez une suggestion. Ces étiquettes s'affichent sur votre page publique.
               </p>
+            </div>
+
+            {/* Réseaux sociaux */}
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div><Label>Instagram</Label><Input value={draft.instagram || ""} onChange={e => setDraft({ ...draft, instagram: e.target.value })} placeholder="@pseudo ou URL" data-testid="input-instagram" /></div>
+              <div><Label>Facebook</Label><Input value={draft.facebook || ""} onChange={e => setDraft({ ...draft, facebook: e.target.value })} placeholder="URL de la page" data-testid="input-facebook" /></div>
+              <div><Label>Site web</Label><Input value={draft.websiteUrl || ""} onChange={e => setDraft({ ...draft, websiteUrl: e.target.value })} placeholder="https://…" data-testid="input-website" /></div>
             </div>
 
             {/* Couleurs du thème */}
