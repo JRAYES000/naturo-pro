@@ -70,6 +70,16 @@ interface ProgramEditorProps {
   onClose: () => void;
 }
 
+// Palette de pastels (classes Tailwind complètes pour la détection au build).
+// On cycle dessus pour distinguer visuellement sections et conseils.
+const PASTELS = [
+  "bg-rose-50 border-rose-200",
+  "bg-amber-50 border-amber-200",
+  "bg-sky-50 border-sky-200",
+  "bg-violet-50 border-violet-200",
+  "bg-emerald-50 border-emerald-200",
+  "bg-orange-50 border-orange-200",
+];
 // 4 sections pré-remplies avec des exemples de conseils (modifiables/supprimables)
 // pour ne pas partir d'une feuille blanche. Conseils succincts (≤ 3 phrases),
 // inspirés des programmes d'hygiène de vie naturopathiques courants.
@@ -228,7 +238,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
         )}
 
         {sections.map((sec, sIdx) => (
-          <div key={sIdx} className="border rounded-[12px] p-4 space-y-3 bg-muted/30">
+          <div key={sIdx} className={`border rounded-[12px] p-4 space-y-3 ${PASTELS[sIdx % PASTELS.length]}`}>
             <div className="flex items-center gap-2">
               <Input
                 placeholder="Nom de la section (ex. Alimentation, Phytothérapie…)"
@@ -257,7 +267,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                     value={item}
                     onChange={e => updateItem(sIdx, iIdx, e.target.value)}
                     rows={2}
-                    className="resize-none text-sm"
+                    className={`resize-none text-sm border ${PASTELS[iIdx % PASTELS.length]}`}
                     data-testid={`input-item-${sIdx}-${iIdx}`}
                   />
                   <Button

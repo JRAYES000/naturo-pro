@@ -52,6 +52,17 @@ function parseAnswers(raw: string | null | undefined): Record<string, string | s
   try { return JSON.parse(raw || "{}"); } catch { return {}; }
 }
 
+// Palette de pastels (classes Tailwind complètes pour la détection au build).
+// Cyclée pour distinguer visuellement chaque question et chaque réponse possible.
+const PASTELS = [
+  "bg-rose-50 border-rose-200",
+  "bg-amber-50 border-amber-200",
+  "bg-sky-50 border-sky-200",
+  "bg-violet-50 border-violet-200",
+  "bg-emerald-50 border-emerald-200",
+  "bg-orange-50 border-orange-200",
+];
+
 function newQuestion(): Question {
   return { id: crypto.randomUUID(), label: "", type: "text", required: false };
 }
@@ -446,7 +457,7 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
   }
 
   return (
-    <div className="border border-border rounded-[12px] p-4 space-y-3 bg-background" data-testid={`question-${index}`}>
+    <div className={`border rounded-[12px] p-4 space-y-3 ${PASTELS[index % PASTELS.length]}`} data-testid={`question-${index}`}>
       <div className="flex items-start gap-2">
         <div className="flex flex-col gap-1 mt-1">
           <button
@@ -496,7 +507,7 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
             <div className="space-y-2">
               <div className="flex flex-wrap gap-1">
                 {(question.options ?? []).map((opt, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 bg-secondary text-sm px-2 py-0.5 rounded-full">
+                  <span key={i} className={`inline-flex items-center gap-1 border text-sm px-2 py-0.5 rounded-full ${PASTELS[i % PASTELS.length]}`}>
                     {opt}
                     <button
                       type="button"
