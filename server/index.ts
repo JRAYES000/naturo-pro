@@ -51,6 +51,10 @@ declare module "http" {
 
 app.use(
   express.json({
+    // 2 Mo : couvre les images en base64 (photo de profil, logo facture) envoyées
+    // via PATCH /api/profile. Le défaut Express (100 Ko) renvoyait un 413 dès
+    // qu'une image dépassait ~70 Ko — bug latent sur l'upload de logo.
+    limit: "2mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },

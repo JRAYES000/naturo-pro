@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ExternalLink, Save, Globe, Copy, Check, Link as LinkIcon, AlertCircle, RotateCcw } from "lucide-react";
+import { ExternalLink, Save, Globe, Copy, Check, Link as LinkIcon, AlertCircle, RotateCcw, Upload, Image as ImageIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -239,20 +239,68 @@ export default function PublicPageEditor() {
             </div>
 
             <div>
-              <Label>Photo (URL)</Label>
+              <Label>Photo de profil</Label>
               <div className="flex items-center gap-3">
                 {draft.photoUrl ? (
                   <img
                     src={draft.photoUrl}
                     alt="Aperçu"
-                    className="h-14 w-14 rounded-full object-cover border border-input shrink-0"
+                    className="h-16 w-16 rounded-full object-cover border border-input shrink-0"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                     onLoad={(e) => { (e.target as HTMLImageElement).style.display = ""; }}
                     data-testid="img-photo-preview"
                   />
-                ) : null}
-                <Input value={draft.photoUrl || ""} onChange={e => setDraft({ ...draft, photoUrl: e.target.value })} placeholder="https://…" data-testid="input-photo" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center text-muted-foreground shrink-0">
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <label className="inline-flex items-center gap-2 px-3 py-2 rounded-[15px] border border-input bg-background hover:bg-secondary text-sm font-bold cursor-pointer w-fit" data-testid="label-upload-photo">
+                    <Upload className="h-4 w-4" />
+                    {draft.photoUrl ? "Changer la photo" : "Importer une photo"}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      data-testid="input-photo-file"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 300 * 1024) {
+                          toast({ title: "Image trop lourde", description: "Maximum 300 Ko. Compressez l'image et réessayez.", variant: "destructive" });
+                          e.target.value = "";
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = () => setDraft({ ...draft, photoUrl: reader.result as string });
+                        reader.readAsDataURL(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {draft.photoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ ...draft, photoUrl: "" })}
+                      className="text-xs text-muted-foreground hover:text-destructive w-fit"
+                      data-testid="button-remove-photo"
+                    >
+                      Retirer la photo
+                    </button>
+                  )}
+                </div>
               </div>
+              <details className="mt-2">
+                <summary className="text-xs text-muted-foreground cursor-pointer">Ou coller une URL d'image</summary>
+                <Input
+                  value={draft.photoUrl?.startsWith("data:") ? "" : (draft.photoUrl || "")}
+                  onChange={e => setDraft({ ...draft, photoUrl: e.target.value })}
+                  placeholder="https://…"
+                  className="mt-1"
+                  data-testid="input-photo"
+                />
+              </details>
             </div>
             <div><Label>Bio / présentation</Label><Textarea rows={5} value={draft.bio || ""} onChange={e => setDraft({ ...draft, bio: e.target.value })} data-testid="input-bio" /></div>
 
