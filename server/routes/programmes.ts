@@ -45,6 +45,16 @@ const COLOR_BORDER = "#d6e0dc";
 const COLOR_TEXT   = "#1a1a1a";
 const COLOR_MUTED  = "#6b7a76";
 
+// Pastels PDF (cyclés par section) — équivalents hex des pastels Tailwind de l'UI.
+const PDF_PASTELS = [
+  { bg: "#fff1f2", header: "#ffe4e6", text: "#9f1239" }, // rose
+  { bg: "#fffbeb", header: "#fef3c7", text: "#92400e" }, // amber
+  { bg: "#f0f9ff", header: "#e0f2fe", text: "#075985" }, // sky
+  { bg: "#f5f3ff", header: "#ede9fe", text: "#5b21b6" }, // violet
+  { bg: "#ecfdf5", header: "#d1fae5", text: "#065f46" }, // emerald
+  { bg: "#fff7ed", header: "#ffedd5", text: "#9a3412" }, // orange
+];
+
 function formatDateLocalFR(ms: number): string {
   return new Date(ms).toLocaleDateString("fr-FR", {
     day: "2-digit", month: "long", year: "numeric",
@@ -96,33 +106,39 @@ async function generateProgramPdf(opts: {
       doc.rect(leftX, y, pageWidth, 1).fill(COLOR_BORDER);
       y += 16;
 
-      // ── Sections ──
-      for (const sec of opts.content) {
+      // ── Sections (fond pastel cyclé, repris de l'UI) ──
+      for (let i = 0; i < opts.content.length; i++) {
+        const sec = opts.content[i];
+        const p = PDF_PASTELS[i % PDF_PASTELS.length];
+
         if (y > doc.page.height - 120) {
           doc.addPage();
           y = doc.page.margins.top;
         }
 
-        // En-tête de section
-        doc.rect(leftX, y, pageWidth, 26).fill(COLOR_BG);
-        doc.fillColor(COLOR_GREEN).font("Helvetica-Bold").fontSize(12)
-          .text(sec.section, leftX + 10, y + 7, { width: pageWidth - 20 });
+        // En-tête de section (fond pastel + barre d'accent à gauche)
+        doc.rect(leftX, y, pageWidth, 26).fill(p.header);
+        doc.rect(leftX, y, 4, 26).fill(p.text);
+        doc.fillColor(p.text).font("Helvetica-Bold").fontSize(12)
+          .text(sec.section, leftX + 12, y + 7, { width: pageWidth - 24 });
         y += 30;
 
-        // Items
+        // Items (chaque conseil sur un fond pastel clair)
         for (const item of sec.items) {
           if (y > doc.page.height - 100) {
             doc.addPage();
             y = doc.page.margins.top;
           }
-          const bullet = "• ";
-          const textWidth = pageWidth - 20;
-          const itemHeight = doc.heightOfString(bullet + item, { width: textWidth }) + 8;
+          const bullet = "•  ";
+          const textWidth = pageWidth - 28;
+          const textHeight = doc.heightOfString(bullet + item, { width: textWidth });
+          const itemHeight = textHeight + 10;
+          doc.rect(leftX, y, pageWidth, itemHeight).fill(p.bg);
           doc.fillColor(COLOR_TEXT).font("Helvetica").fontSize(10)
-            .text(bullet + item, leftX + 10, y, { width: textWidth });
-          y += itemHeight;
+            .text(bullet + item, leftX + 14, y + 5, { width: textWidth });
+          y += itemHeight + 2;
         }
-        y += 10;
+        y += 12;
       }
 
       if (opts.content.length === 0) {

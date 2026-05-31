@@ -37,6 +37,16 @@ interface TemplatePublic {
 type AnswerValue = string | string[] | number;
 type Answers = Record<string, AnswerValue>;
 
+// Palette de pastels (classes Tailwind complètes) cyclée pour distinguer les questions.
+const PASTELS = [
+  "bg-rose-50 border-rose-200",
+  "bg-amber-50 border-amber-200",
+  "bg-sky-50 border-sky-200",
+  "bg-violet-50 border-violet-200",
+  "bg-emerald-50 border-emerald-200",
+  "bg-orange-50 border-orange-200",
+];
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export default function AnamnesePublicPage() {
@@ -163,14 +173,15 @@ export default function AnamnesePublicPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {data.questions.map((q, idx) => (
-            <QuestionField
-              key={q.id}
-              question={q}
-              index={idx}
-              value={answers[q.id]}
-              onChange={val => setAnswer(q.id, val)}
-              onToggleMulti={opt => toggleMulti(q.id, opt)}
-            />
+            <div key={q.id} className={`border rounded-[12px] p-4 ${PASTELS[idx % PASTELS.length]}`}>
+              <QuestionField
+                question={q}
+                index={idx}
+                value={answers[q.id]}
+                onChange={val => setAnswer(q.id, val)}
+                onToggleMulti={opt => toggleMulti(q.id, opt)}
+              />
+            </div>
           ))}
 
           {submitMut.isError && (
