@@ -291,6 +291,8 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
   const [time, setTime] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<string>("unpaid");
   const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [recurrence, setRecurrence] = useState<string>("none");
+  const [occurrences, setOccurrences] = useState<string>("2");
 
   const initialDate = initial?.start ? new Date(initial.start) : new Date();
   if (open && !date) {
@@ -318,16 +320,22 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
       } else {
         payload = { ...payload, clientId: null, clientFirstName: firstName, clientLastName: lastName, clientEmail: email, clientPhone: phone };
       }
+      // Récurrence : ajouter les paramètres si une fréquence est choisie
+      if (recurrence !== "none") {
+        payload.recurrence = recurrence;
+        payload.occurrences = Number(occurrences);
+      }
       await apiRequest("POST", "/api/appointments", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-      toast({ title: "Rendez-vous créé" });
+      const nb = recurrence !== "none" ? Number(occurrences) : 1;
+      toast({ title: nb > 1 ? `${nb} rendez-vous créés` : "Rendez-vous créé" });
       reset(); onClose();
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
-  function reset() { setCategoryId(""); setClientId(""); setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setDate(""); setTime(""); setPaymentStatus("unpaid"); setPaymentAmount(""); }
+  function reset() { setCategoryId(""); setClientId(""); setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setDate(""); setTime(""); setPaymentStatus("unpaid"); setPaymentAmount(""); setRecurrence("none"); setOccurrences("2"); }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
@@ -385,8 +393,36 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
               />
             </div>
           </div>
+          {/* Récurrence */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Répéter</Label>
+              <Select value={recurrence} onValueChange={setRecurrence}>
+                <SelectTrigger data-testid="select-recurrence"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucune</SelectItem>
+                  <SelectItem value="weekly">Chaque semaine</SelectItem>
+                  <SelectItem value="biweekly">Toutes les 2 semaines</SelectItem>
+                  <SelectItem value="monthly">Chaque mois</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {recurrence !== "none" && (
+              <div>
+                <Label>Nombre de séances</Label>
+                <Select value={occurrences} onValueChange={setOccurrences}>
+                  <SelectTrigger data-testid="select-occurrences"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
+                      <SelectItem key={n} value={String(n)}>{n} séances</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
           <Button onClick={() => createMut.mutate()} disabled={createMut.isPending} className="w-full rounded-[15px] py-5 font-bold" data-testid="button-create-appointment">
-            {createMut.isPending ? "Création…" : "Créer le rendez-vous"}
+            {createMut.isPending ? "Création…" : recurrence !== "none" ? `Créer ${occurrences} rendez-vous` : "Créer le rendez-vous"}
           </Button>
         </div>
       </DialogContent>

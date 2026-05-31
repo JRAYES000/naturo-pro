@@ -54,7 +54,18 @@ export function registerAppointmentRoutes(app: Express): void {
     const to = req.query.to ? Number(req.query.to) : undefined;
     res.json(await storage.listAppointments(req.userId!, from, to));
   });
+  // Schéma de récurrence (champs optionnels, ignorés si absents)
+  const recurrenceSchema = z.object({
+    recurrence: z.enum(["weekly", "biweekly", "monthly"]).optional(),
+    occurrences: z.number().int().min(2).max(12).optional(),
+  });
+
   app.post("/api/appointments", requireAuth, async (req: AuthedRequest, res) => {
+    const recParsed = recurrenceSchema.safeParse(req.body);
+    const recurrence = recParsed.success ? recParsed.data.recurrence : undefined;
+    const occurrences = recParsed.success ? recParsed.data.occurrences : undefined;
+
+    // Créer le premier rendez-vous (occurrence 0)
     const parsed = insertAppointmentSchema.safeParse({ ...req.body, userId: req.userId });
     if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
     let appt = await storage.createAppointment(parsed.data);
@@ -63,6 +74,37 @@ export function registerAppointmentRoutes(app: Express): void {
       const refreshed = await storage.updateAppointment(appt.id, { googleEventId: eventId });
       if (refreshed) appt = refreshed;
     }
+
+    // Si récurrence demandée, créer les occurrences suivantes
+    if (recurrence && occurrences && occurrences > 1) {
+      const created = [appt];
+      for (let i = 1; i < occurrences; i++) {
+        let offsetMs: number;
+        if (recurrence === "weekly") offsetMs = i * 7 * 24 * 60 * 60 * 1000;
+        else if (recurrence === "biweekly") offsetMs = i * 14 * 24 * 60 * 60 * 1000;
+        else {
+          // monthly : décaler mois par mois depuis la date de base
+          const base = new Date(parsed.data.startAt as number);
+          const shifted = new Date(base);
+          shifted.setMonth(shifted.getMonth() + i);
+          offsetMs = shifted.getTime() - base.getTime();
+        }
+        const occData = {
+          ...parsed.data,
+          startAt: (parsed.data.startAt as number) + offsetMs,
+          endAt: (parsed.data.endAt as number) + offsetMs,
+        };
+        let occAppt = await storage.createAppointment(occData);
+        const occEventId = await syncApptToGoogle("create", req.userId!, occAppt);
+        if (occEventId) {
+          const refreshed = await storage.updateAppointment(occAppt.id, { googleEventId: occEventId });
+          if (refreshed) occAppt = refreshed;
+        }
+        created.push(occAppt);
+      }
+      return res.json(created);
+    }
+
     res.json(appt);
   });
   // Lot 5 — isolation : GET détail avec ownership filter
