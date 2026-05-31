@@ -230,7 +230,7 @@ export const anamnesisResponses = sqliteTable("anamnesis_responses", {
 export const programs = sqliteTable("programs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
-  clientId: integer("client_id").notNull(),
+  clientId: integer("client_id"),
   appointmentId: integer("appointment_id"),
   title: text("title").notNull(),
   content: text("content").notNull().default("[]"), // JSON: [{section,items[]}]

@@ -19,12 +19,15 @@ import { createRequire } from "node:module";
 import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
+  anamnesisTemplates, anamnesisResponses, programs, clientDocuments,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
   InsertAvailability, Client, InsertClient, Appointment, InsertAppointment,
   ConsultationNote, InsertNote, Session, Invoice, InsertInvoice,
   InvoiceItem, InsertInvoiceItem, EmailTemplate,
+  AnamnesisTemplate, InsertAnamnesisTemplate, AnamnesisResponse, InsertAnamnesisResponse,
+  Program, InsertProgram, ClientDocument, InsertClientDocument,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
@@ -249,7 +252,7 @@ if (DB_DRIVER !== "mysql") {
     CREATE TABLE IF NOT EXISTS programs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
-      client_id INTEGER NOT NULL,
+      client_id INTEGER,
       appointment_id INTEGER,
       title TEXT NOT NULL,
       content TEXT NOT NULL DEFAULT '[]',
@@ -391,7 +394,7 @@ if (DB_DRIVER === "mysql") {
       `CREATE TABLE IF NOT EXISTS programs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
-        client_id INT NOT NULL,
+        client_id INT,
         appointment_id INT,
         title VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
@@ -573,6 +576,30 @@ export interface IStorage {
   getEmailTemplate(userId: number, kind: string): Promise<EmailTemplate | undefined>;
   listEmailTemplates(userId: number): Promise<EmailTemplate[]>;
   upsertEmailTemplate(userId: number, kind: string, data: { subject: string; bodyHtml: string }): Promise<EmailTemplate>;
+
+  // Anamnèse — templates et réponses
+  listAnamnesisTemplates(userId: number): Promise<AnamnesisTemplate[]>;
+  getAnamnesisTemplate(id: number): Promise<AnamnesisTemplate | undefined>;
+  createAnamnesisTemplate(data: InsertAnamnesisTemplate & { userId: number }): Promise<AnamnesisTemplate>;
+  updateAnamnesisTemplate(id: number, patch: Partial<AnamnesisTemplate>): Promise<AnamnesisTemplate | undefined>;
+  deleteAnamnesisTemplate(id: number): Promise<void>;
+  createAnamnesisResponse(data: Omit<InsertAnamnesisResponse, "createdAt"> & { userId: number; token: string }): Promise<AnamnesisResponse>;
+  getAnamnesisResponseByToken(token: string): Promise<AnamnesisResponse | undefined>;
+  updateAnamnesisResponse(id: number, patch: Partial<AnamnesisResponse>): Promise<AnamnesisResponse | undefined>;
+  listAnamnesisResponses(userId: number, clientId?: number): Promise<AnamnesisResponse[]>;
+
+  // Programmes d'hygiène de vie
+  listPrograms(userId: number, clientId?: number): Promise<Program[]>;
+  getProgram(id: number): Promise<Program | undefined>;
+  createProgram(data: InsertProgram & { userId: number }): Promise<Program>;
+  updateProgram(id: number, patch: Partial<Program>): Promise<Program | undefined>;
+  deleteProgram(id: number): Promise<void>;
+
+  // Documents client
+  listClientDocuments(userId: number, clientId: number): Promise<Omit<ClientDocument, "dataBase64">[]>;
+  getClientDocument(id: number): Promise<ClientDocument | undefined>;
+  createClientDocument(data: InsertClientDocument): Promise<ClientDocument>;
+  deleteClientDocument(id: number): Promise<void>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1035,6 +1062,134 @@ export class DatabaseStorage implements IStorage {
       bodyHtml: data.bodyHtml,
       updatedAt: Date.now(),
     });
+  }
+
+  // ── Anamnèse — Templates ───────────────────────────────────────────────────
+
+  async listAnamnesisTemplates(userId: number): Promise<AnamnesisTemplate[]> {
+    return db
+      .select()
+      .from(anamnesisTemplates)
+      .where(eq(anamnesisTemplates.userId, userId))
+      .orderBy(desc(anamnesisTemplates.createdAt));
+  }
+
+  async getAnamnesisTemplate(id: number): Promise<AnamnesisTemplate | undefined> {
+    return first(db.select().from(anamnesisTemplates).where(eq(anamnesisTemplates.id, id)));
+  }
+
+  async createAnamnesisTemplate(
+    data: InsertAnamnesisTemplate & { userId: number },
+  ): Promise<AnamnesisTemplate> {
+    const now = Date.now();
+    return dbInsertReturning<AnamnesisTemplate>(anamnesisTemplates, {
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  async updateAnamnesisTemplate(
+    id: number,
+    patch: Partial<AnamnesisTemplate>,
+  ): Promise<AnamnesisTemplate | undefined> {
+    return dbUpdateReturning<AnamnesisTemplate>(anamnesisTemplates, id, {
+      ...patch,
+      updatedAt: Date.now(),
+    });
+  }
+
+  async deleteAnamnesisTemplate(id: number): Promise<void> {
+    await db.delete(anamnesisTemplates).where(eq(anamnesisTemplates.id, id));
+  }
+
+  // ── Anamnèse — Réponses ────────────────────────────────────────────────────
+
+  async createAnamnesisResponse(
+    data: Omit<InsertAnamnesisResponse, "createdAt"> & { userId: number; token: string },
+  ): Promise<AnamnesisResponse> {
+    return dbInsertReturning<AnamnesisResponse>(anamnesisResponses, {
+      ...data,
+      createdAt: Date.now(),
+    });
+  }
+
+  async getAnamnesisResponseByToken(token: string): Promise<AnamnesisResponse | undefined> {
+    return first(
+      db.select().from(anamnesisResponses).where(eq(anamnesisResponses.token, token)),
+    );
+  }
+
+  async updateAnamnesisResponse(
+    id: number,
+    patch: Partial<AnamnesisResponse>,
+  ): Promise<AnamnesisResponse | undefined> {
+    return dbUpdateReturning<AnamnesisResponse>(anamnesisResponses, id, patch);
+  }
+
+  async listAnamnesisResponses(userId: number, clientId?: number): Promise<AnamnesisResponse[]> {
+    const conds = [eq(anamnesisResponses.userId, userId)];
+    if (clientId !== undefined) conds.push(eq(anamnesisResponses.clientId, clientId));
+    return db
+      .select()
+      .from(anamnesisResponses)
+      .where(and(...conds))
+      .orderBy(desc(anamnesisResponses.createdAt));
+  }
+
+  // ── Programmes d'hygiène de vie ────────────────────────────────────────────
+
+  async listPrograms(userId: number, clientId?: number): Promise<Program[]> {
+    const conds = [eq(programs.userId, userId)];
+    if (clientId !== undefined) conds.push(eq(programs.clientId, clientId));
+    return db.select().from(programs).where(and(...conds)).orderBy(desc(programs.createdAt));
+  }
+
+  async getProgram(id: number): Promise<Program | undefined> {
+    return first(db.select().from(programs).where(eq(programs.id, id)));
+  }
+
+  async createProgram(data: InsertProgram & { userId: number }): Promise<Program> {
+    const now = Date.now();
+    return dbInsertReturning<Program>(programs, { ...data, createdAt: now, updatedAt: now });
+  }
+
+  async updateProgram(id: number, patch: Partial<Program>): Promise<Program | undefined> {
+    return dbUpdateReturning<Program>(programs, id, { ...patch, updatedAt: Date.now() });
+  }
+
+  async deleteProgram(id: number): Promise<void> {
+    await db.delete(programs).where(eq(programs.id, id));
+  }
+
+  // ── Documents client ───────────────────────────────────────────────────────
+
+  async listClientDocuments(userId: number, clientId: number): Promise<Omit<ClientDocument, "dataBase64">[]> {
+    return db
+      .select({
+        id: clientDocuments.id,
+        userId: clientDocuments.userId,
+        clientId: clientDocuments.clientId,
+        filename: clientDocuments.filename,
+        mimeType: clientDocuments.mimeType,
+        sizeBytes: clientDocuments.sizeBytes,
+        createdAt: clientDocuments.createdAt,
+      })
+      .from(clientDocuments)
+      .where(and(eq(clientDocuments.userId, userId), eq(clientDocuments.clientId, clientId)))
+      .orderBy(desc(clientDocuments.createdAt));
+  }
+
+  async getClientDocument(id: number): Promise<ClientDocument | undefined> {
+    return first(db.select().from(clientDocuments).where(eq(clientDocuments.id, id)));
+  }
+
+  async createClientDocument(data: InsertClientDocument): Promise<ClientDocument> {
+    return dbInsertReturning<ClientDocument>(clientDocuments, { ...data, createdAt: Date.now() });
+  }
+
+  async deleteClientDocument(id: number): Promise<void> {
+    await db.delete(clientDocuments).where(eq(clientDocuments.id, id));
   }
 }
 

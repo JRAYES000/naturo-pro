@@ -31,6 +31,10 @@ import { registerGoogleRoutes } from "./google";
 import { registerInternalRoutes } from "./internal";
 import { registerPublicRoutes } from "./public";
 import { registerAuthRoutes } from "./auth";
+import { registerAnamneseRoutes } from "./anamnese";
+import { registerProgrammeRoutes } from "./programmes";
+import { registerDocumentRoutes } from "./documents";
+import { registerStatsRoutes } from "./stats";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -122,6 +126,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerAdminRoutes(app);
   registerReminderRoutes(app);
   registerEmailTemplateRoutes(app);
+  registerAnamneseRoutes(app);
+  registerProgrammeRoutes(app);
+  registerDocumentRoutes(app);
+  registerStatsRoutes(app);
 
   startCrons();
 

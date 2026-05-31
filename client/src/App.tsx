@@ -28,6 +28,10 @@ import ResetPassword from "@/pages/ResetPassword";
 import Onboarding from "@/pages/Onboarding";
 import Reminders from "@/pages/Reminders";
 import EmailTemplates from "@/pages/EmailTemplates";
+import Anamnese from "@/pages/Anamnese";
+import AnamnesePublic from "@/pages/AnamnesePublic";
+import Programmes from "@/pages/Programmes";
+import Stats from "@/pages/Stats";
 import BookingManage from "@/pages/BookingManage";
 // Phase 3 Lot 4 — admin
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -64,6 +68,9 @@ function AppRouter() {
       <Route path="/app/invoices/:id" component={() => <ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
       <Route path="/app/reminders" component={() => <ProtectedRoute><Reminders /></ProtectedRoute>} />
       <Route path="/app/email-templates" component={() => <ProtectedRoute><EmailTemplates /></ProtectedRoute>} />
+      <Route path="/app/anamnese" component={() => <ProtectedRoute><Anamnese /></ProtectedRoute>} />
+      <Route path="/app/programmes" component={() => <ProtectedRoute><Programmes /></ProtectedRoute>} />
+      <Route path="/app/stats" component={() => <ProtectedRoute><Stats /></ProtectedRoute>} />
 
       {/* Phase 3 Lot 4 — admin (le 403 backend renvoie un message géré dans la page) */}
       <Route path="/admin/users" component={() => <ProtectedRoute><AdminUsers /></ProtectedRoute>} />
@@ -72,6 +79,7 @@ function AppRouter() {
       <Route path="/p/:slug" component={PublicPage} />
       <Route path="/p/:slug/book" component={BookingFlow} />
       <Route path="/manage/:token" component={BookingManage} />
+      <Route path="/anamnese/:token" component={AnamnesePublic} />
 
       <Route component={NotFound} />
     </Switch>

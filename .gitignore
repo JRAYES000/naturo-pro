@@ -75,3 +75,6 @@ SECRETS.md
 NOTES.md
 TODO.local.md
 *-secrets.md
+
+# Worktrees temporaires des agents
+.claude/worktrees/

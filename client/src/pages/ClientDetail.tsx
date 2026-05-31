@@ -1,7 +1,7 @@
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Calendar, FileText, Save, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, Calendar, FileText, Save, Trash2, Upload, Download, File } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,26 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { HelpNote } from "@/components/HelpNote";
 import type { Client, Appointment, ConsultationNote } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel } from "@/lib/format";
+
+// Type métadonnées document (sans dataBase64)
+interface ClientDocumentMeta {
+  id: number;
+  userId: number;
+  clientId: number;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: number;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
 
 export default function ClientDetail() {
   const { id } = useParams();
@@ -21,8 +39,11 @@ export default function ClientDetail() {
   const { data: client, isLoading } = useQuery<Client>({ queryKey: ["/api/clients", cid] });
   const { data: appts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/clients", cid, "appointments"] });
   const { data: notes = [] } = useQuery<ConsultationNote[]>({ queryKey: ["/api/clients", cid, "notes"] });
+  const { data: documents = [] } = useQuery<ClientDocumentMeta[]>({ queryKey: ["/api/clients", cid, "documents"] });
 
   const [draft, setDraft] = useState<Partial<Client>>({});
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (client) setDraft(client); }, [client]);
 
   const saveMut = useMutation({
@@ -42,6 +63,53 @@ export default function ClientDetail() {
       window.location.hash = "#/app/clients";
     },
   });
+
+  const delDocMut = useMutation({
+    mutationFn: async (docId: number) => apiRequest("DELETE", `/api/documents/${docId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] });
+      toast({ title: "Document supprimé" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset pour permettre la re-sélection du même fichier
+    e.target.value = "";
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Fichier trop volumineux", description: "La taille maximale est 5 Mo.", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const result = reader.result as string;
+        // Retirer le préfixe "data:<mime>;base64,"
+        const base64 = result.split(",")[1];
+        await apiRequest("POST", `/api/clients/${cid}/documents`, {
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          dataBase64: base64,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] });
+        toast({ title: "Document enregistré", description: file.name });
+      } catch (err: any) {
+        toast({ title: "Erreur lors de l'envoi", description: err.message, variant: "destructive" });
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.onerror = () => {
+      toast({ title: "Impossible de lire le fichier", variant: "destructive" });
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
 
   if (isLoading || !client) {
     return <AppLayout><div className="space-y-3"><Skeleton className="h-8 w-72" /><Skeleton className="h-64" /></div></AppLayout>;
@@ -75,6 +143,7 @@ export default function ClientDetail() {
             <TabsTrigger value="info" data-testid="tab-info">Informations</TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history">Historique ({notes.length})</TabsTrigger>
             <TabsTrigger value="appts" data-testid="tab-appts">Rendez-vous ({appts.length})</TabsTrigger>
+            <TabsTrigger value="documents" data-testid="tab-documents">Documents ({documents.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
@@ -140,6 +209,89 @@ export default function ClientDetail() {
                 ))}
               </ul>
             )}
+          </TabsContent>
+
+          <TabsContent value="documents">
+            <HelpNote title="Documents client" defaultOpen={false}>
+              <p>
+                Stockez ici les <strong>analyses, bilans, ordonnances ou tout fichier</strong> lié à ce client.
+                Les fichiers sont conservés dans votre base de données (chiffrement côté serveur).
+              </p>
+              <ul>
+                <li><strong>Taille maximale :</strong> 5 Mo par fichier.</li>
+                <li><strong>Télécharger :</strong> cliquez sur le bouton flèche à droite de chaque fichier.</li>
+                <li><strong>Supprimer :</strong> cliquez sur la corbeille (irréversible).</li>
+              </ul>
+            </HelpNote>
+
+            <div className="space-y-3">
+              {/* Bouton d'upload */}
+              <div className="card-naturo flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {documents.length === 0 ? "Aucun document joint pour l'instant." : `${documents.length} document${documents.length > 1 ? "s" : ""} joint${documents.length > 1 ? "s" : ""}.`}
+                </p>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    data-testid="input-file-upload"
+                    accept="*/*"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="rounded-[15px] font-bold"
+                    data-testid="button-upload-document"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? "Envoi en cours…" : "Ajouter un fichier"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Liste des documents */}
+              {documents.map(doc => (
+                <div
+                  key={doc.id}
+                  className="card-naturo flex items-center justify-between gap-3"
+                  data-testid={`document-${doc.id}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <File className="h-5 w-5 text-primary flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate" data-testid={`text-doc-name-${doc.id}`}>{doc.filename}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(doc.sizeBytes)} · {new Date(doc.createdAt).toLocaleDateString("fr-FR")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <a
+                      href={`/api/documents/${doc.id}/download`}
+                      download={doc.filename}
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-[10px] border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                      data-testid={`button-download-document-${doc.id}`}
+                      title="Télécharger"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => { if (confirm(`Supprimer "${doc.filename}" ?`)) delDocMut.mutate(doc.id); }}
+                      data-testid={`button-delete-document-${doc.id}`}
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

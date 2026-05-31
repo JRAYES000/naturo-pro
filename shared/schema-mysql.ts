@@ -249,7 +249,7 @@ export const anamnesisResponses = mysqlTable("anamnesis_responses", {
 export const programs = mysqlTable("programs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("user_id").notNull(),
-  clientId: int("client_id").notNull(),
+  clientId: int("client_id"),
   appointmentId: int("appointment_id"),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(), // JSON
