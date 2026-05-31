@@ -89,6 +89,27 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       emailVerifyExpiresAt: verifyExpiresAt,
     } as any);
 
+    // Pré-remplit 3 prestations par défaut pour démarrer rapidement (best effort :
+    // un échec ne bloque pas l'inscription). Durée 1 h, tarif 50 €, lieu au défaut.
+    try {
+      const defaultCategories: Array<{ name: string; color: string }> = [
+        { name: "Première consultation", color: "#186749" },
+        { name: "Séance de suivi", color: "#17EC9B" },
+        { name: "Bilan vitalité", color: "#1b4332" },
+      ];
+      for (const c of defaultCategories) {
+        await storage.createCategory({
+          userId: user.id,
+          name: c.name,
+          durationMinutes: 60,
+          priceCents: 5000,
+          color: c.color,
+        });
+      }
+    } catch (e: any) {
+      console.error("[register] seed default categories failed:", e?.message || e);
+    }
+
     // Envoi email de confirmation (best effort)
     try {
       const sysCfg = getSystemEmailConfig();
