@@ -67,7 +67,7 @@ const KIND_LABELS: Record<EmailKind, string> = {
 const KIND_DESCRIPTIONS: Record<EmailKind, string> = {
   confirmation: "Envoyé au client après la prise de rendez-vous.",
   reminder_d1: "Envoyé la veille du rendez-vous pour rappeler et demander confirmation.",
-  cancellation: "Envoyé au client en cas d'annulation du rendez-vous.",
+  cancellation: "Envoyé au client pour confirmer l'annulation de son rendez-vous. Vous recevez aussi une notification de votre côté.",
 };
 
 /** Un bodyHtml est « ancien format » s'il contient un document HTML complet. */

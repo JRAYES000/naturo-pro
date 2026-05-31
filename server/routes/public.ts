@@ -321,11 +321,13 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       clientCancelledAt: Date.now(),
     } as any);
 
-    // Notifier la praticienne — PHASE 3.5.5 : try DB-editable template first, fallback hardcodé
+    // Annulation par le client — 2 emails :
+    //   1) au CLIENT  : confirmation d'annulation (template éditable "cancellation")
+    //   2) au PRATICIEN : notification "tel client a annulé" (hardcodé)
     try {
       const user = await storage.getUserById(appt.userId);
       const cfg = user ? getEmailConfigForUser(user) : null;
-      if (user && cfg && user.email) {
+      if (user && cfg) {
         let clientName = `${appt.clientFirstName || ""} ${appt.clientLastName || ""}`.trim();
         let clientEmailAddr = appt.clientEmail || "";
         if (appt.clientId) {
@@ -336,34 +338,41 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
           }
         }
         const rdvDateText = formatRdvDate(appt.startAt);
-        const fallback = renderClientCancellationEmail({
-          practitionerFirstName: (user.name || user.email).split(" ")[0],
-          clientName: clientName || "(client inconnu)",
-          rdvDateText,
-          appUrl: APP_URL,
-        });
-
         const cat = appt.categoryId ? await storage.getCategory(appt.categoryId) : null;
         const startDate = new Date(appt.startAt);
         const hh = String(startDate.getHours()).padStart(2, "0");
         const mm = String(startDate.getMinutes()).padStart(2, "0");
-        const tplVars: TemplateVars = {
-          "client.name": clientName || "(client inconnu)",
-          "client.email": clientEmailAddr,
-          "appointment.date": rdvDateText,
-          "appointment.time": `${hh}:${mm}`,
-          "appointment.duration": cat?.durationMinutes ? `${cat.durationMinutes} min` : "",
-          "appointment.category": cat?.name || "",
-          "appointment.address": appt.location || cat?.location || "",
-          "practitioner.name": user.name || user.email || "",
-          "practitioner.email": user.email || "",
-          "cancelLink": "",
-        };
-        const userTpl = await renderUserTemplate(user.id, "cancellation", tplVars);
-        const subject = userTpl?.subject ?? fallback.subject;
-        const html = userTpl?.html ?? fallback.html;
-        const text = fallback.text;
-        await sendEmail(cfg, user.email, subject, html, text);
+
+        // 1) Confirmation d'annulation au CLIENT (template éditable "cancellation").
+        if (clientEmailAddr) {
+          const tplVars: TemplateVars = {
+            "client.name": clientName || "(client inconnu)",
+            "client.email": clientEmailAddr,
+            "appointment.date": rdvDateText,
+            "appointment.time": `${hh}:${mm}`,
+            "appointment.duration": cat?.durationMinutes ? `${cat.durationMinutes} min` : "",
+            "appointment.category": cat?.name || "",
+            "appointment.address": appt.location || cat?.location || "",
+            "practitioner.name": user.name || user.email || "",
+            "practitioner.email": user.email || "",
+            "cancelLink": "",
+          };
+          const userTpl = await renderUserTemplate(user.id, "cancellation", tplVars);
+          if (userTpl) {
+            await sendEmail(cfg, clientEmailAddr, userTpl.subject, userTpl.html);
+          }
+        }
+
+        // 2) Notification d'annulation au PRATICIEN (hardcodé, non éditable).
+        if (user.email) {
+          const notif = renderClientCancellationEmail({
+            practitionerFirstName: (user.name || user.email).split(" ")[0],
+            clientName: clientName || "(client inconnu)",
+            rdvDateText,
+            appUrl: APP_URL,
+          });
+          await sendEmail(cfg, user.email, notif.subject, notif.html, notif.text);
+        }
       }
     } catch (e: any) {
       console.error("[manage/cancel-notify]", e?.message || e);
