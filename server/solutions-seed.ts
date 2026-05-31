@@ -10,6 +10,7 @@
  */
 
 import { storage } from "./storage";
+import type { NaturalSolution } from "@shared/schema-active";
 
 export interface SeedSolution {
   name: string;
@@ -17,6 +18,15 @@ export interface SeedSolution {
   properties: string;
   contraindications: string;
   usageNotes: string;
+}
+
+/**
+ * Surface minimale de `storage` utilisée par le seed. Permet l'injection d'un
+ * faux store en test (idempotence, résilience best-effort) sans toucher de DB.
+ */
+export interface SolutionSeedStore {
+  listNaturalSolutions(userId: number): Promise<NaturalSolution[]>;
+  createNaturalSolution(data: { userId: number | null } & SeedSolution): Promise<NaturalSolution>;
 }
 
 export const DEFAULT_SOLUTIONS: SeedSolution[] = [
@@ -154,14 +164,14 @@ export const DEFAULT_SOLUTIONS: SeedSolution[] = [
  * Insère les fiches globales MANQUANTES (idempotent par nom). S'exécute à chaque
  * démarrage : crée les nouvelles entrées du catalogue sans dupliquer l'existant.
  */
-export async function seedNaturalSolutions(): Promise<void> {
+export async function seedNaturalSolutions(store: SolutionSeedStore = storage): Promise<void> {
   try {
-    const existing = await storage.listNaturalSolutions(-1); // -1 = user inexistant → uniquement les globales
+    const existing = await store.listNaturalSolutions(-1); // -1 = user inexistant → uniquement les globales
     const seen = new Set(existing.filter((s) => s.userId === null).map((s) => s.name.trim().toLowerCase()));
     let added = 0;
     for (const s of DEFAULT_SOLUTIONS) {
       if (seen.has(s.name.trim().toLowerCase())) continue;
-      await storage.createNaturalSolution({ userId: null, ...s } as any);
+      await store.createNaturalSolution({ userId: null, ...s });
       added++;
     }
     if (added > 0) console.log(`[seed] base de solutions : ${added} nouvelle(s) fiche(s) globale(s) ajoutée(s)`);

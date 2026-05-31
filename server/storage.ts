@@ -379,12 +379,19 @@ if (DB_DRIVER !== "mysql") {
 
 // ── MySQL-only: migrations best-effort au démarrage ──────────────────────────
 // Équivalent des `ALTER TABLE` best-effort SQLite ci-dessus, pour la prod MySQL.
-// Fire-and-forget : ne bloque pas le démarrage du serveur, et un échec (colonne
-// déjà migrée, droits, etc.) est silencieux — au pire la migration n'a pas lieu,
-// jamais de crash. Idempotent : ré-appliquer un MODIFY au même type ne fait rien.
-if (DB_DRIVER === "mysql") {
-  void (async () => {
-    // Migration 1.1 — consultation_notes.client_id nullable (RDV walk-in sans client).
+// Un échec (colonne déjà migrée, droits, etc.) est silencieux — au pire la
+// migration n'a pas lieu, jamais de crash. Idempotent : ré-appliquer un MODIFY
+// au même type ne fait rien.
+//
+// ⚠️ Ordre de démarrage : ces migrations créent notamment la table
+// `natural_solutions`. Le seed (`seedNaturalSolutions` dans solutions-seed.ts)
+// la requête au boot. On expose donc `migrationsReady` : index.ts l'attend AVANT
+// de lancer les seeds, ce qui garantit que les tables existent (sinon, sur une
+// base MySQL vierge, le 1er seed échouait en best-effort et ne s'appliquait qu'au
+// boot suivant). En SQLite, les tables sont déjà créées synchroniquement ci-dessus,
+// donc `migrationsReady` vaut `Promise.resolve()` (no-op, aucun impact sur le dev).
+async function runMysqlMigrations(): Promise<void> {
+  // Migration 1.1 — consultation_notes.client_id nullable (RDV walk-in sans client).
     // Cf. migrations/1.1-consultation-note-nullable-client.sql
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -484,8 +491,15 @@ if (DB_DRIVER === "mysql") {
         console.warn(`[db][migrate] ${ddl} ignoré (best-effort):`, e?.message || e);
       }
     }
-  })();
 }
+
+/**
+ * Promesse résolue lorsque les migrations MySQL best-effort sont terminées.
+ * En SQLite (dev), no-op résolu immédiatement. index.ts l'attend avant de seeder.
+ * Ne rejette jamais : chaque DDL est gardé par son propre try/catch.
+ */
+export const migrationsReady: Promise<void> =
+  DB_DRIVER === "mysql" ? runMysqlMigrations() : Promise.resolve();
 
 // ── Dual-driver write helpers ─────────────────────────────────────────────────
 

@@ -7,6 +7,7 @@ import { serveStatic } from "./static";
 import { createServer } from "node:http";
 import { seedIfEmpty } from "./seed";
 import { seedNaturalSolutions } from "./solutions-seed";
+import { migrationsReady } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -102,6 +103,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Attendre les migrations MySQL best-effort (création des tables) AVANT de
+  // seeder : sur une base MySQL vierge, le seed requête `natural_solutions` qui
+  // n'existerait pas encore sans cette barrière. En SQLite, no-op instantané.
+  await migrationsReady;
   await seedIfEmpty();
   await seedNaturalSolutions();
   await registerRoutes(httpServer, app);
