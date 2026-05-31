@@ -209,6 +209,72 @@ dans un commit isolé (changement de comportement, distinct du refactor verbatim
 
 ---
 
+## Phase 4.1 — Page publique v2 (booking) + SSH deploy
+
+Refonte de la page publique de réservation pour la rendre plus vendeuse et
+complète, et bascule de la méthode de déploiement vers SSH (fin de l'upload web
+manuel).
+
+### Page publique enrichie (`/:slug`)
+- **Spécialités en chips** sélectionnables (au lieu d'un champ texte libre).
+- **Couleurs de thème** appliquées à la page publique.
+- **Aperçu en direct** côté éditeur de profil.
+- **Indicateur de complétude** du profil (incite à remplir les champs manquants).
+- **Validation du slug** (unicité + format) côté édition.
+- **Réseaux sociaux** : champs dédiés affichés sur la page publique.
+
+### Upload photo de profil + SEO
+- **Vrai upload de photo** (remplace l'URL externe), stockée côté serveur.
+- **Limite portée à 1 Mo** (était 300 Ko) — `Je voudrais que l'upload d'une photo
+  de profil puisse être levé à 1 MB`.
+- **Métadonnées SEO** (title/description) sur la page publique.
+
+### Déploiement SSH (méthode privilégiée désormais)
+- Clé dédiée `~/.ssh/naturo_deploy` (ed25519), alias `naturo-prod` (voir mémoire
+  `prod-deploy-hpanel-litespeed`). `scp` du bundle + assets, vérif md5
+  local==distant, `touch tmp/restart.txt` (reload Passenger + migrations auto).
+- Remplace l'upload manuel via hPanel File Manager, plus fragile (un upload
+  tronqué avait servi un fallback SPA de 551 B → prod cassée, leçon : vérifier
+  md5/taille décompressée, pas le HTTP 200).
+
+---
+
+## Phase 4.2 — Éditeur visuel des templates email (option C)
+
+Objectif (demande de Julien) : rendre `/app/email-templates` utilisable par des
+praticiennes peu à l'aise avec l'informatique. « Je pense que du code HTML visible
+va leur faire peur. »
+
+### Livré
+- **Éditeur WYSIWYG** (`react-simple-wysiwyg`, 0 dépendance transitive, ~15 Ko)
+  remplaçant le `<Textarea>` HTML brut : gras, italique, souligné, listes, liens,
+  annuler/refaire. Mode **« Avancé (HTML) »** masqué derrière un toggle pour qui
+  veut le code.
+- **Variables en clair** (badges « + Nom du client », « + Date »…) insérées au
+  clic (via `execCommand` en visuel, insertion texte en avancé).
+- **Bouton « Réinitialiser »** réparé (`GET /api/email-templates/:kind/default`).
+- **Aperçu** envoie le brouillon en cours (`POST :kind/preview` accepte
+  `{subject, bodyHtml}`).
+
+### Architecture « fragment + ossature » (option C — aucune migration DB)
+- Le `bodyHtml` par défaut / édité visuellement est un **FRAGMENT** (contenu
+  central seul, sans `<html>`/`<style>`). `server/email-templates/defaults.ts`
+  exporte `emailShell(title, body)` (doctype + styles + carte + pied) et
+  `isFullHtmlDocument(body)`.
+- `renderTemplate` (`render.ts`) interpole puis **emballe le fragment** dans
+  `emailShell` au moment du rendu — sauf si l'ancien template custom est un
+  document HTML complet (`isFullHtmlDocument` → rendu tel quel, rétrocompat).
+- Les anciens templates full-HTML s'ouvrent automatiquement en mode Avancé avec
+  un bandeau ambre invitant à réinitialiser.
+- ⚠️ **Piège vécu** : un Edit sur `render.ts` a échoué silencieusement (mauvais
+  `old_string`) → preview rendait le fragment **non emballé**. Toujours vérifier
+  le rendu réel (`doctype:1 card:1`) après modif, pas juste le statut de l'Edit.
+
+Déployé en prod via SSH (commit `ad4c986`). Vérifs : md5 bundle prod==local,
+WYSIWYG présent dans le JS servi, preview emballée + interpolée OK.
+
+---
+
 ## Convention de versioning interne
 
 Pas de tags git semantic-version. Les "phases" sont des jalons internes informels :
