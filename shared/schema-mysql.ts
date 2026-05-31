@@ -269,6 +269,18 @@ export const clientDocuments = mysqlTable("client_documents", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
+export const naturalSolutions = mysqlTable("natural_solutions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull().default("Plante"),
+  properties: text("properties"),
+  contraindications: text("contraindications"),
+  usageNotes: text("usage_notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
 // ─── Insert schemas (same names as schema.ts so imports are swappable) ────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -283,6 +295,7 @@ export const insertAnamnesisTemplateSchema = createInsertSchema(anamnesisTemplat
 export const insertAnamnesisResponseSchema = createInsertSchema(anamnesisResponses).omit({ id: true, createdAt: true });
 export const insertProgramSchema = createInsertSchema(programs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
+export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;
@@ -312,6 +325,8 @@ export type Program = typeof programs.$inferSelect;
 export type InsertProgram = z.infer<typeof insertProgramSchema>;
 export type ClientDocument = typeof clientDocuments.$inferSelect;
 export type InsertClientDocument = z.infer<typeof insertClientDocumentSchema>;
+export type NaturalSolution = typeof naturalSolutions.$inferSelect;
+export type InsertNaturalSolution = z.infer<typeof insertNaturalSolutionSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

@@ -37,6 +37,7 @@ export const anamnesisTemplates = activeSchema.anamnesisTemplates;
 export const anamnesisResponses = activeSchema.anamnesisResponses;
 export const programs = activeSchema.programs;
 export const clientDocuments = activeSchema.clientDocuments;
+export const naturalSolutions = activeSchema.naturalSolutions;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -52,6 +53,7 @@ export const insertAnamnesisTemplateSchema = activeSchema.insertAnamnesisTemplat
 export const insertAnamnesisResponseSchema = activeSchema.insertAnamnesisResponseSchema;
 export const insertProgramSchema = activeSchema.insertProgramSchema;
 export const insertClientDocumentSchema = activeSchema.insertClientDocumentSchema;
+export const insertNaturalSolutionSchema = activeSchema.insertNaturalSolutionSchema;
 
 // Re-exports types : on importe toujours depuis le schéma SQLite pour les types
 // (ils sont identiques entre les deux schémas, et TypeScript a besoin d'imports
@@ -66,4 +68,5 @@ export type {
   AnamnesisResponse, InsertAnamnesisResponse,
   Program, InsertProgram,
   ClientDocument, InsertClientDocument,
+  NaturalSolution, InsertNaturalSolution,
 } from "./schema";

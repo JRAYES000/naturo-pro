@@ -19,7 +19,7 @@ import { createRequire } from "node:module";
 import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
-  anamnesisTemplates, anamnesisResponses, programs, clientDocuments,
+  anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -28,6 +28,7 @@ import type {
   InvoiceItem, InsertInvoiceItem, EmailTemplate,
   AnamnesisTemplate, InsertAnamnesisTemplate, AnamnesisResponse, InsertAnamnesisResponse,
   Program, InsertProgram, ClientDocument, InsertClientDocument,
+  NaturalSolution, InsertNaturalSolution,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
@@ -270,6 +271,17 @@ if (DB_DRIVER !== "mysql") {
       data_base64 TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS natural_solutions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Plante',
+      properties TEXT,
+      contraindications TEXT,
+      usage_notes TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
   // PHASE 3.5-B — Manage token : colonnes appointments (best-effort migration SQLite)
   const apptMigCols = [
@@ -411,6 +423,17 @@ if (DB_DRIVER === "mysql") {
         size_bytes INT,
         data_base64 LONGTEXT NOT NULL,
         created_at BIGINT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS natural_solutions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(80) NOT NULL DEFAULT 'Plante',
+        properties TEXT,
+        contraindications TEXT,
+        usage_notes TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
       )`,
     ]) {
       try {
@@ -600,6 +623,14 @@ export interface IStorage {
   getClientDocument(id: number): Promise<ClientDocument | undefined>;
   createClientDocument(data: InsertClientDocument): Promise<ClientDocument>;
   deleteClientDocument(id: number): Promise<void>;
+
+  // Base de solutions naturelles (globales + perso du praticien)
+  listNaturalSolutions(userId: number): Promise<NaturalSolution[]>;
+  getNaturalSolution(id: number): Promise<NaturalSolution | undefined>;
+  createNaturalSolution(data: InsertNaturalSolution): Promise<NaturalSolution>;
+  updateNaturalSolution(id: number, patch: Partial<NaturalSolution>): Promise<NaturalSolution | undefined>;
+  deleteNaturalSolution(id: number): Promise<void>;
+  countGlobalNaturalSolutions(): Promise<number>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1190,6 +1221,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClientDocument(id: number): Promise<void> {
     await db.delete(clientDocuments).where(eq(clientDocuments.id, id));
+  }
+
+  // ── Base de solutions naturelles ─────────────────────────────────────────────
+
+  async listNaturalSolutions(userId: number): Promise<NaturalSolution[]> {
+    // Globales (user_id NULL) + entrées perso du praticien.
+    return db
+      .select()
+      .from(naturalSolutions)
+      .where(or(sql`${naturalSolutions.userId} IS NULL`, eq(naturalSolutions.userId, userId)))
+      .orderBy(naturalSolutions.category, naturalSolutions.name);
+  }
+
+  async getNaturalSolution(id: number): Promise<NaturalSolution | undefined> {
+    return first(db.select().from(naturalSolutions).where(eq(naturalSolutions.id, id)));
+  }
+
+  async createNaturalSolution(data: InsertNaturalSolution): Promise<NaturalSolution> {
+    const now = Date.now();
+    return dbInsertReturning<NaturalSolution>(naturalSolutions, { ...data, createdAt: now, updatedAt: now });
+  }
+
+  async updateNaturalSolution(id: number, patch: Partial<NaturalSolution>): Promise<NaturalSolution | undefined> {
+    return dbUpdateReturning<NaturalSolution>(naturalSolutions, id, { ...patch, updatedAt: Date.now() });
+  }
+
+  async deleteNaturalSolution(id: number): Promise<void> {
+    await db.delete(naturalSolutions).where(eq(naturalSolutions.id, id));
+  }
+
+  async countGlobalNaturalSolutions(): Promise<number> {
+    const rows = await db.select({ id: naturalSolutions.id }).from(naturalSolutions).where(sql`${naturalSolutions.userId} IS NULL`);
+    return rows.length;
   }
 }
 

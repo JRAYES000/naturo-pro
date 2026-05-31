@@ -251,6 +251,20 @@ export const clientDocuments = sqliteTable("client_documents", {
   createdAt: integer("created_at").notNull(),
 });
 
+// Base de solutions naturelles (catalogue de référence : plantes, HE, compléments…)
+// userId null = entrée globale fournie par l'app ; non-null = entrée perso du praticien.
+export const naturalSolutions = sqliteTable("natural_solutions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id"),
+  name: text("name").notNull(),
+  category: text("category").notNull().default("Plante"),
+  properties: text("properties"),
+  contraindications: text("contraindications"),
+  usageNotes: text("usage_notes"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -264,6 +278,7 @@ export const insertAnamnesisTemplateSchema = createInsertSchema(anamnesisTemplat
 export const insertAnamnesisResponseSchema = createInsertSchema(anamnesisResponses).omit({ id: true, createdAt: true });
 export const insertProgramSchema = createInsertSchema(programs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
+export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -291,6 +306,8 @@ export type Program = typeof programs.$inferSelect;
 export type InsertProgram = z.infer<typeof insertProgramSchema>;
 export type ClientDocument = typeof clientDocuments.$inferSelect;
 export type InsertClientDocument = z.infer<typeof insertClientDocumentSchema>;
+export type NaturalSolution = typeof naturalSolutions.$inferSelect;
+export type InsertNaturalSolution = z.infer<typeof insertNaturalSolutionSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

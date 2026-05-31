@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, FileText, Download, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Download, X, Leaf } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client } from "@shared/schema";
+import type { Client, NaturalSolution } from "@shared/schema";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -118,6 +118,19 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
   const [sections, setSections] = useState<ProgramSection[]>(
     initial ? parseSections(initial.content) : defaultSections(),
   );
+  // Picker « base de solutions »
+  const { data: solutions = [] } = useQuery<NaturalSolution[]>({ queryKey: ["/api/solutions"] });
+  const [pickerSection, setPickerSection] = useState<number | null>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
+
+  function insertSolution(sectionIdx: number, sol: NaturalSolution) {
+    const text = sol.usageNotes ? `${sol.name} : ${sol.usageNotes}` : sol.name;
+    setSections(s => s.map((sec, i) =>
+      i === sectionIdx ? { ...sec, items: [...sec.items.filter(it => it.trim()), text] } : sec,
+    ));
+    setPickerSection(null);
+    setPickerSearch("");
+  }
 
   // Gestionnaire de sections
   function addSection() {
@@ -282,16 +295,28 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                   </Button>
                 </div>
               ))}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => addItem(sIdx)}
-                data-testid={`button-add-item-${sIdx}`}
-                className="text-primary hover:text-primary/80 px-2"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Ajouter un conseil
-              </Button>
+              <div className="flex items-center gap-1 flex-wrap">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => addItem(sIdx)}
+                  data-testid={`button-add-item-${sIdx}`}
+                  className="text-primary hover:text-primary/80 px-2"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Ajouter un conseil
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setPickerSection(sIdx); setPickerSearch(""); }}
+                  data-testid={`button-pick-solution-${sIdx}`}
+                  className="text-primary hover:text-primary/80 px-2"
+                >
+                  <Leaf className="h-3.5 w-3.5 mr-1" /> Piocher dans la base
+                </Button>
+              </div>
             </div>
           </div>
         ))}
@@ -314,6 +339,48 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
           {saveMut.isPending ? "Enregistrement…" : isNew ? "Créer le programme" : "Enregistrer"}
         </Button>
       </div>
+
+      {/* Picker : base de solutions naturelles */}
+      <Dialog open={pickerSection !== null} onOpenChange={(o) => { if (!o) setPickerSection(null); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
+            <DialogTitle>Piocher dans la base de solutions</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-3 shrink-0">
+            <Input
+              placeholder="Rechercher (nom, propriété, catégorie)…"
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              data-testid="input-picker-search"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-2">
+            {solutions
+              .filter((s) => {
+                const q = pickerSearch.trim().toLowerCase();
+                return !q || s.name.toLowerCase().includes(q) || (s.properties || "").toLowerCase().includes(q) || s.category.toLowerCase().includes(q);
+              })
+              .map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pickerSection !== null && insertSolution(pickerSection, s)}
+                  className="w-full text-left border rounded-[10px] p-3 hover:border-primary hover:bg-primary/5 transition-colors"
+                  data-testid={`picker-solution-${s.id}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="text-[10px] text-muted-foreground border rounded px-1 py-0.5">{s.category}</span>
+                  </div>
+                  {s.properties && <p className="text-xs text-muted-foreground mt-1">{s.properties}</p>}
+                </button>
+              ))}
+            {solutions.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">Aucune solution dans la base pour le moment.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
