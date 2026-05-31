@@ -140,6 +140,8 @@ export function registerEmailTemplateRoutes(app: Express): void {
         "appointment.duration": "60 min",
         "appointment.category": "Consultation naturopathie",
         "appointment.address": user.address ? `${user.address}, ${user.city || ""}`.trim().replace(/,$/, "") : "",
+        // Exemple de lien visio pour que le bloc Google Meet soit visible dans l'aperçu.
+        "appointment.meetLink": "https://meet.google.com/abc-defg-hij",
         "practitioner.name": user.name,
         "practitioner.email": user.email,
         "cancelLink": "https://exemple.fr/annuler/XXXXX",
@@ -168,6 +170,7 @@ export function registerEmailTemplateRoutes(app: Express): void {
             "appointment.duration": durationMin,
             "appointment.category": cat?.name || "",
             "appointment.address": appt.location || (user.address ? `${user.address}, ${user.city || ""}`.trim().replace(/,$/, "") : ""),
+            "appointment.meetLink": (appt as any).googleMeetLink || "",
             "practitioner.name": user.name,
             "practitioner.email": user.email,
             "cancelLink": (appt as any).cancelToken ? `${req.protocol}://${req.get("host")}/api/public/cancel/${(appt as any).cancelToken}` : "https://exemple.fr/annuler/TOKEN",
