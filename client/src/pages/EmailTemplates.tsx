@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
+import { Mail, Edit3, Eye, RotateCcw, Loader2, Code2, Type, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import {
   EditorProvider, Editor, Toolbar,
@@ -80,6 +80,7 @@ function isFullDoc(html: string): boolean {
 export default function EmailTemplates() {
   const { toast } = useToast();
   const [activeKind, setActiveKind] = useState<EmailKind>("confirmation");
+  const [showHelp, setShowHelp] = useState(true);
   const emptyByKind = { confirmation: "", reminder_d1: "", cancellation: "" };
   const [subjectDraft, setSubjectDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
   const [bodyDraft, setBodyDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
@@ -243,6 +244,80 @@ export default function EmailTemplates() {
             </p>
           </div>
         </div>
+
+        {/* Encart d'aide repliable */}
+        <Card className="card-naturo rounded-[15px] mb-6 border-primary/20 bg-primary/[0.03]">
+          <CardHeader className="pb-3">
+            <button
+              type="button"
+              onClick={() => setShowHelp((v) => !v)}
+              className="flex items-center justify-between w-full text-left"
+              data-testid="button-toggle-help"
+            >
+              <span className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <HelpCircle className="h-4 w-4 text-primary" />
+                À quoi sert cette page ?
+              </span>
+              {showHelp
+                ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+          </CardHeader>
+          {showHelp && (
+            <CardContent className="space-y-4 text-sm text-muted-foreground pt-0">
+              <p>
+                Quand un client réserve un rendez-vous via votre page,{" "}
+                <strong className="text-foreground">Naturo Pro envoie automatiquement les emails à votre place</strong>{" "}
+                — vous n'avez rien à faire au quotidien. Cette page sert juste à{" "}
+                <strong className="text-foreground">personnaliser le texte de ces emails</strong>{" "}
+                (le message, le ton, votre signature), une bonne fois pour toutes.
+              </p>
+              <p>
+                Bonne nouvelle :{" "}
+                <strong className="text-foreground">vous n'êtes pas obligé d'y toucher.</strong>{" "}
+                Des modèles tout prêts et professionnels sont déjà en place. Cette page est là
+                uniquement si vous voulez les adapter à votre façon de parler à vos clients.
+              </p>
+              <div>
+                <p className="font-semibold text-foreground mb-2">Les 3 emails que vous pouvez personnaliser :</p>
+                <ul className="space-y-1.5">
+                  <li>
+                    ✅ <strong className="text-foreground">Confirmation</strong> — envoyé au client
+                    juste après sa réservation (« C'est noté ! », avec la date, l'heure et le lieu).
+                  </li>
+                  <li>
+                    ⏰ <strong className="text-foreground">Rappel J-1</strong> — envoyé automatiquement
+                    au client la veille du rendez-vous, pour limiter les oublis (donc moins de « lapins »).
+                  </li>
+                  <li>
+                    🔔 <strong className="text-foreground">Annulation</strong> — si un client annule
+                    lui-même via son lien, il reçoit une confirmation d'annulation et vous êtes notifié
+                    que le créneau s'est libéré.
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-semibold text-foreground mb-2">Comment ça marche, concrètement ?</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Choisissez l'email à modifier dans les onglets ci-dessous.</li>
+                  <li>Écrivez votre texte comme dans Word : gras, italique, listes… aucune connaissance technique nécessaire.</li>
+                  <li>
+                    Insérez les infos qui changent à chaque client en cliquant sur les étiquettes
+                    (<code className="px-1 rounded bg-muted text-foreground text-xs">+ Nom du client</code>,{" "}
+                    <code className="px-1 rounded bg-muted text-foreground text-xs">+ Date</code>…) : elles se
+                    remplissent toutes seules.
+                  </li>
+                  <li>Cliquez sur « Actualiser l'aperçu » à droite pour voir exactement ce que recevra le client.</li>
+                  <li>Cliquez sur « Enregistrer ». C'est tout.</li>
+                </ol>
+              </div>
+              <p className="text-xs italic">
+                💡 Une erreur ? Le bouton « Réinitialiser au modèle par défaut » remet le texte d'origine,
+                propre et professionnel. Vous ne pouvez rien casser.
+              </p>
+            </CardContent>
+          )}
+        </Card>
 
         {/* Kind selector */}
         <Tabs value={activeKind} onValueChange={handleKindChange} className="mb-6">
