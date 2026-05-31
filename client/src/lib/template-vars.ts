@@ -58,6 +58,11 @@ export const TEMPLATE_VARS: TemplateVariable[] = [
     example: "12 rue de la Paix, Paris",
   },
   {
+    placeholder: "{{appointment.meetLink}}",
+    label: "Lien visio Google Meet (si RDV en visio)",
+    example: "https://meet.google.com/abc-defg-hij",
+  },
+  {
     placeholder: "{{practitioner.name}}",
     label: "Nom du praticien",
     example: "Dr. Julien Rayes",

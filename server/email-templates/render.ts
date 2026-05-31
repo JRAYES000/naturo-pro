@@ -15,6 +15,7 @@ export interface TemplateVars {
   "appointment.duration"?: string;
   "appointment.category"?: string;
   "appointment.address"?: string;
+  "appointment.meetLink"?: string;
   "practitioner.name"?: string;
   "practitioner.email"?: string;
   "cancelLink"?: string;

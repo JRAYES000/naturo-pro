@@ -159,6 +159,20 @@ export default function Agenda() {
                   {selected.clientEmail && <p><strong>Email :</strong> {selected.clientEmail}</p>}
                   {selected.clientPhone && <p><strong>Téléphone :</strong> {selected.clientPhone}</p>}
                   <p><strong>Lieu :</strong> {selected.location}</p>
+                  {(selected as any).googleMeetLink && (
+                    <p>
+                      <strong>Lien visio :</strong>{" "}
+                      <a
+                        href={(selected as any).googleMeetLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline break-all"
+                        data-testid="link-meet"
+                      >
+                        {(selected as any).googleMeetLink}
+                      </a>
+                    </p>
+                  )}
                   <p><strong>Statut :</strong> {selected.status}{(selected as any).clientConfirmedAt ? " — ✓ confirmé par la cliente" : ""}{(selected as any).clientCancelledAt ? " — ✕ annulé par la cliente" : ""}</p>
                   {(selected as any).reminderSentAt && (
                     <p className="text-xs text-muted-foreground">✉ Rappel envoyé le {new Date((selected as any).reminderSentAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>

@@ -131,12 +131,12 @@ export type CalendarEventInput = {
   timeZone?: string; // default Europe/Paris
 };
 
-function buildEventBody(ev: CalendarEventInput) {
+function buildEventBody(ev: CalendarEventInput, addMeet = false) {
   const tz = ev.timeZone || "Europe/Paris";
   // Make sure every Naturo-created event carries the marker (idempotent)
   let description = ev.description || "";
   if (!description.includes(NATURO_DESC_MARKER)) description += NATURO_DESC_MARKER;
-  return {
+  const body: any = {
     summary: ev.summary,
     description,
     location: ev.location || undefined,
@@ -145,6 +145,27 @@ function buildEventBody(ev: CalendarEventInput) {
     attendees: ev.attendeeEmail ? [{ email: ev.attendeeEmail }] : undefined,
     reminders: { useDefault: true },
   };
+  // Visio : demande à Google de générer automatiquement un lien Google Meet.
+  // requestId stable (dérivé du créneau) → idempotent si l'appel est rejoué.
+  if (addMeet) {
+    body.conferenceData = {
+      createRequest: {
+        requestId: `naturo-meet-${ev.startAt}-${ev.endAt}`,
+        conferenceSolutionKey: { type: "hangoutsMeet" },
+      },
+    };
+  }
+  return body;
+}
+
+/** Extrait l'URL Google Meet d'un événement renvoyé par l'API Calendar. */
+function extractMeetLink(data: any): string | null {
+  if (!data) return null;
+  if (typeof data.hangoutLink === "string" && data.hangoutLink) return data.hangoutLink;
+  const entry = data.conferenceData?.entryPoints?.find(
+    (e: any) => e.entryPointType === "video" && e.uri,
+  );
+  return entry?.uri || null;
 }
 
 // --- Helper: format a rich event description from RDV data ---
@@ -344,47 +365,57 @@ export async function listEventsFromCalendar(
   return out;
 }
 
+export type PushEventResult = { eventId: string | null; meetLink: string | null };
+
 export async function pushEventToCalendar(
   tokens: GoogleTokens,
   ev: CalendarEventInput,
-  onRefresh?: (t: GoogleTokens) => void
-): Promise<string | null> {
-  if (!isGoogleConfigured()) return null;
+  onRefresh?: (t: GoogleTokens) => void,
+  addMeet = false,
+): Promise<PushEventResult> {
+  if (!isGoogleConfigured()) return { eventId: null, meetLink: null };
   const auth = clientFromTokens(tokens, onRefresh);
-  if (!auth) return null;
+  if (!auth) return { eventId: null, meetLink: null };
   const calendar = google.calendar({ version: "v3", auth });
   try {
     const res = await calendar.events.insert({
       calendarId: "primary",
-      requestBody: buildEventBody(ev),
+      conferenceDataVersion: addMeet ? 1 : 0,
+      requestBody: buildEventBody(ev, addMeet),
     });
-    return res.data?.id || null;
+    return { eventId: res.data?.id || null, meetLink: extractMeetLink(res.data) };
   } catch (e: any) {
     console.error("[google] insert event failed:", e?.message || e);
-    return null;
+    return { eventId: null, meetLink: null };
   }
 }
+
+export type UpdateEventResult = { ok: boolean; meetLink: string | null };
 
 export async function updateEventInCalendar(
   tokens: GoogleTokens,
   eventId: string,
   ev: CalendarEventInput,
-  onRefresh?: (t: GoogleTokens) => void
-): Promise<boolean> {
-  if (!isGoogleConfigured()) return false;
+  onRefresh?: (t: GoogleTokens) => void,
+  addMeet = false,
+): Promise<UpdateEventResult> {
+  if (!isGoogleConfigured()) return { ok: false, meetLink: null };
   const auth = clientFromTokens(tokens, onRefresh);
-  if (!auth) return false;
+  if (!auth) return { ok: false, meetLink: null };
   const calendar = google.calendar({ version: "v3", auth });
   try {
-    await calendar.events.update({
+    // Sans conferenceDataVersion=1, un éventuel lien Meet déjà présent est préservé
+    // (Google ignore conferenceData dans la requête). On ne met 1 que pour EN AJOUTER un.
+    const res = await calendar.events.update({
       calendarId: "primary",
       eventId,
-      requestBody: buildEventBody(ev),
+      conferenceDataVersion: addMeet ? 1 : 0,
+      requestBody: buildEventBody(ev, addMeet),
     });
-    return true;
+    return { ok: true, meetLink: extractMeetLink(res.data) };
   } catch (e: any) {
     console.error("[google] update event failed:", e?.message || e);
-    return false;
+    return { ok: false, meetLink: null };
   }
 }
 

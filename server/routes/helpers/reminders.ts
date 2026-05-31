@@ -134,6 +134,7 @@ export async function sendRemindersForUser(user: any): Promise<{ sent: number; s
         "appointment.duration": ctx.cat?.durationMinutes ? `${ctx.cat.durationMinutes} min` : "",
         "appointment.category": ctx.cat?.name || "",
         "appointment.address": a.location || ctx.cat?.location || "",
+        "appointment.meetLink": (a as any).googleMeetLink || "",
         "practitioner.name": user.name || user.email || "",
         "practitioner.email": user.email || "",
         "cancelLink": cancelUrlManage,

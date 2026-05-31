@@ -171,6 +171,7 @@ export const appointments = mysqlTable("appointments", {
   notesBefore: text("notes_before"),
   location: varchar("location", { length: 50 }),
   googleEventId: varchar("google_event_id", { length: 255 }),
+  googleMeetLink: varchar("google_meet_link", { length: 512 }),
   reminderSent: boolean("reminder_sent").notNull().default(false),
   reminderSentAt: bigint("reminder_sent_at", { mode: "number" }),
   // Phase 0.7 — Tokens publics pour confirmer/annuler depuis l'email

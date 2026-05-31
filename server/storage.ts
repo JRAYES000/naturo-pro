@@ -236,6 +236,7 @@ if (DB_DRIVER !== "mysql") {
     "payment_status TEXT DEFAULT 'unpaid'",
     "payment_amount_cents INTEGER DEFAULT 0",
     "source TEXT DEFAULT 'manual'",
+    "google_meet_link TEXT",
   ];
   for (const col of apptMigCols) {
     try { raw.exec(`ALTER TABLE appointments ADD COLUMN ${col}`); } catch { /* already exists */ }
@@ -321,6 +322,8 @@ if (DB_DRIVER === "mysql") {
       "ALTER TABLE users ADD COLUMN instagram VARCHAR(255) NULL",
       "ALTER TABLE users ADD COLUMN facebook VARCHAR(255) NULL",
       "ALTER TABLE users ADD COLUMN website_url VARCHAR(255) NULL",
+      // Visio — lien Google Meet généré automatiquement par Google Agenda
+      "ALTER TABLE appointments ADD COLUMN google_meet_link VARCHAR(512) NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

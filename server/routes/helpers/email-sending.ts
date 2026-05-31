@@ -118,6 +118,7 @@ export async function sendBookingConfirmationEmail(
     "appointment.duration": `${durationMin} min`,
     "appointment.category": cat?.name || "",
     "appointment.address": location || "",
+    "appointment.meetLink": appt.googleMeetLink || "",
     "practitioner.name": practitionerName,
     "practitioner.email": user.email || "",
     "cancelLink": cancelUrl || "",

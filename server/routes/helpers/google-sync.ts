@@ -82,14 +82,32 @@ export async function syncApptToGoogle(
     timeZone: "Europe/Paris",
   };
 
+  // Visio → on demande à Google un lien Meet, sauf si le RDV en a déjà un.
+  const isVisio =
+    (appt.location || "").toLowerCase() === "visio" ||
+    (category?.location || "").toLowerCase() === "visio";
+  const addMeet = isVisio && !appt.googleMeetLink;
+
+  // Persiste le lien Meet renvoyé par Google sur le RDV (best effort).
+  const persistMeet = async (meetLink: string | null) => {
+    if (meetLink && !appt.googleMeetLink) {
+      try { await storage.updateAppointment(appt.id, { googleMeetLink: meetLink } as any); } catch {}
+    }
+  };
+
   try {
     if (op === "create") {
-      return await pushEventToCalendar(tokens, ev, onRefresh);
+      const { eventId, meetLink } = await pushEventToCalendar(tokens, ev, onRefresh, addMeet);
+      await persistMeet(meetLink);
+      return eventId;
     } else if (op === "update" && appt.googleEventId) {
-      await updateEventInCalendar(tokens, appt.googleEventId, ev, onRefresh);
+      const { meetLink } = await updateEventInCalendar(tokens, appt.googleEventId, ev, onRefresh, addMeet);
+      await persistMeet(meetLink);
       return appt.googleEventId;
     } else if (op === "update" && !appt.googleEventId) {
-      return await pushEventToCalendar(tokens, ev, onRefresh);
+      const { eventId, meetLink } = await pushEventToCalendar(tokens, ev, onRefresh, addMeet);
+      await persistMeet(meetLink);
+      return eventId;
     } else if (op === "delete" && appt.googleEventId) {
       await deleteEventFromCalendar(tokens, appt.googleEventId, onRefresh);
       return null;

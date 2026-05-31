@@ -56,6 +56,19 @@ export default function CategoriesPage() {
               <li>Utilisez le <strong>crayon</strong> pour modifier une prestation, la <strong>corbeille</strong> pour la supprimer.</li>
             </ol>
           </div>
+          <div>
+            <p className="font-semibold text-foreground mb-2">📹 Vous proposez des séances en visio ?</p>
+            <p>
+              Choisissez le lieu <strong>« Visio »</strong> pour la prestation. Naturo Pro crée alors
+              <strong> automatiquement un lien Google Meet</strong> pour chaque rendez-vous et l'envoie
+              à votre cliente dans son email de confirmation — vous n'avez aucun lien à copier.
+            </p>
+            <p>
+              ⚠️ <strong>Indispensable :</strong> pour que cela fonctionne, vous devez d'abord
+              <strong> connecter votre Google Agenda</strong> dans la page <strong>Paramètres</strong>.
+              Sans cette connexion, aucun lien visio ne pourra être généré.
+            </p>
+          </div>
           <p className="text-xs italic">
             💡 La petite pastille de couleur vous aide à repérer la prestation d'un coup d'œil dans votre agenda.
           </p>

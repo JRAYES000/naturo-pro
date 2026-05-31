@@ -157,6 +157,7 @@ export const appointments = sqliteTable("appointments", {
   notesBefore: text("notes_before"),
   location: text("location"),
   googleEventId: text("google_event_id"),
+  googleMeetLink: text("google_meet_link"),
   reminderSent: integer("reminder_sent", { mode: "boolean" }).default(false),
   reminderSentAt: integer("reminder_sent_at"),
   // Phase 0.7 — Tokens publics pour confirmer/annuler depuis l'email

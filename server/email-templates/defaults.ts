@@ -78,6 +78,14 @@ const confirmationBody = `
     {{#if appointment.address}}<p><strong>Adresse</strong> : {{appointment.address}}</p>{{/if}}
   </div>
 
+  {{#if appointment.meetLink}}
+  <div class="info">
+    <p><strong>Votre rendez-vous a lieu en visio (Google Meet)</strong></p>
+    <p>Lien de connexion : <a href="{{appointment.meetLink}}" style="color:#186749;">{{appointment.meetLink}}</a></p>
+    <p>Cliquez sur ce lien le jour du rendez-vous pour rejoindre la visioconférence.</p>
+  </div>
+  {{/if}}
+
   <p>Si vous souhaitez annuler ou modifier votre rendez-vous, vous pouvez utiliser le lien ci-dessous.</p>
 
   <div class="btn-row">
@@ -103,6 +111,13 @@ const reminderD1Body = `
     <p><strong>Prestation</strong> : {{appointment.category}}</p>
     {{#if appointment.address}}<p><strong>Adresse</strong> : {{appointment.address}}</p>{{/if}}
   </div>
+
+  {{#if appointment.meetLink}}
+  <div class="info">
+    <p><strong>Rendez-vous en visio (Google Meet)</strong></p>
+    <p>Lien de connexion : <a href="{{appointment.meetLink}}" style="color:#186749;">{{appointment.meetLink}}</a></p>
+  </div>
+  {{/if}}
 
   <p>Merci de bien vouloir confirmer votre présence.</p>
 
