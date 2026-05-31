@@ -60,8 +60,8 @@ export default function Solutions() {
       <div className="max-w-5xl">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Solutions naturelles</h1>
-            <p className="text-muted-foreground text-sm mt-1">Votre base de plantes, huiles essentielles et compléments pour construire vos programmes.</p>
+            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Bibliothèque de référence</h1>
+            <p className="text-muted-foreground text-sm mt-1">Votre base de plantes, huiles essentielles, compléments et fleurs de Bach pour construire vos programmes.</p>
           </div>
           <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-solution">
             <Plus className="h-4 w-4 mr-1" /> Ajouter une solution

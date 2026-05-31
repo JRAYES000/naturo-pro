@@ -6,7 +6,7 @@ import { registerRoutes } from "./routes/index";
 import { serveStatic } from "./static";
 import { createServer } from "node:http";
 import { seedIfEmpty } from "./seed";
-import { seedNaturalSolutionsIfEmpty } from "./solutions-seed";
+import { seedNaturalSolutions } from "./solutions-seed";
 
 const app = express();
 const httpServer = createServer(app);
@@ -103,7 +103,7 @@ app.use((req, res, next) => {
 
 (async () => {
   await seedIfEmpty();
-  await seedNaturalSolutionsIfEmpty();
+  await seedNaturalSolutions();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
