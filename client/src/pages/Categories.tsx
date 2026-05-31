@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +36,30 @@ export default function CategoriesPage() {
             <Plus className="h-4 w-4 mr-1" /> Nouvelle
           </Button>
         </div>
+
+        <HelpNote>
+          <p>
+            Les « prestations » sont les <strong>types de séances que vous proposez</strong> :
+            par exemple « Première consultation », « Séance de suivi », « Bilan vitalité »…
+            Pour chacune, vous indiquez un <strong>nom, une durée, un tarif et un lieu</strong>.
+          </p>
+          <p>
+            C'est <strong>important</strong> : ce sont ces prestations qui s'affichent sur votre
+            page de réservation en ligne. Tant que vous n'en avez pas créé, vos clientes ne peuvent
+            pas réserver de rendez-vous.
+          </p>
+          <div>
+            <p className="font-semibold text-foreground mb-2">Comment ça marche ?</p>
+            <ol>
+              <li>Cliquez sur <strong>« Nouvelle »</strong> pour ajouter une prestation.</li>
+              <li>Remplissez le nom, la durée, le tarif et le lieu, puis enregistrez.</li>
+              <li>Utilisez le <strong>crayon</strong> pour modifier une prestation, la <strong>corbeille</strong> pour la supprimer.</li>
+            </ol>
+          </div>
+          <p className="text-xs italic">
+            💡 La petite pastille de couleur vous aide à repérer la prestation d'un coup d'œil dans votre agenda.
+          </p>
+        </HelpNote>
 
         {cats.length === 0 ? (
           <div className="card-naturo text-center py-16">

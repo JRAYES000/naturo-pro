@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -120,6 +121,35 @@ export default function Settings() {
     <AppLayout>
       <div className="max-w-2xl space-y-6">
         <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Paramètres</h1>
+
+        <HelpNote>
+          <p>
+            C'est le <strong>centre de réglages de votre compte</strong>. Vous y configurez, une fois
+            pour toutes, les informations qui font tourner l'application au quotidien.
+          </p>
+          <div>
+            <p className="font-semibold text-foreground mb-2">Ce que vous réglez ici :</p>
+            <ul>
+              <li>👤 <strong>Vos informations</strong> : votre nom et votre adresse email.</li>
+              <li>✉️ <strong>L'envoi des emails</strong> : la connexion qui permet d'envoyer confirmations et rappels à vos clientes.</li>
+              <li>🧾 <strong>La facturation</strong> : vos coordonnées (adresse, SIRET, IBAN…) qui apparaîtront sur vos factures.</li>
+              <li>📅 <strong>Google Agenda</strong> : pour synchroniser vos rendez-vous avec votre agenda Google (optionnel).</li>
+              <li>🔔 <strong>Les rappels automatiques</strong> : les activer et choisir l'heure d'envoi.</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground mb-2">Comment ça marche ?</p>
+            <ol>
+              <li>Remplissez ou modifiez les champs de la section qui vous intéresse.</li>
+              <li>Cliquez sur le bouton <strong>« Enregistrer »</strong> de cette section. C'est tout.</li>
+            </ol>
+          </div>
+          <p className="text-xs italic">
+            💡 Pas besoin de tout remplir d'un coup. Prenez surtout le temps de compléter la partie
+            <strong> facturation</strong> si vous éditez des factures, et l'<strong>envoi des emails</strong>
+            pour que vos clientes reçoivent bien leurs confirmations.
+          </p>
+        </HelpNote>
 
         <div className="card-naturo space-y-4">
           <h2 className="font-extrabold">Compte</h2>

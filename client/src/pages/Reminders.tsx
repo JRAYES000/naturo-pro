@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { HelpNote } from "@/components/HelpNote";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -234,6 +235,30 @@ export default function Reminders() {
           </Link>
         </Button>
       </div>
+
+      <HelpNote>
+        <p>
+          La veille de chaque rendez-vous, Naturo Pro envoie <strong>automatiquement un email de
+          rappel à vos clientes</strong> — sans aucune action de votre part. C'est ce qui aide à
+          <strong> réduire les oublis et les rendez-vous manqués</strong>.
+        </p>
+        <p>
+          Cette page est un simple <strong>tableau de suivi</strong> : vous y voyez les rappels déjà
+          envoyés, ceux à venir et ceux qui n'ont pas pu partir. <strong>Vous n'avez rien à remplir ici.</strong>
+        </p>
+        <div>
+          <p className="font-semibold text-foreground mb-2">Comment lire le tableau ?</p>
+          <ul>
+            <li>🟢 <strong>Envoyé</strong> — le rappel est bien parti.</li>
+            <li>🟠 <strong>En attente</strong> — le rappel partira la veille du rendez-vous.</li>
+            <li>⚪ <strong>Sans email</strong> — la cliente n'a pas d'adresse email renseignée.</li>
+          </ul>
+        </div>
+        <p className="text-xs italic">
+          💡 Pour activer/désactiver les rappels ou changer l'heure d'envoi, utilisez le bouton
+          <strong> « Configurer les rappels »</strong> (page Paramètres).
+        </p>
+      </HelpNote>
 
       {/* ── Stats cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

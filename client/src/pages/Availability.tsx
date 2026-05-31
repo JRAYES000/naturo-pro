@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +57,30 @@ export default function Availability() {
             {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
           </Button>
         </div>
+
+        <HelpNote>
+          <p>
+            Sur cette page, vous indiquez <strong>les jours et les heures où vous acceptez des
+            rendez-vous</strong> (par exemple : lundi de 9h à 12h, mardi de 14h à 18h…).
+          </p>
+          <p>
+            À partir de ces plages, l'application <strong>calcule toute seule les créneaux libres</strong>
+            qui seront proposés à vos clientes sur votre page de réservation. Les créneaux déjà réservés
+            n'apparaissent jamais : pas de risque de double réservation.
+          </p>
+          <div>
+            <p className="font-semibold text-foreground mb-2">Comment ça marche ?</p>
+            <ol>
+              <li>Pour un jour donné, cliquez sur <strong>« Ajouter une plage »</strong>.</li>
+              <li>Indiquez l'heure de <strong>début</strong> et l'heure de <strong>fin</strong>.</li>
+              <li>Ajoutez autant de plages que nécessaire (matin, après-midi…).</li>
+              <li>Cliquez sur <strong>« Enregistrer »</strong> en haut à droite.</li>
+            </ol>
+          </div>
+          <p className="text-xs italic">
+            💡 Vous pouvez modifier vos disponibilités à tout moment : les changements s'appliquent aussitôt.
+          </p>
+        </HelpNote>
 
         <div className="card-naturo space-y-4">
           {DAYS.map(d => {

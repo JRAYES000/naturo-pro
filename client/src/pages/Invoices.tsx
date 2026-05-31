@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Plus, Receipt, Download, Mail, FileText } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -74,6 +75,27 @@ export default function InvoicesPage() {
             </Button>
           </Link>
         </div>
+
+        <HelpNote>
+          <p>
+            Cette page rassemble <strong>toutes vos factures au même endroit</strong>. En un coup
+            d'œil, vous voyez ce que vous avez déjà encaissé et ce qu'il reste à encaisser.
+          </p>
+          <div>
+            <p className="font-semibold text-foreground mb-2">Ce que vous pouvez faire ici :</p>
+            <ul>
+              <li>📄 <strong>Créer une facture</strong> pour une cliente (bouton « Nouvelle facture »).</li>
+              <li>⬇️ La <strong>télécharger en PDF</strong> ou l'<strong>envoyer par email</strong> à votre cliente.</li>
+              <li>✅ La <strong>marquer comme payée</strong> une fois le règlement reçu.</li>
+              <li>🔎 <strong>Retrouver une facture</strong> grâce aux filtres (statut) et à la recherche par nom.</li>
+            </ul>
+          </div>
+          <p className="text-xs italic">
+            💡 Les couleurs indiquent l'état de chaque facture : <strong>Brouillon</strong> (pas encore
+            envoyée), <strong>Envoyée</strong> (en attente de paiement) et <strong>Payée</strong>. Pensez à
+            renseigner vos coordonnées dans <strong>Paramètres</strong> : elles apparaîtront sur vos factures.
+          </p>
+        </HelpNote>
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
