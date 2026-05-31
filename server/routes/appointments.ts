@@ -13,6 +13,7 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { insertAppointmentSchema } from "@shared/schema-active";
 import { syncApptToGoogle } from "./helpers/google-sync";
 import { createInvoiceFromAppointment } from "./helpers/invoices";
+import { buildIcsForAppointment } from "../ics";
 
 // Mass-assignment whitelists (Phase 3 Lot 1 — security hardening).
 // Ces schémas Zod limitent les champs modifiables via PATCH/POST, empêchant
@@ -141,5 +142,40 @@ export function registerAppointmentRoutes(app: Express): void {
     const parsed = noteContentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
     res.json(await storage.updateNote(id, { ...parsed.data, updatedAt: Date.now() } as any));
+  });
+
+  // ---------- EXPORT ICS ----------
+  app.get("/api/appointments/:id/ics", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const appt = await storage.getAppointment(id);
+    if (!appt || appt.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+
+    const user = await storage.getUserById(req.userId!);
+    const cat = appt.categoryId ? await storage.getCategory(appt.categoryId) : null;
+
+    const practitionerName = user?.name || user?.email || "Votre praticien";
+    const durationMin: number = cat?.durationMinutes ?? 60;
+    const location: string | null = appt.location || cat?.location || null;
+    const clientFirstName = appt.clientFirstName || "Client";
+    const clientFullName = `${clientFirstName} ${appt.clientLastName || ""}`.trim();
+    const clientEmail = appt.clientEmail || user?.email || "";
+
+    const icsContent = buildIcsForAppointment({
+      uid: `${appt.id}@app.ecole-naturo.fr`,
+      startMs: appt.startAt,
+      durationMin,
+      summary: `${practitionerName} — Consultation`,
+      description: `${cat?.name || "Consultation"}\\nPraticien : ${practitionerName}`,
+      location,
+      organizerName: practitionerName,
+      organizerEmail: user?.email || "",
+      attendeeName: clientFullName,
+      attendeeEmail: clientEmail,
+    });
+
+    res
+      .set("Content-Type", "text/calendar; charset=utf-8")
+      .set("Content-Disposition", `attachment; filename="rdv-${id}.ics"`)
+      .send(icsContent);
   });
 }

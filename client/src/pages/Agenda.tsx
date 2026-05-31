@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, Send } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
@@ -224,6 +224,15 @@ export default function Agenda() {
                       )}
                     </div>
                   )}
+                  <a
+                    href={`/api/appointments/${selected.id}/ics`}
+                    download={`rdv-${selected.id}.ics`}
+                    data-testid="button-ics"
+                  >
+                    <Button size="sm" variant="outline" className="rounded-[12px]">
+                      <CalendarArrowDown className="h-4 w-4 mr-1" /> Ajouter à mon agenda (.ics)
+                    </Button>
+                  </a>
                   <Button size="sm" variant="destructive" onClick={() => deleteMut.mutate(selected.id)} className="rounded-[12px]" data-testid="button-delete-appointment">
                     <Trash2 className="h-4 w-4 mr-1" /> Supprimer
                   </Button>
