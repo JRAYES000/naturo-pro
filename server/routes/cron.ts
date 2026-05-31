@@ -11,13 +11,14 @@ import { storage } from "../storage";
 import { isGoogleConfigured } from "../google";
 import { importFromGoogleForUser } from "./helpers/google-sync";
 import {
-  sendRemindersForUser, sendDailyRecapForUser,
+  sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   getLocalHour, getLocalDayKey, TZ,
 } from "./helpers/reminders";
 
 // État mutable d'idempotence du cron email (anciennement closures dans registerRoutes).
 let lastReminderRunDay = "";
 let lastRecapRunDay = "";
+let lastReviewRunDay = "";
 
 export function startCrons(): void {
   const isProd = process.env.NODE_ENV === "production";
@@ -79,6 +80,18 @@ export function startCrons(): void {
               lastRecapRunDay = `${dayKey}:${u.id}`;
             } catch (e: any) {
               console.error(`[recap-cron] user=${u.id}:`, e?.message || e);
+            }
+          }
+          // Avis Google — tourne à la même heure que le récap, 1×/jour
+          if (hour === recapHour && lastReviewRunDay !== `${dayKey}:${u.id}` && (u as any).reviewRequestEnabled) {
+            try {
+              const r = await sendReviewRequestsForUser(u);
+              if (r.sent || r.errors) {
+                console.log(`[review-cron] user=${u.id} sent=${r.sent} skipped=${r.skipped} errors=${r.errors}`);
+              }
+              lastReviewRunDay = `${dayKey}:${u.id}`;
+            } catch (e: any) {
+              console.error(`[review-cron] user=${u.id}:`, e?.message || e);
             }
           }
         }

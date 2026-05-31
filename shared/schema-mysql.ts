@@ -70,6 +70,9 @@ export const users = mysqlTable("users", {
   passwordResetToken: varchar("password_reset_token", { length: 128 }),
   passwordResetExpiresAt: bigint("password_reset_expires_at", { mode: "number" }),
   onboardingCompletedAt: bigint("onboarding_completed_at", { mode: "number" }),
+  // Avis Google — lien de dépôt d'avis + activation de l'envoi automatique
+  googleReviewUrl: varchar("google_review_url", { length: 512 }),
+  reviewRequestEnabled: boolean("review_request_enabled").notNull().default(false),
 });
 
 // ─── Invoices ──────────────────────────────────────────────────────────────────
@@ -184,6 +187,8 @@ export const appointments = mysqlTable("appointments", {
   paymentAmountCents: int("payment_amount_cents").default(0),
   source: varchar("source", { length: 20 }).default("manual"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  // Avis Google — timestamp d'envoi de la demande (idempotence)
+  reviewEmailSentAt: bigint("review_email_sent_at", { mode: "number" }),
 });
 
 // ─── Consultation notes ───────────────────────────────────────────────────────

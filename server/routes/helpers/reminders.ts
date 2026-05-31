@@ -6,8 +6,8 @@
  */
 
 import {
-  sendEmail, renderReminderEmail, renderRecapEmail, formatRdvDate,
-  type RecapAppointmentRow,
+  sendEmail, renderReminderEmail, renderRecapEmail, renderReviewRequestEmail,
+  formatRdvDate, type RecapAppointmentRow,
 } from "../../email";
 import { renderUserTemplate } from "../../email-templates/render-user";
 import type { TemplateVars } from "../../email-templates/render";
@@ -209,4 +209,58 @@ export async function sendDailyRecapForUser(user: any): Promise<{ ok: boolean; r
   if (r.ok) return { ok: true, sent: rows.length };
   console.error(`[recap] failed user=${user.id}: ${r.error}`);
   return { ok: false, reason: r.error };
+}
+
+/**
+ * Envoie les demandes d'avis Google pour un user donné.
+ * Cible : RDV terminés depuis ≥ 2 jours, avec email client, reviewEmailSentAt null.
+ * Idempotent via reviewEmailSentAt.
+ */
+export async function sendReviewRequestsForUser(user: any): Promise<{ sent: number; skipped: number; errors: number }> {
+  const out = { sent: 0, skipped: 0, errors: 0 };
+
+  // Conditions préalables
+  if (!user.reviewRequestEnabled) return out;
+  if (!user.googleReviewUrl) return out;
+  const cfg = getEmailConfigForUser(user);
+  if (!cfg) return out;
+
+  // beforeMs = maintenant - 2 jours
+  const beforeMs = Date.now() - 2 * 86400000;
+  const appts = await storage.listAppointmentsForReviewRequest(user.id, beforeMs);
+
+  for (const a of appts) {
+    try {
+      // Résoudre l'email du client
+      let clientEmail = a.clientEmail || null;
+      let clientFirstName = a.clientFirstName || "";
+      if (a.clientId) {
+        const c = await storage.getClient(a.clientId);
+        if (c) {
+          clientEmail = c.email || clientEmail;
+          clientFirstName = c.firstName || clientFirstName;
+        }
+      }
+      if (!clientEmail) { out.skipped++; continue; }
+
+      const { subject, html, text } = renderReviewRequestEmail({
+        clientFirstName: clientFirstName || "cher(e) client(e)",
+        practitionerName: user.name || user.email || "",
+        googleReviewUrl: user.googleReviewUrl,
+      });
+
+      const res = await sendEmail(cfg, clientEmail, subject, html, text);
+      if (res.ok) {
+        await storage.updateAppointment(a.id, { reviewEmailSentAt: Date.now() } as any);
+        out.sent++;
+      } else {
+        out.errors++;
+        console.error(`[review-request] failed user=${user.id} appt=${a.id}: ${res.error}`);
+      }
+    } catch (e: any) {
+      out.errors++;
+      console.error(`[review-request] exception user=${user.id} appt=${a.id}:`, e);
+    }
+  }
+  return out;
 }

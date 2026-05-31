@@ -365,6 +365,15 @@ if (DB_DRIVER !== "mysql") {
   for (const col of socialCols) {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
   }
+  // Avis Google — colonnes sur users et appointments (best-effort migration SQLite)
+  const reviewUserCols = [
+    "google_review_url TEXT",
+    "review_request_enabled INTEGER DEFAULT 0",
+  ];
+  for (const col of reviewUserCols) {
+    try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
+  }
+  try { raw.exec(`ALTER TABLE appointments ADD COLUMN review_email_sent_at INTEGER`); } catch { /* already exists */ }
   raw.close();
 }
 
@@ -461,6 +470,10 @@ if (DB_DRIVER === "mysql") {
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL
       )`,
+      // Avis Google — nouvelles colonnes
+      "ALTER TABLE users ADD COLUMN google_review_url VARCHAR(512) NULL",
+      "ALTER TABLE users ADD COLUMN review_request_enabled TINYINT(1) NOT NULL DEFAULT 0",
+      "ALTER TABLE appointments ADD COLUMN review_email_sent_at BIGINT NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -609,6 +622,9 @@ export interface IStorage {
 
   // Phase 3 — Reminders log
   listAppointmentsForReminderLog(userId: number, fromTs: number, toTs: number): Promise<Appointment[]>;
+
+  // Avis Google — RDV passés depuis ≥ 2j sans demande d'avis envoyée
+  listAppointmentsForReviewRequest(userId: number, beforeMs: number): Promise<Appointment[]>;
 
   // Invoices
   listInvoices(userId: number, opts?: { status?: string; from?: number; to?: number; clientId?: number }): Promise<Invoice[]>;
@@ -1052,6 +1068,24 @@ export class DatabaseStorage implements IStorage {
         ),
       )
       .orderBy(desc(appointments.startAt));
+  }
+
+  /** RDV terminés (status='completed' ou endAt passé) depuis ≥ beforeMs, sans demande d'avis déjà envoyée. */
+  async listAppointmentsForReviewRequest(userId: number, beforeMs: number): Promise<Appointment[]> {
+    const rows = await db
+      .select()
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.userId, userId),
+          lte(appointments.endAt, beforeMs),
+        ),
+      );
+    return rows.filter((a: any) =>
+      (a.status === "completed" || (a.status !== "cancelled" && a.status !== "blocked")) &&
+      !a.reviewEmailSentAt &&
+      (a.clientEmail || a.clientId),
+    ) as Appointment[];
   }
 
   async nextInvoiceCounter(userId: number, year: number): Promise<number> {

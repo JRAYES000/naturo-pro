@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2 } from "lucide-react";
+import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,9 @@ export default function Settings() {
       billingLegalMention: data.user.billingLegalMention || "",
       billingPaymentTerms: data.user.billingPaymentTerms || "",
       autoInvoiceOnCompleted: !!data.user.autoInvoiceOnCompleted,
+      // Avis Google
+      googleReviewUrl: data.user.googleReviewUrl || "",
+      reviewRequestEnabled: !!data.user.reviewRequestEnabled,
     });
   }, [data]);
 
@@ -77,6 +80,7 @@ export default function Settings() {
       // Normaliser "" en null pour les champs nullable
       if (payload.emailFromAddress === "") payload.emailFromAddress = null;
       if (payload.emailFromName === "") payload.emailFromName = null;
+      if (payload.googleReviewUrl === "") payload.googleReviewUrl = null;
       return apiRequest("PATCH", "/api/profile", payload);
     },
     onSuccess: () => {
@@ -495,6 +499,44 @@ export default function Settings() {
               checked={!!draft.autoInvoiceOnCompleted}
               onCheckedChange={(v) => setDraft({ ...draft, autoInvoiceOnCompleted: v })}
               data-testid="switch-auto-invoice"
+            />
+          </div>
+        </div>
+
+        {/* Avis Google */}
+        <div className="card-naturo space-y-4">
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5" style={{ color: "#1b4332" }} />
+            <h2 className="font-extrabold">Avis Google</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Envoyez automatiquement une demande d'avis Google à vos clientes 2 jours après leur rendez-vous.
+            Cela vous aide à gagner en visibilité en ligne.
+          </p>
+
+          <div>
+            <Label>Lien vers votre fiche Google (URL d'avis)</Label>
+            <Input
+              type="url"
+              placeholder="https://g.page/r/XXXXXXX/review"
+              value={draft.googleReviewUrl || ""}
+              onChange={(e) => setDraft({ ...draft, googleReviewUrl: e.target.value })}
+              data-testid="input-google-review-url"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Trouvez ce lien dans votre Google Business Profile → « Obtenir plus d'avis ».
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between border-t pt-4">
+            <div>
+              <p className="font-medium">Envoyer une demande d'avis après le RDV</p>
+              <p className="text-sm text-muted-foreground">Email automatique envoyé 2 jours après chaque rendez-vous terminé.</p>
+            </div>
+            <Switch
+              checked={!!draft.reviewRequestEnabled}
+              onCheckedChange={(v) => setDraft({ ...draft, reviewRequestEnabled: v })}
+              data-testid="switch-review-request"
             />
           </div>
         </div>

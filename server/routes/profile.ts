@@ -55,6 +55,9 @@ export function registerProfileRoutes(app: Express): void {
     billingLegalMention: z.string().nullable().optional(),
     billingPaymentTerms: z.string().nullable().optional(),
     autoInvoiceOnCompleted: z.boolean().optional(),
+    // Avis Google
+    googleReviewUrl: z.string().url().nullable().optional(),
+    reviewRequestEnabled: z.boolean().optional(),
   });
 
   app.patch("/api/profile", requireAuth, async (req: AuthedRequest, res) => {

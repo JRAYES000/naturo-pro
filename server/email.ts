@@ -351,6 +351,44 @@ export function renderClientCancellationEmail(opts: {
   return { subject, html, text };
 }
 
+// ─── Template : Demande d'avis Google ────────────────────────────────────────
+export interface ReviewRequestTemplateData {
+  clientFirstName: string;
+  practitionerName: string;
+  googleReviewUrl: string;
+}
+
+export function renderReviewRequestEmail(d: ReviewRequestTemplateData): { subject: string; html: string; text: string } {
+  const subject = `Votre avis compte beaucoup pour ${escapeHtml(d.practitionerName)}`;
+  const body = `
+    <h1>Bonjour ${escapeHtml(d.clientFirstName)},</h1>
+    <p>Merci d'avoir pris le temps de me consulter. J'espère que notre séance vous a été utile et bénéfique.</p>
+    <p>Si vous en avez envie, un avis Google m'aiderait vraiment à faire connaître mon cabinet et à accompagner de nouveaux clients sur leur chemin de santé naturelle.</p>
+    <p>Cela ne prend que 2 minutes et fait vraiment la différence — merci infiniment !</p>
+    <div class="btn-row">
+      <a href="${escapeHtml(d.googleReviewUrl)}" class="btn btn-primary">Laisser un avis Google</a>
+    </div>
+    <p style="font-size:13px;color:#6b7a76;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br><span style="word-break:break-all;">${escapeHtml(d.googleReviewUrl)}</span></p>
+    <h2>À bientôt,</h2>
+    <p style="margin-top:0;">${escapeHtml(d.practitionerName)}</p>
+  `;
+  const html = emailShell(subject, body, "Email automatique — Naturo Pro");
+  const text = [
+    `Bonjour ${d.clientFirstName},`,
+    ``,
+    `Merci d'avoir pris le temps de me consulter. J'espère que notre séance vous a été utile.`,
+    ``,
+    `Si vous en avez envie, un avis Google m'aiderait vraiment à faire connaître mon cabinet :`,
+    d.googleReviewUrl,
+    ``,
+    `Merci infiniment !`,
+    ``,
+    `À bientôt,`,
+    d.practitionerName,
+  ].join("\n");
+  return { subject, html, text };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM EMAILS — Phase 3 Lot 1 (signup confirmation, password reset)
 // Utilise RESEND_API_KEY système (pas la clé personnelle de la praticienne).

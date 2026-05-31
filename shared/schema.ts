@@ -60,6 +60,9 @@ export const users = sqliteTable("users", {
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiresAt: integer("password_reset_expires_at"),
   onboardingCompletedAt: integer("onboarding_completed_at"),
+  // Avis Google — lien de dépôt d'avis + activation de l'envoi automatique
+  googleReviewUrl: text("google_review_url"),
+  reviewRequestEnabled: integer("review_request_enabled", { mode: "boolean" }).default(false),
 });
 
 // Invoices
@@ -172,6 +175,8 @@ export const appointments = sqliteTable("appointments", {
   // Origine du RDV : manual (saisi dans Naturo) | google (importé de Google Calendar) | public (book public)
   source: text("source").default("manual"),
   createdAt: integer("created_at").notNull(),
+  // Avis Google — timestamp d'envoi de la demande (idempotence)
+  reviewEmailSentAt: integer("review_email_sent_at"),
 });
 
 // Consultation notes
