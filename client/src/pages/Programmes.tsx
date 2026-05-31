@@ -70,15 +70,43 @@ interface ProgramEditorProps {
   onClose: () => void;
 }
 
+// 4 sections pré-remplies avec des exemples de conseils (modifiables/supprimables)
+// pour ne pas partir d'une feuille blanche. Conseils succincts (≤ 3 phrases),
+// inspirés des programmes d'hygiène de vie naturopathiques courants.
+function defaultSections(): ProgramSection[] {
+  return [
+    { section: "Alimentation", items: [
+      "Privilégiez une assiette riche en légumes (crus et cuits) à chaque repas et réduisez les sucres raffinés et les produits ultra-transformés.",
+      "Intégrez de bonnes graisses, notamment des oméga-3 (poissons gras, huiles de colza et de lin, noix).",
+      "Mangez dans le calme, en mâchant lentement et à horaires réguliers, pour soutenir la digestion.",
+    ] },
+    { section: "Phytothérapie", items: [
+      "En soirée, une infusion de camomille ou de mélisse aide à apaiser le système nerveux et à faciliter la digestion.",
+      "Les plantes de soutien s'utilisent en cure progressive de 2 à 3 semaines.",
+      "À adapter au terrain : demandez conseil en cas de grossesse, d'allaitement ou de traitement médicamenteux.",
+    ] },
+    { section: "Activité physique", items: [
+      "Visez 20 à 30 minutes de marche par jour, idéalement à l'extérieur et à la lumière naturelle.",
+      "Ajoutez 1 à 2 séances douces par semaine (yoga, étirements, renforcement léger) selon vos capacités.",
+      "Bougez régulièrement dans la journée plutôt que de façon intense et ponctuelle.",
+    ] },
+    { section: "Gestion du stress", items: [
+      "Accordez-vous 10 à 20 minutes par jour de pratique apaisante : cohérence cardiaque, respiration, méditation ou sophrologie.",
+      "Préservez votre sommeil : couchez-vous avant 23h et éteignez les écrans au moins 1h avant.",
+      "Identifiez les sources de stress évitables et limitez-les progressivement.",
+    ] },
+  ];
+}
+
 function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
   const { toast } = useToast();
   const isNew = !initial;
 
-  const [title, setTitle] = useState(initial?.title ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "Programme d'hygiène de vie");
   const [clientId, setClientId] = useState<string>(initial?.clientId ? String(initial.clientId) : "none");
   const [status, setStatus] = useState<"draft" | "sent">(initial?.status ?? "draft");
   const [sections, setSections] = useState<ProgramSection[]>(
-    initial ? parseSections(initial.content) : [],
+    initial ? parseSections(initial.content) : defaultSections(),
   );
 
   // Gestionnaire de sections

@@ -56,6 +56,25 @@ function newQuestion(): Question {
   return { id: crypto.randomUUID(), label: "", type: "text", required: false };
 }
 
+// 5 questions d'anamnèse pré-remplies (modifiables/supprimables) pour ne pas
+// partir d'une feuille blanche. Couvre les piliers d'un bilan de vitalité :
+// motif, antécédents, alimentation/digestion, sommeil/énergie, stress/hygiène de vie.
+function defaultQuestions(): Question[] {
+  const labels = [
+    "Quel est le motif principal de votre consultation et quels sont vos objectifs de santé ?",
+    "Quels sont vos antécédents médicaux personnels et familiaux ? Suivez-vous un traitement ou prenez-vous des compléments actuellement ?",
+    "Décrivez une journée alimentaire type (repas, boissons, grignotages). Comment se passent votre digestion et votre transit (ballonnements, lourdeurs, régularité) ?",
+    "Comment qualifieriez-vous votre sommeil (durée, endormissement, réveils nocturnes) et votre niveau d'énergie au cours de la journée ?",
+    "Comment évaluez-vous votre niveau de stress et votre gestion des émotions ? Quelle est votre activité physique, et votre consommation de tabac, d'alcool ou d'excitants ?",
+  ];
+  return labels.map((label, i) => ({
+    id: crypto.randomUUID(),
+    label,
+    type: "textarea" as QuestionType,
+    required: i === 0,
+  }));
+}
+
 const TYPE_LABELS: Record<QuestionType, string> = {
   text: "Texte court",
   textarea: "Texte long",
@@ -273,7 +292,9 @@ function TemplateDialog({ open, editing, onClose }: {
 
   if (open && !initialized) {
     if (editing === "new") {
-      setName(""); setDescription(""); setQuestions([]);
+      setName("Anamnèse — première consultation");
+      setDescription("Questionnaire à remplir avant le premier rendez-vous.");
+      setQuestions(defaultQuestions());
     } else if (editing) {
       setName(editing.name);
       setDescription(editing.description ?? "");
