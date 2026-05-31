@@ -2,6 +2,7 @@ import {
   mysqlTable,
   varchar,
   text,
+  longtext,
   int,
   boolean,
   bigint,
@@ -221,6 +222,53 @@ export const emailTemplates = mysqlTable("email_templates", {
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
 
+// ─── Lot métier (Phase 0) — Anamnèse, Programmes, Documents ───────────────────
+export const anamnesisTemplates = mysqlTable("anamnesis_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  questions: text("questions").notNull(), // JSON
+  isActive: boolean("is_active").default(true),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+export const anamnesisResponses = mysqlTable("anamnesis_responses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  templateId: int("template_id"),
+  clientId: int("client_id"),
+  appointmentId: int("appointment_id"),
+  token: varchar("token", { length: 64 }).notNull(),
+  answers: text("answers"), // JSON
+  submittedAt: bigint("submitted_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const programs = mysqlTable("programs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  clientId: int("client_id").notNull(),
+  appointmentId: int("appointment_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // JSON
+  status: varchar("status", { length: 20 }).default("draft"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+export const clientDocuments = mysqlTable("client_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  clientId: int("client_id").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 128 }),
+  sizeBytes: int("size_bytes"),
+  dataBase64: longtext("data_base64").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 // ─── Insert schemas (same names as schema.ts so imports are swappable) ────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -231,6 +279,10 @@ export const insertNoteSchema = createInsertSchema(consultationNotes).omit({ id:
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });
 export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({ id: true });
+export const insertAnamnesisTemplateSchema = createInsertSchema(anamnesisTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAnamnesisResponseSchema = createInsertSchema(anamnesisResponses).omit({ id: true, createdAt: true });
+export const insertProgramSchema = createInsertSchema(programs).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;
@@ -252,6 +304,14 @@ export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+export type AnamnesisTemplate = typeof anamnesisTemplates.$inferSelect;
+export type InsertAnamnesisTemplate = z.infer<typeof insertAnamnesisTemplateSchema>;
+export type AnamnesisResponse = typeof anamnesisResponses.$inferSelect;
+export type InsertAnamnesisResponse = z.infer<typeof insertAnamnesisResponseSchema>;
+export type Program = typeof programs.$inferSelect;
+export type InsertProgram = z.infer<typeof insertProgramSchema>;
+export type ClientDocument = typeof clientDocuments.$inferSelect;
+export type InsertClientDocument = z.infer<typeof insertClientDocumentSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

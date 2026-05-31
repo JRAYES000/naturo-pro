@@ -200,6 +200,57 @@ export const sessions = sqliteTable("sessions", {
   expiresAt: integer("expires_at").notNull(),
 });
 
+// ─── Lot métier (Phase 0) — Anamnèse, Programmes, Documents ───────────────────
+// Anamnèse : modèles de questionnaires d'intake (questions = JSON).
+export const anamnesisTemplates = sqliteTable("anamnesis_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  questions: text("questions").notNull().default("[]"), // JSON: [{id,label,type,options?,required?}]
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+// Anamnèse : réponses d'une cliente (saisie via lien public par token).
+export const anamnesisResponses = sqliteTable("anamnesis_responses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  templateId: integer("template_id"),
+  clientId: integer("client_id"),
+  appointmentId: integer("appointment_id"),
+  token: text("token").notNull(), // lien public de saisie
+  answers: text("answers"), // JSON: { [questionId]: value }
+  submittedAt: integer("submitted_at"),
+  createdAt: integer("created_at").notNull(),
+});
+
+// Programmes d'hygiène de vie (protocole construit pour une cliente).
+export const programs = sqliteTable("programs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  clientId: integer("client_id").notNull(),
+  appointmentId: integer("appointment_id"),
+  title: text("title").notNull(),
+  content: text("content").notNull().default("[]"), // JSON: [{section,items[]}]
+  status: text("status").default("draft"), // draft | sent
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+// Documents attachés à une fiche cliente (stockés en base64).
+export const clientDocuments = sqliteTable("client_documents", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  clientId: integer("client_id").notNull(),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  dataBase64: text("data_base64").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -209,6 +260,10 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({ i
 export const insertNoteSchema = createInsertSchema(consultationNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });
+export const insertAnamnesisTemplateSchema = createInsertSchema(anamnesisTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAnamnesisResponseSchema = createInsertSchema(anamnesisResponses).omit({ id: true, createdAt: true });
+export const insertProgramSchema = createInsertSchema(programs).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -228,6 +283,14 @@ export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+export type AnamnesisTemplate = typeof anamnesisTemplates.$inferSelect;
+export type InsertAnamnesisTemplate = z.infer<typeof insertAnamnesisTemplateSchema>;
+export type AnamnesisResponse = typeof anamnesisResponses.$inferSelect;
+export type InsertAnamnesisResponse = z.infer<typeof insertAnamnesisResponseSchema>;
+export type Program = typeof programs.$inferSelect;
+export type InsertProgram = z.infer<typeof insertProgramSchema>;
+export type ClientDocument = typeof clientDocuments.$inferSelect;
+export type InsertClientDocument = z.infer<typeof insertClientDocumentSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

@@ -32,6 +32,11 @@ export const invoices = activeSchema.invoices;
 export const invoiceItems = activeSchema.invoiceItems;
 // PHASE 3.5-C — Email templates
 export const emailTemplates = activeSchema.emailTemplates;
+// Lot métier (Phase 0)
+export const anamnesisTemplates = activeSchema.anamnesisTemplates;
+export const anamnesisResponses = activeSchema.anamnesisResponses;
+export const programs = activeSchema.programs;
+export const clientDocuments = activeSchema.clientDocuments;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -43,6 +48,10 @@ export const insertNoteSchema = activeSchema.insertNoteSchema;
 export const insertInvoiceSchema = activeSchema.insertInvoiceSchema;
 export const insertInvoiceItemSchema = activeSchema.insertInvoiceItemSchema;
 export const insertEmailTemplateSchema = activeSchema.insertEmailTemplateSchema;
+export const insertAnamnesisTemplateSchema = activeSchema.insertAnamnesisTemplateSchema;
+export const insertAnamnesisResponseSchema = activeSchema.insertAnamnesisResponseSchema;
+export const insertProgramSchema = activeSchema.insertProgramSchema;
+export const insertClientDocumentSchema = activeSchema.insertClientDocumentSchema;
 
 // Re-exports types : on importe toujours depuis le schéma SQLite pour les types
 // (ils sont identiques entre les deux schémas, et TypeScript a besoin d'imports
@@ -53,4 +62,8 @@ export type {
   ConsultationNote, InsertNote, Session,
   Invoice, InsertInvoice, InvoiceItem, InsertInvoiceItem,
   EmailTemplate, InsertEmailTemplate,
+  AnamnesisTemplate, InsertAnamnesisTemplate,
+  AnamnesisResponse, InsertAnamnesisResponse,
+  Program, InsertProgram,
+  ClientDocument, InsertClientDocument,
 } from "./schema";

@@ -225,6 +225,48 @@ if (DB_DRIVER !== "mysql") {
       updated_at INTEGER NOT NULL,
       UNIQUE(user_id, kind)
     );
+    CREATE TABLE IF NOT EXISTS anamnesis_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      questions TEXT NOT NULL DEFAULT '[]',
+      is_active INTEGER DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS anamnesis_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      template_id INTEGER,
+      client_id INTEGER,
+      appointment_id INTEGER,
+      token TEXT NOT NULL,
+      answers TEXT,
+      submitted_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS programs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      client_id INTEGER NOT NULL,
+      appointment_id INTEGER,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '[]',
+      status TEXT DEFAULT 'draft',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS client_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      client_id INTEGER NOT NULL,
+      filename TEXT NOT NULL,
+      mime_type TEXT,
+      size_bytes INTEGER,
+      data_base64 TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
   `);
   // PHASE 3.5-B — Manage token : colonnes appointments (best-effort migration SQLite)
   const apptMigCols = [
@@ -324,6 +366,49 @@ if (DB_DRIVER === "mysql") {
       "ALTER TABLE users ADD COLUMN website_url VARCHAR(255) NULL",
       // Visio — lien Google Meet généré automatiquement par Google Agenda
       "ALTER TABLE appointments ADD COLUMN google_meet_link VARCHAR(512) NULL",
+      // Lot métier (Phase 0) — création des tables si absentes (idempotent via IF NOT EXISTS)
+      `CREATE TABLE IF NOT EXISTS anamnesis_templates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        questions TEXT NOT NULL,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS anamnesis_responses (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        template_id INT,
+        client_id INT,
+        appointment_id INT,
+        token VARCHAR(64) NOT NULL,
+        answers TEXT,
+        submitted_at BIGINT,
+        created_at BIGINT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS programs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        client_id INT NOT NULL,
+        appointment_id INT,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'draft',
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS client_documents (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        client_id INT NOT NULL,
+        filename VARCHAR(255) NOT NULL,
+        mime_type VARCHAR(128),
+        size_bytes INT,
+        data_base64 LONGTEXT NOT NULL,
+        created_at BIGINT NOT NULL
+      )`,
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
