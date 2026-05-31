@@ -267,8 +267,8 @@ export default function PublicPageEditor() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 300 * 1024) {
-                          toast({ title: "Image trop lourde", description: "Maximum 300 Ko. Compressez l'image et réessayez.", variant: "destructive" });
+                        if (file.size > 1024 * 1024) {
+                          toast({ title: "Image trop lourde", description: "Maximum 1 Mo. Compressez l'image et réessayez.", variant: "destructive" });
                           e.target.value = "";
                           return;
                         }

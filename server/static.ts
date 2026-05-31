@@ -73,7 +73,8 @@ export function serveStatic(app: Express) {
       const url = `${proto}://${req.headers.host}/p/${u.slug}`;
       const seoHead = buildSeoHead(u as any, url);
       // Remplace le <title> existant + injecte les meta juste après.
-      html = html.replace(/<title>.*?<\/title>/s, seoHead);
+      // [\s\S] au lieu du flag /s (dotAll) — évite TS1501 sur target < es2018.
+      html = html.replace(/<title>[\s\S]*?<\/title>/, seoHead);
       res.set("Content-Type", "text/html; charset=utf-8").send(html);
     } catch {
       next(); // en cas d'erreur, on retombe sur le SPA standard
