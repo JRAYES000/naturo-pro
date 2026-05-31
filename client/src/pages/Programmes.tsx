@@ -159,7 +159,8 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col min-h-0 flex-1">
+      <div className="flex-1 overflow-y-auto space-y-5 px-6 py-4">
       {/* Titre */}
       <div className="space-y-1.5">
         <Label htmlFor="prog-title">Titre du programme</Label>
@@ -286,8 +287,10 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-2 pt-2">
+      </div>
+
+      {/* Actions — pied de page collant, toujours visible */}
+      <div className="shrink-0 flex justify-end gap-2 border-t px-6 py-3 bg-background">
         <Button type="button" variant="outline" onClick={onClose} className="rounded-[12px]">
           Annuler
         </Button>
@@ -481,8 +484,8 @@ export default function ProgrammesPage() {
 
       {/* Dialog éditeur */}
       <Dialog open={editing !== null} onOpenChange={open => { if (!open) setEditing(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
             <DialogTitle>
               {editing === "new" ? "Nouveau programme" : "Modifier le programme"}
             </DialogTitle>

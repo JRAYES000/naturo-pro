@@ -470,14 +470,16 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
         </div>
 
         <div className="flex-1 space-y-2">
-          <div className="flex gap-2">
-            <Input
-              className="flex-1"
-              placeholder={`Question ${index + 1}`}
-              value={question.label}
-              onChange={e => onChange({ label: e.target.value })}
-              data-testid={`input-question-label-${index}`}
-            />
+          <Textarea
+            className="w-full resize-y min-h-[3.5rem]"
+            rows={2}
+            placeholder={`Question ${index + 1}`}
+            value={question.label}
+            onChange={e => onChange({ label: e.target.value })}
+            data-testid={`input-question-label-${index}`}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Type de réponse :</span>
             <Select value={question.type} onValueChange={v => onChange({ type: v as QuestionType, options: undefined })}>
               <SelectTrigger className="w-44" data-testid={`select-question-type-${index}`}>
                 <SelectValue />
