@@ -20,6 +20,7 @@ import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
+  packages,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -29,6 +30,7 @@ import type {
   AnamnesisTemplate, InsertAnamnesisTemplate, AnamnesisResponse, InsertAnamnesisResponse,
   Program, InsertProgram, ClientDocument, InsertClientDocument,
   NaturalSolution, InsertNaturalSolution,
+  Package, InsertPackage,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
@@ -282,6 +284,18 @@ if (DB_DRIVER !== "mysql") {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS packages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      client_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      total_sessions INTEGER NOT NULL,
+      used_sessions INTEGER NOT NULL DEFAULT 0,
+      price_cents INTEGER DEFAULT 0,
+      notes TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
   // PHASE 3.5-B — Manage token : colonnes appointments (best-effort migration SQLite)
   const apptMigCols = [
@@ -432,6 +446,18 @@ if (DB_DRIVER === "mysql") {
         properties TEXT,
         contraindications TEXT,
         usage_notes TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS packages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        client_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        total_sessions INT NOT NULL,
+        used_sessions INT NOT NULL DEFAULT 0,
+        price_cents INT DEFAULT 0,
+        notes TEXT,
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL
       )`,
@@ -631,6 +657,13 @@ export interface IStorage {
   updateNaturalSolution(id: number, patch: Partial<NaturalSolution>): Promise<NaturalSolution | undefined>;
   deleteNaturalSolution(id: number): Promise<void>;
   countGlobalNaturalSolutions(): Promise<number>;
+
+  // Forfaits / carnets de séances
+  listPackages(userId: number, clientId?: number): Promise<Package[]>;
+  getPackage(id: number): Promise<Package | undefined>;
+  createPackage(data: InsertPackage & { userId: number }): Promise<Package>;
+  updatePackage(id: number, patch: Partial<Package>): Promise<Package | undefined>;
+  deletePackage(id: number): Promise<void>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1254,6 +1287,31 @@ export class DatabaseStorage implements IStorage {
   async countGlobalNaturalSolutions(): Promise<number> {
     const rows = await db.select({ id: naturalSolutions.id }).from(naturalSolutions).where(sql`${naturalSolutions.userId} IS NULL`);
     return rows.length;
+  }
+
+  // ── Forfaits / carnets de séances ──────────────────────────────────────────
+
+  async listPackages(userId: number, clientId?: number): Promise<Package[]> {
+    const conds = [eq(packages.userId, userId)];
+    if (clientId !== undefined) conds.push(eq(packages.clientId, clientId));
+    return db.select().from(packages).where(and(...conds)).orderBy(desc(packages.createdAt));
+  }
+
+  async getPackage(id: number): Promise<Package | undefined> {
+    return first(db.select().from(packages).where(eq(packages.id, id)));
+  }
+
+  async createPackage(data: InsertPackage & { userId: number }): Promise<Package> {
+    const now = Date.now();
+    return dbInsertReturning<Package>(packages, { ...data, createdAt: now, updatedAt: now });
+  }
+
+  async updatePackage(id: number, patch: Partial<Package>): Promise<Package | undefined> {
+    return dbUpdateReturning<Package>(packages, id, { ...patch, updatedAt: Date.now() });
+  }
+
+  async deletePackage(id: number): Promise<void> {
+    await db.delete(packages).where(eq(packages.id, id));
   }
 }
 

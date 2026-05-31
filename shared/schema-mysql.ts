@@ -269,6 +269,20 @@ export const clientDocuments = mysqlTable("client_documents", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
+// ─── Forfaits / carnets de séances prépayées ─────────────────────────────────
+export const packages = mysqlTable("packages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  clientId: int("client_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  totalSessions: int("total_sessions").notNull(),
+  usedSessions: int("used_sessions").notNull().default(0),
+  priceCents: int("price_cents").default(0),
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
 export const naturalSolutions = mysqlTable("natural_solutions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("user_id"),
@@ -296,6 +310,7 @@ export const insertAnamnesisResponseSchema = createInsertSchema(anamnesisRespons
 export const insertProgramSchema = createInsertSchema(programs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
 export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;
@@ -327,6 +342,8 @@ export type ClientDocument = typeof clientDocuments.$inferSelect;
 export type InsertClientDocument = z.infer<typeof insertClientDocumentSchema>;
 export type NaturalSolution = typeof naturalSolutions.$inferSelect;
 export type InsertNaturalSolution = z.infer<typeof insertNaturalSolutionSchema>;
+export type Package = typeof packages.$inferSelect;
+export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

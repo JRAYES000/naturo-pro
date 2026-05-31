@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard, Calendar, Users, Tag, Clock, Globe, Settings, LogOut, ExternalLink, Receipt, Shield, Bell, MailOpen, ClipboardList, FileText, BarChart2, Leaf,
+  LayoutDashboard, Calendar, Users, Tag, Clock, Globe, Settings, LogOut, ExternalLink, Receipt, Shield, Bell, MailOpen, ClipboardList, FileText, BarChart2, Leaf, Ticket,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { TrialBanner } from "./TrialBanner";
@@ -21,6 +21,7 @@ const NAV = [
   { href: "/app/email-templates", label: "Templates email", icon: MailOpen },
   { href: "/app/anamnese", label: "Anamnèses", icon: ClipboardList },
   { href: "/app/programmes", label: "Programmes", icon: FileText },
+  { href: "/app/forfaits", label: "Forfaits", icon: Ticket },
   { href: "/app/solutions", label: "Bibliothèque de référence", icon: Leaf },
   { href: "/app/stats", label: "Statistiques", icon: BarChart2 },
   { href: "/app/settings", label: "Paramètres", icon: Settings },

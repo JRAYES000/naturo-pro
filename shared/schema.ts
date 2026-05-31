@@ -251,6 +251,20 @@ export const clientDocuments = sqliteTable("client_documents", {
   createdAt: integer("created_at").notNull(),
 });
 
+// Forfaits / carnets de séances prépayées
+export const packages = sqliteTable("packages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  clientId: integer("client_id").notNull(),
+  name: text("name").notNull(),
+  totalSessions: integer("total_sessions").notNull(),
+  usedSessions: integer("used_sessions").notNull().default(0),
+  priceCents: integer("price_cents").default(0),
+  notes: text("notes"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // Base de solutions naturelles (catalogue de référence : plantes, HE, compléments…)
 // userId null = entrée globale fournie par l'app ; non-null = entrée perso du praticien.
 export const naturalSolutions = sqliteTable("natural_solutions", {
@@ -279,6 +293,7 @@ export const insertAnamnesisResponseSchema = createInsertSchema(anamnesisRespons
 export const insertProgramSchema = createInsertSchema(programs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
 export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -308,6 +323,8 @@ export type ClientDocument = typeof clientDocuments.$inferSelect;
 export type InsertClientDocument = z.infer<typeof insertClientDocumentSchema>;
 export type NaturalSolution = typeof naturalSolutions.$inferSelect;
 export type InsertNaturalSolution = z.infer<typeof insertNaturalSolutionSchema>;
+export type Package = typeof packages.$inferSelect;
+export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

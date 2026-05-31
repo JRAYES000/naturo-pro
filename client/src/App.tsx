@@ -32,6 +32,7 @@ import Anamnese from "@/pages/Anamnese";
 import AnamnesePublic from "@/pages/AnamnesePublic";
 import Programmes from "@/pages/Programmes";
 import Solutions from "@/pages/Solutions";
+import Packages from "@/pages/Packages";
 import Stats from "@/pages/Stats";
 import BookingManage from "@/pages/BookingManage";
 // Phase 3 Lot 4 — admin
@@ -72,6 +73,7 @@ function AppRouter() {
       <Route path="/app/anamnese" component={() => <ProtectedRoute><Anamnese /></ProtectedRoute>} />
       <Route path="/app/programmes" component={() => <ProtectedRoute><Programmes /></ProtectedRoute>} />
       <Route path="/app/solutions" component={() => <ProtectedRoute><Solutions /></ProtectedRoute>} />
+      <Route path="/app/forfaits" component={() => <ProtectedRoute><Packages /></ProtectedRoute>} />
       <Route path="/app/stats" component={() => <ProtectedRoute><Stats /></ProtectedRoute>} />
 
       {/* Phase 3 Lot 4 — admin (le 403 backend renvoie un message géré dans la page) */}

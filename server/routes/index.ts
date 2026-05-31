@@ -36,6 +36,7 @@ import { registerProgrammeRoutes } from "./programmes";
 import { registerDocumentRoutes } from "./documents";
 import { registerStatsRoutes } from "./stats";
 import { registerSolutionRoutes } from "./solutions";
+import { registerPackageRoutes } from "./packages";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -132,6 +133,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerDocumentRoutes(app);
   registerStatsRoutes(app);
   registerSolutionRoutes(app);
+  registerPackageRoutes(app);
 
   startCrons();
 
