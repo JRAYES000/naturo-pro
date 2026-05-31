@@ -2,8 +2,14 @@
  * server/email-templates/defaults.ts — PHASE 3.5-C
  *
  * Templates par défaut pour les 3 types d'emails de RDV.
- * Utilise les mêmes styles inline que les emails existants dans server/email.ts.
- * Les variables {{x.y}} seront interpolées au moment de l'envoi par render.ts.
+ *
+ * Depuis l'éditeur visuel (option C) : le bodyHtml par défaut est un FRAGMENT
+ * (contenu central uniquement, sans <html>/<style>). L'ossature complète (styles,
+ * carte, pied de page) est ajoutée à l'envoi par renderTemplate via emailShell().
+ * Les anciens templates custom stockés en full HTML restent rendus tels quels
+ * (détection dans render.ts) — rétrocompatibilité totale.
+ *
+ * Les variables {{x.y}} sont interpolées au moment de l'envoi par render.ts.
  */
 
 export type EmailKind = "confirmation" | "reminder_d1" | "cancellation";
@@ -30,7 +36,12 @@ const BASE_STYLES = `
   .footer { font-size: 12px; color: #6b7a76; text-align: center; margin-top: 24px; padding: 12px; }
 `;
 
-function emailShell(title: string, bodyHtml: string): string {
+/**
+ * Emballe un fragment de contenu central dans l'ossature email complète
+ * (doctype, styles, carte, pied de page). Exporté pour être réutilisé par
+ * render.ts (emballage des fragments au moment du rendu).
+ */
+export function emailShell(title: string, bodyHtml: string): string {
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><title>${title}</title>
 <style>${BASE_STYLES}</style>
@@ -42,12 +53,20 @@ function emailShell(title: string, bodyHtml: string): string {
 </body></html>`;
 }
 
+/**
+ * Détecte si un bodyHtml est un document complet (ancien format) plutôt qu'un
+ * fragment. Un fragment ne contient ni <html> ni <!doctype>.
+ */
+export function isFullHtmlDocument(bodyHtml: string): boolean {
+  return /<html[\s>]/i.test(bodyHtml) || /<!doctype/i.test(bodyHtml);
+}
+
+// ─── Fragments par défaut (contenu central éditable) ─────────────────────────
+
 // ─── Confirmation de RDV ──────────────────────────────────────────────────────
 const confirmationSubject = "Confirmation de votre rendez-vous du {{appointment.date}}";
 
-const confirmationBody = emailShell(
-  "Confirmation de votre rendez-vous",
-  `
+const confirmationBody = `
   <h1>Bonjour {{client.name}},</h1>
   <p>Votre rendez-vous est bien confirmé. Nous nous réjouissons de vous accueillir !</p>
 
@@ -68,17 +87,14 @@ const confirmationBody = emailShell(
   <h2>À bientôt,</h2>
   <p>{{practitioner.name}}<br>
   <a href="mailto:{{practitioner.email}}" style="color:#186749;">{{practitioner.email}}</a></p>
-`,
-);
+`;
 
 // ─── Rappel J-1 ──────────────────────────────────────────────────────────────
 const reminderD1Subject = "Rappel : votre rendez-vous demain à {{appointment.time}}";
 
-const reminderD1Body = emailShell(
-  "Rappel de votre rendez-vous demain",
-  `
+const reminderD1Body = `
   <h1>Bonjour {{client.name}},</h1>
-  <p>Petit rappel : nous nous voyons <strong>demain</strong> pour votre rendez-vous.</p>
+  <p>Petit rappel : vous avez rendez-vous <strong>demain</strong>.</p>
 
   <div class="info">
     <p><strong>Date</strong> : {{appointment.date}}</p>
@@ -88,41 +104,36 @@ const reminderD1Body = emailShell(
     {{#if appointment.address}}<p><strong>Adresse</strong> : {{appointment.address}}</p>{{/if}}
   </div>
 
-  <p>Pouvez-vous me confirmer votre présence ?</p>
+  <p>Merci de bien vouloir confirmer votre présence.</p>
 
   <div class="btn-row">
     <a href="{{cancelLink}}" class="btn btn-secondary">Annuler le rendez-vous</a>
   </div>
 
-  <h2>À très vite,</h2>
+  <h2>À bientôt,</h2>
   <p>{{practitioner.name}}<br>
   <a href="mailto:{{practitioner.email}}" style="color:#186749;">{{practitioner.email}}</a></p>
-`,
-);
+`;
 
-// ─── Annulation de RDV (notification au praticien) ───────────────────────────
-const cancellationSubject = "Annulation : RDV de {{client.name}} le {{appointment.date}}";
+// ─── Annulation ──────────────────────────────────────────────────────────────
+const cancellationSubject = "Annulation de votre rendez-vous du {{appointment.date}}";
 
-const cancellationBody = emailShell(
-  "Annulation d'un rendez-vous",
-  `
-  <h1>Bonjour {{practitioner.name}},</h1>
-  <p>Le client <strong>{{client.name}}</strong> vient d'annuler son rendez-vous via le lien d'annulation envoyé par email.</p>
+const cancellationBody = `
+  <h1>Bonjour {{client.name}},</h1>
+  <p>Votre rendez-vous a bien été annulé.</p>
 
   <div class="info">
-    <p><strong>Client</strong> : {{client.name}}{{#if client.email}} ({{client.email}}){{/if}}</p>
-    <p><strong>Date annulée</strong> : {{appointment.date}}</p>
+    <p><strong>Date</strong> : {{appointment.date}}</p>
     <p><strong>Heure</strong> : {{appointment.time}}</p>
-    <p><strong>Durée</strong> : {{appointment.duration}}</p>
     <p><strong>Prestation</strong> : {{appointment.category}}</p>
-    {{#if appointment.address}}<p><strong>Adresse</strong> : {{appointment.address}}</p>{{/if}}
   </div>
 
-  <p>Le créneau est désormais à nouveau disponible dans votre agenda.</p>
+  <p>N'hésitez pas à reprendre rendez-vous quand vous le souhaitez.</p>
 
-  <p style="font-size:13px;color:#6b7a76;margin-top:20px;">Email automatique envoyé par Naturo Pro.</p>
-`,
-);
+  <h2>À bientôt,</h2>
+  <p>{{practitioner.name}}<br>
+  <a href="mailto:{{practitioner.email}}" style="color:#186749;">{{practitioner.email}}</a></p>
+`;
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 export const DEFAULT_TEMPLATES: Record<EmailKind, EmailTemplateDefault> = {

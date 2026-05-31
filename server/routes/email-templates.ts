@@ -70,6 +70,18 @@ export function registerEmailTemplateRoutes(app: Express): void {
   });
 
   /**
+   * GET /api/email-templates/:kind/default
+   * Retourne TOUJOURS le modèle par défaut (fragment), peu importe le custom
+   * enregistré. Sert au bouton « Réinitialiser au modèle par défaut ».
+   */
+  app.get("/api/email-templates/:kind/default", requireAuth, async (req: AuthedRequest, res) => {
+    const kind = req.params.kind;
+    if (!isValidKind(kind)) return res.status(400).json({ message: "kind invalide" });
+    const def = getDefaultTemplate(kind);
+    res.json({ subject: def.subject, bodyHtml: def.bodyHtml });
+  });
+
+  /**
    * PUT /api/email-templates/:kind
    * Upsert (crée ou met à jour) un template pour l'utilisateur connecté.
    * Body: { subject: string, bodyHtml: string }
@@ -106,12 +118,18 @@ export function registerEmailTemplateRoutes(app: Express): void {
       const user = await storage.getUserById(userId);
       if (!user) return res.status(401).json({ message: "Non autorisé" });
 
-      // Récupère le template (custom ou défaut)
+      // Si le client fournit un brouillon (subject/bodyHtml), on prévisualise
+      // CELUI-CI (modifications en cours, non encore enregistrées). Sinon, on
+      // retombe sur le template sauvé, puis le défaut.
+      const draftSubject = typeof req.body?.subject === "string" ? req.body.subject : null;
+      const draftBody = typeof req.body?.bodyHtml === "string" ? req.body.bodyHtml : null;
       const saved = await storage.getEmailTemplate(userId, kind);
-      const template = saved ?? {
-        subject: getDefaultTemplate(kind).subject,
-        bodyHtml: getDefaultTemplate(kind).bodyHtml,
-      };
+      const template = (draftSubject !== null && draftBody !== null)
+        ? { subject: draftSubject, bodyHtml: draftBody }
+        : saved ?? {
+            subject: getDefaultTemplate(kind).subject,
+            bodyHtml: getDefaultTemplate(kind).bodyHtml,
+          };
 
       // Données fictives par défaut
       let vars: Parameters<typeof renderTemplate>[1] = {

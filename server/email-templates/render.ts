@@ -5,6 +5,8 @@
  * Sécurité XSS : les valeurs interpolées sont échappées côté HTML.
  */
 
+import { emailShell, isFullHtmlDocument } from "./defaults";
+
 export interface TemplateVars {
   "client.name"?: string;
   "client.email"?: string;
@@ -71,8 +73,11 @@ export function renderTemplate(
   template: { subject: string; bodyHtml: string },
   vars: TemplateVars,
 ): RenderedTemplate {
-  return {
-    subject: interpolate(template.subject, vars),
-    html: interpolate(template.bodyHtml, vars),
-  };
+  const subject = interpolate(template.subject, vars);
+  const body = interpolate(template.bodyHtml, vars);
+  // Nouveau format (option C) : bodyHtml est un FRAGMENT → on l'emballe dans
+  // l'ossature email complète (styles + carte + pied de page). Ancien format
+  // custom (document HTML complet) → utilisé tel quel (rétrocompatibilité).
+  const html = isFullHtmlDocument(template.bodyHtml) ? body : emailShell(subject, body);
+  return { subject, html };
 }

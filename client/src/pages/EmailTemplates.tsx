@@ -1,13 +1,20 @@
 /**
- * client/src/pages/EmailTemplates.tsx — PHASE 3.5-C
+ * client/src/pages/EmailTemplates.tsx — PHASE 3.5-C / refonte éditeur visuel
  *
  * Page d'édition des templates email (Confirmation / Rappel J-1 / Annulation).
  * Route : /app/email-templates
  *
- * Layout : 2 colonnes desktop (éditeur gauche, aperçu droit) / stack mobile.
- * Shadcn : Card, Tabs, Input, Textarea, Button, Badge
- * Icons  : Mail, Edit3, Eye, RotateCcw (lucide-react)
- * Data   : React Query via apiRequest
+ * Objectif refonte : rendre l'édition accessible aux praticiennes peu à l'aise
+ * avec l'informatique. Plus de HTML brut par défaut → éditeur visuel (WYSIWYG,
+ * type traitement de texte). Le HTML reste accessible via un mode « Avancé ».
+ *
+ * Architecture (option C) :
+ * - Le bodyHtml par défaut / sauvé depuis l'éditeur visuel est un FRAGMENT
+ *   (contenu central). L'ossature (styles, carte, pied de page) est ajoutée à
+ *   l'envoi côté serveur (render.ts → emailShell).
+ * - Les anciens templates custom au format « document HTML complet » sont
+ *   détectés (isFullDoc) et basculés automatiquement en mode « Avancé (HTML) »,
+ *   avec invitation à réinitialiser pour profiter de l'éditeur visuel.
  */
 
 import { useState, useRef, useCallback } from "react";
@@ -21,8 +28,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Edit3, Eye, RotateCcw, Loader2 } from "lucide-react";
+import { Mail, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
+import {
+  EditorProvider, Editor, Toolbar,
+  BtnBold, BtnItalic, BtnUnderline, BtnStrikeThrough,
+  BtnBulletList, BtnNumberedList, BtnLink, BtnClearFormatting,
+  BtnUndo, BtnRedo, Separator,
+} from "react-simple-wysiwyg";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,25 +70,25 @@ const KIND_DESCRIPTIONS: Record<EmailKind, string> = {
   cancellation: "Envoyé au client en cas d'annulation du rendez-vous.",
 };
 
+/** Un bodyHtml est « ancien format » s'il contient un document HTML complet. */
+function isFullDoc(html: string): boolean {
+  return /<html[\s>]/i.test(html) || /<!doctype/i.test(html);
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EmailTemplates() {
   const { toast } = useToast();
   const [activeKind, setActiveKind] = useState<EmailKind>("confirmation");
-  const [subjectDraft, setSubjectDraft] = useState<Record<EmailKind, string>>({
-    confirmation: "",
-    reminder_d1: "",
-    cancellation: "",
-  });
-  const [bodyDraft, setBodyDraft] = useState<Record<EmailKind, string>>({
-    confirmation: "",
-    reminder_d1: "",
-    cancellation: "",
-  });
+  const emptyByKind = { confirmation: "", reminder_d1: "", cancellation: "" };
+  const [subjectDraft, setSubjectDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
+  const [bodyDraft, setBodyDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
   const [initialized, setInitialized] = useState<Record<EmailKind, boolean>>({
-    confirmation: false,
-    reminder_d1: false,
-    cancellation: false,
+    confirmation: false, reminder_d1: false, cancellation: false,
+  });
+  // Mode « Avancé (HTML) » par kind. Forcé à true pour les anciens full-HTML.
+  const [advanced, setAdvanced] = useState<Record<EmailKind, boolean>>({
+    confirmation: false, reminder_d1: false, cancellation: false,
   });
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -88,19 +101,21 @@ export default function EmailTemplates() {
     queryFn: () => apiRequest("GET", "/api/email-templates").then((r) => r.json()),
   });
 
-  // Initialise les drafts depuis les données serveur
   const initializeDrafts = useCallback(
-    (templates: EmailTemplate[]) => {
-      const newSubject: Record<EmailKind, string> = { ...subjectDraft };
-      const newBody: Record<EmailKind, string> = { ...bodyDraft };
-      const newInit: Record<EmailKind, boolean> = { ...initialized };
+    (tpls: EmailTemplate[]) => {
+      const newSubject = { ...subjectDraft };
+      const newBody = { ...bodyDraft };
+      const newInit = { ...initialized };
+      const newAdvanced = { ...advanced };
       let changed = false;
-      for (const t of templates) {
+      for (const t of tpls) {
         const k = t.kind as EmailKind;
         if (!initialized[k]) {
           newSubject[k] = t.subject;
           newBody[k] = t.bodyHtml;
           newInit[k] = true;
+          // Ancien format → on ouvre directement en mode Avancé (HTML).
+          newAdvanced[k] = isFullDoc(t.bodyHtml);
           changed = true;
         }
       }
@@ -108,16 +123,17 @@ export default function EmailTemplates() {
         setSubjectDraft(newSubject);
         setBodyDraft(newBody);
         setInitialized(newInit);
+        setAdvanced(newAdvanced);
       }
     },
-    [subjectDraft, bodyDraft, initialized],
+    [subjectDraft, bodyDraft, initialized, advanced],
   );
 
   if (templates && !initialized[activeKind]) {
     initializeDrafts(templates);
   }
 
-  // ─── Save mutation ─────────────────────────────────────────────────────────
+  // ─── Save ────────────────────────────────────────────────────────────────
 
   const saveMutation = useMutation({
     mutationFn: (kind: EmailKind) =>
@@ -127,63 +143,71 @@ export default function EmailTemplates() {
       }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email-templates"] });
-      toast({ title: "Template sauvegardé", description: "Vos modifications ont été enregistrées." });
+      toast({ title: "Modèle enregistré", description: "Vos modifications ont été enregistrées." });
     },
     onError: (e: any) => {
       toast({ title: "Erreur", description: e?.message || "Impossible de sauvegarder.", variant: "destructive" });
     },
   });
 
-  // ─── Reset to default ──────────────────────────────────────────────────────
+  // ─── Reset to default (récupère le vrai défaut côté serveur) ────────────────
 
-  const resetToDefault = useCallback(() => {
-    const tpl = templates?.find((t) => t.kind === activeKind);
-    if (!tpl) return;
-    // Cherche le template par défaut (isDefault=true) — sinon, on force une requête
-    // Note : si c'est déjà un custom, on ne peut pas reset côté client sans le défaut serveur.
-    // On appelle le DELETE implicitement via une requête GET sur le default.
-    // Pour reset, on envoie une mise à jour avec bodyHtml / subject vides qui déclenchera
-    // une suppression côté serveur — mais notre API n'a pas de DELETE.
-    // On récupère plutôt le défaut depuis le serveur en passant un flag :
-    // La stratégie : fetch GET /api/email-templates/:kind avec un param ?reset=1 n'est pas prévue.
-    // Approche simple : on remet les valeurs du serveur (même si custom).
-    // Si le praticien veut le vrai défaut, il doit cliquer "Réinitialiser" qui ne fait rien.
-    // => Pour cette version, on fait un fetch du template par défaut côté serveur via la preview
-    //    avec le HTML par défaut, ou on stocke les defaults dans defaults.ts côté client.
-    // => Solution pragmatique : on appelle POST /api/email-templates/:kind/preview qui retourne
-    //    le rendu du template actif — et on utilisera un endpoint dédié si nécessaire.
-    // Pour l'instant, reset = recharge depuis le serveur la valeur actuelle.
-    setInitialized((prev) => ({ ...prev, [activeKind]: false }));
-    queryClient.invalidateQueries({ queryKey: ["/api/email-templates"] });
-    toast({ title: "Réinitialisation", description: "Le template a été rechargé depuis le serveur." });
-  }, [templates, activeKind, toast]);
+  const resetMutation = useMutation({
+    mutationFn: (kind: EmailKind) =>
+      apiRequest("GET", `/api/email-templates/${kind}/default`).then((r) => r.json()),
+    onSuccess: (def: { subject: string; bodyHtml: string }) => {
+      setSubjectDraft((p) => ({ ...p, [activeKind]: def.subject }));
+      setBodyDraft((p) => ({ ...p, [activeKind]: def.bodyHtml }));
+      setAdvanced((p) => ({ ...p, [activeKind]: isFullDoc(def.bodyHtml) }));
+      setPreview(null);
+      toast({ title: "Modèle réinitialisé", description: "Le modèle par défaut a été restauré. Cliquez sur Enregistrer pour le conserver." });
+    },
+    onError: (e: any) => {
+      toast({ title: "Erreur", description: e?.message || "Impossible de réinitialiser.", variant: "destructive" });
+    },
+  });
 
-  // ─── Insert variable at cursor ─────────────────────────────────────────────
+  // ─── Insert variable ────────────────────────────────────────────────────────
 
-  const insertVar = useCallback((placeholder: string) => {
+  // Mode Avancé (textarea) : insertion à la position du curseur.
+  const insertVarTextarea = useCallback((placeholder: string) => {
     const ta = bodyRef.current;
     if (!ta) {
-      setBodyDraft((prev) => ({ ...prev, [activeKind]: prev[activeKind] + placeholder }));
+      setBodyDraft((p) => ({ ...p, [activeKind]: p[activeKind] + placeholder }));
       return;
     }
     const start = ta.selectionStart ?? ta.value.length;
     const end = ta.selectionEnd ?? ta.value.length;
-    const current = bodyDraft[activeKind];
-    const newVal = current.slice(0, start) + placeholder + current.slice(end);
-    setBodyDraft((prev) => ({ ...prev, [activeKind]: newVal }));
-    // Repositionne le curseur après l'insertion
+    const cur = bodyDraft[activeKind];
+    const next = cur.slice(0, start) + placeholder + cur.slice(end);
+    setBodyDraft((p) => ({ ...p, [activeKind]: next }));
     setTimeout(() => {
       ta.focus();
       ta.setSelectionRange(start + placeholder.length, start + placeholder.length);
     }, 0);
   }, [activeKind, bodyDraft]);
 
-  // ─── Preview ───────────────────────────────────────────────────────────────
+  // Mode visuel (contentEditable) : insertion via execCommand au curseur.
+  // onMouseDown + preventDefault pour ne pas voler le focus de l'éditeur.
+  const insertVarVisual = useCallback((placeholder: string) => {
+    const ok = document.execCommand("insertText", false, placeholder);
+    if (!ok) {
+      // Fallback : append en fin de contenu.
+      setBodyDraft((p) => ({ ...p, [activeKind]: p[activeKind] + " " + placeholder }));
+    }
+  }, [activeKind]);
+
+  // ─── Preview ─────────────────────────────────────────────────────────────────
 
   const loadPreview = useCallback(async () => {
     setPreviewLoading(true);
     try {
-      const res = await apiRequest("POST", `/api/email-templates/${activeKind}/preview`, {});
+      // On envoie le brouillon courant pour prévisualiser les modifications non
+      // encore enregistrées. Le serveur emballe les fragments dans l'ossature.
+      const res = await apiRequest("POST", `/api/email-templates/${activeKind}/preview`, {
+        subject: subjectDraft[activeKind],
+        bodyHtml: bodyDraft[activeKind],
+      });
       const data: PreviewResult = await res.json();
       setPreview(data);
     } catch (e: any) {
@@ -191,9 +215,8 @@ export default function EmailTemplates() {
     } finally {
       setPreviewLoading(false);
     }
-  }, [activeKind, toast]);
+  }, [activeKind, subjectDraft, bodyDraft, toast]);
 
-  // Charge l'aperçu automatiquement lors du changement de kind
   const handleKindChange = useCallback((k: string) => {
     setActiveKind(k as EmailKind);
     setPreview(null);
@@ -202,6 +225,8 @@ export default function EmailTemplates() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   const currentTemplate = templates?.find((t) => t.kind === activeKind);
+  const isAdvanced = advanced[activeKind];
+  const bodyIsOldFormat = isFullDoc(bodyDraft[activeKind] || "");
 
   return (
     <AppLayout>
@@ -212,7 +237,7 @@ export default function EmailTemplates() {
             <Mail className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Templates email</h1>
+            <h1 className="text-xl font-bold text-foreground">Modèles d'emails</h1>
             <p className="text-sm text-muted-foreground">
               Personnalisez les emails envoyés automatiquement à vos clients.
             </p>
@@ -240,13 +265,27 @@ export default function EmailTemplates() {
             <div className="space-y-4">
               <Card className="card-naturo rounded-[15px]">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Edit3 className="h-4 w-4 text-primary" />
-                    {KIND_LABELS[activeKind]}
-                    {currentTemplate?.isDefault && (
-                      <Badge variant="secondary" className="ml-2 text-xs">Modèle par défaut</Badge>
-                    )}
-                  </CardTitle>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Edit3 className="h-4 w-4 text-primary" />
+                      {KIND_LABELS[activeKind]}
+                      {currentTemplate?.isDefault && (
+                        <Badge variant="secondary" className="ml-1 text-xs">Modèle par défaut</Badge>
+                      )}
+                    </CardTitle>
+                    {/* Toggle visuel / HTML avancé */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setAdvanced((p) => ({ ...p, [activeKind]: !p[activeKind] }))}
+                      data-testid="button-toggle-advanced"
+                    >
+                      {isAdvanced ? <Type className="h-3.5 w-3.5 mr-1.5" /> : <Code2 className="h-3.5 w-3.5 mr-1.5" />}
+                      {isAdvanced ? "Éditeur simple" : "Avancé (HTML)"}
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">{KIND_DESCRIPTIONS[activeKind]}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -258,36 +297,67 @@ export default function EmailTemplates() {
                     <Input
                       data-testid="input-subject"
                       value={subjectDraft[activeKind]}
-                      onChange={(e) =>
-                        setSubjectDraft((prev) => ({ ...prev, [activeKind]: e.target.value }))
-                      }
+                      onChange={(e) => setSubjectDraft((p) => ({ ...p, [activeKind]: e.target.value }))}
                       placeholder="Objet de l'email..."
-                      className="font-mono text-sm"
                     />
                   </div>
 
-                  {/* Corps HTML */}
+                  {/* Avertissement ancien format */}
+                  {bodyIsOldFormat && (
+                    <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+                      Ce modèle utilise l'ancien format (code HTML complet). Cliquez sur
+                      « Réinitialiser au modèle par défaut » pour profiter de l'éditeur simple.
+                    </div>
+                  )}
+
+                  {/* Corps : éditeur visuel OU HTML avancé */}
                   <div>
                     <label className="text-sm font-semibold text-foreground mb-1.5 block">
-                      Corps HTML
+                      Contenu du message
                     </label>
-                    <Textarea
-                      ref={bodyRef}
-                      data-testid="textarea-body"
-                      value={bodyDraft[activeKind]}
-                      onChange={(e) =>
-                        setBodyDraft((prev) => ({ ...prev, [activeKind]: e.target.value }))
-                      }
-                      placeholder="Corps HTML de l'email..."
-                      className="font-mono text-xs resize-none"
-                      style={{ height: "400px" }}
-                    />
+                    {isAdvanced ? (
+                      <Textarea
+                        ref={bodyRef}
+                        data-testid="textarea-body"
+                        value={bodyDraft[activeKind]}
+                        onChange={(e) => setBodyDraft((p) => ({ ...p, [activeKind]: e.target.value }))}
+                        placeholder="Contenu HTML de l'email..."
+                        className="font-mono text-xs resize-none"
+                        style={{ height: "360px" }}
+                      />
+                    ) : (
+                      <div className="email-wysiwyg rounded-lg border border-input overflow-hidden" data-testid="wysiwyg-body">
+                        <EditorProvider>
+                          <Editor
+                            value={bodyDraft[activeKind]}
+                            onChange={(e: any) => setBodyDraft((p) => ({ ...p, [activeKind]: e.target.value }))}
+                            style={{ minHeight: "300px" }}
+                          >
+                            <Toolbar>
+                              <BtnUndo />
+                              <BtnRedo />
+                              <Separator />
+                              <BtnBold />
+                              <BtnItalic />
+                              <BtnUnderline />
+                              <BtnStrikeThrough />
+                              <Separator />
+                              <BtnBulletList />
+                              <BtnNumberedList />
+                              <Separator />
+                              <BtnLink />
+                              <BtnClearFormatting />
+                            </Toolbar>
+                          </Editor>
+                        </EditorProvider>
+                      </div>
+                    )}
                   </div>
 
                   {/* Variables disponibles */}
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                      Variables disponibles — cliquer pour insérer
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">
+                      Insérer une information personnalisée — cliquez pour ajouter à l'endroit du curseur :
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {TEMPLATE_VARS.map((v) => (
@@ -295,15 +365,17 @@ export default function EmailTemplates() {
                           key={v.placeholder}
                           type="button"
                           data-testid={`var-${v.placeholder.replace(/[{}\.]/g, "")}`}
-                          onClick={() => insertVar(v.placeholder)}
-                          className="inline-flex items-center"
-                          title={`${v.label} — ex : ${v.example}`}
+                          // En mode visuel : onMouseDown + preventDefault pour garder
+                          // le focus/curseur dans l'éditeur. En mode avancé : onClick classique.
+                          onMouseDown={isAdvanced ? undefined : (e) => { e.preventDefault(); insertVarVisual(v.placeholder); }}
+                          onClick={isAdvanced ? () => insertVarTextarea(v.placeholder) : undefined}
+                          title={`Exemple : ${v.example}`}
                         >
                           <Badge
                             variant="outline"
-                            className="cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors font-mono text-[11px] px-2 py-0.5"
+                            className="cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors text-[11px] px-2 py-0.5"
                           >
-                            {v.placeholder}
+                            + {v.label}
                           </Badge>
                         </button>
                       ))}
@@ -316,11 +388,16 @@ export default function EmailTemplates() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={resetToDefault}
+                      onClick={() => resetMutation.mutate(activeKind)}
+                      disabled={resetMutation.isPending}
                       data-testid="button-reset"
                       className="text-muted-foreground hover:text-foreground"
                     >
-                      <RotateCcw className="h-4 w-4 mr-1.5" />
+                      {resetMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4 mr-1.5" />
+                      )}
                       Réinitialiser au modèle par défaut
                     </Button>
                     <Button
@@ -330,9 +407,7 @@ export default function EmailTemplates() {
                       data-testid="button-save"
                       className="bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
-                      {saveMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                      ) : null}
+                      {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
                       Enregistrer
                     </Button>
                   </div>
@@ -349,11 +424,10 @@ export default function EmailTemplates() {
                     Aperçu
                   </CardTitle>
                   <p className="text-xs text-muted-foreground italic">
-                    Cet aperçu utilise des données fictives.
+                    Aperçu avec des données fictives, mis en forme comme l'email reçu.
                   </p>
                 </CardHeader>
                 <CardContent>
-                  {/* Sujet */}
                   {preview && (
                     <div className="mb-3 p-3 bg-muted/50 rounded-lg">
                       <span className="text-xs font-semibold text-muted-foreground mr-2">Objet :</span>
@@ -363,11 +437,7 @@ export default function EmailTemplates() {
                     </div>
                   )}
 
-                  {/* iframe HTML */}
-                  <div
-                    className="rounded-lg border border-border overflow-hidden bg-[#f7faf9]"
-                    style={{ height: "480px" }}
-                  >
+                  <div className="rounded-lg border border-border overflow-hidden bg-[#f7faf9]" style={{ height: "440px" }}>
                     {preview ? (
                       <iframe
                         data-testid="preview-iframe"
@@ -384,7 +454,6 @@ export default function EmailTemplates() {
                     )}
                   </div>
 
-                  {/* Bouton aperçu */}
                   <div className="flex justify-end mt-3">
                     <Button
                       type="button"
@@ -393,11 +462,7 @@ export default function EmailTemplates() {
                       disabled={previewLoading}
                       data-testid="button-preview"
                     >
-                      {previewLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                      ) : (
-                        <Eye className="h-4 w-4 mr-1.5" />
-                      )}
+                      {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Eye className="h-4 w-4 mr-1.5" />}
                       Actualiser l'aperçu
                     </Button>
                   </div>
