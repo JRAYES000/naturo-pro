@@ -23,6 +23,7 @@ export function publicUser(u: any) {
   if (!u) return null;
   const {
     passwordHash, googleCalendarToken, googleId, resendApiKey,
+    stripeSecretKey,
     emailVerifyToken, emailVerifyExpiresAt,
     passwordResetToken, passwordResetExpiresAt,
     ...rest
@@ -37,6 +38,7 @@ export function publicUser(u: any) {
   return {
     ...rest,
     hasResendApiKey: !!resendApiKey,
+    hasStripeSecretKey: !!stripeSecretKey,
     emailVerified: !!rest.emailVerifiedAt,
     onboardingCompleted: !!rest.onboardingCompletedAt,
     daysUntilTrialEnds,

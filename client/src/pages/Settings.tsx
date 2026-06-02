@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star } from "lucide-react";
+import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,10 @@ export default function Settings() {
       // Avis Google
       googleReviewUrl: data.user.googleReviewUrl || "",
       reviewRequestEnabled: !!data.user.reviewRequestEnabled,
+      // Paiements en ligne (Stripe)
+      stripeSecretKey: "", // jamais pré-rempli (sécurité)
+      hasStripeSecretKey: !!data.user.hasStripeSecretKey,
+      stripeDepositPercent: typeof data.user.stripeDepositPercent === "number" ? data.user.stripeDepositPercent : 0,
     });
   }, [data]);
 
@@ -76,7 +80,9 @@ export default function Settings() {
       // On retire hasResendApiKey (read-only) et resendApiKey si vide (pour ne pas écraser).
       const payload: any = { ...draft };
       delete payload.hasResendApiKey;
+      delete payload.hasStripeSecretKey;
       if (!payload.resendApiKey) delete payload.resendApiKey;
+      if (!payload.stripeSecretKey) delete payload.stripeSecretKey; // ne pas écraser la clé existante
       // Normaliser "" en null pour les champs nullable
       if (payload.emailFromAddress === "") payload.emailFromAddress = null;
       if (payload.emailFromName === "") payload.emailFromName = null;
@@ -538,6 +544,49 @@ export default function Settings() {
               onCheckedChange={(v) => setDraft({ ...draft, reviewRequestEnabled: v })}
               data-testid="switch-review-request"
             />
+          </div>
+        </div>
+
+        {/* Paiements en ligne (Stripe) */}
+        <div className="card-naturo space-y-4">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" style={{ color: "#1b4332" }} />
+            <h2 className="font-extrabold">Paiements en ligne (Stripe)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Demandez un <strong>acompte au moment de la réservation en ligne</strong> pour limiter les
+            rendez-vous manqués. Le paiement va directement sur votre compte Stripe.
+          </p>
+
+          <div>
+            <Label>Clé secrète Stripe</Label>
+            <Input
+              type="password"
+              placeholder={draft.hasStripeSecretKey ? "•••••••••• (déjà configurée — laisser vide pour conserver)" : "sk_live_… ou sk_test_…"}
+              value={draft.stripeSecretKey || ""}
+              onChange={(e) => setDraft({ ...draft, stripeSecretKey: e.target.value })}
+              data-testid="input-stripe-key"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {draft.hasStripeSecretKey ? "✓ Une clé est enregistrée. " : ""}
+              Disponible dans votre tableau de bord Stripe → Développeurs → Clés API. Commencez par une clé de <strong>test</strong> (sk_test_…).
+            </p>
+          </div>
+
+          <div>
+            <Label>Acompte demandé (% du tarif de la prestation)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={draft.stripeDepositPercent ?? 0}
+              onChange={(e) => setDraft({ ...draft, stripeDepositPercent: Math.max(0, Math.min(100, parseInt(e.target.value || "0", 10) || 0)) })}
+              data-testid="input-stripe-deposit-percent"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              <strong>0 = désactivé</strong> (réservation sans paiement). Ex. 30 = la cliente paie 30 % du tarif à la réservation ;
+              le rendez-vous n'est confirmé qu'après paiement. Sans effet si la prestation n'a pas de tarif.
+            </p>
           </div>
         </div>
 

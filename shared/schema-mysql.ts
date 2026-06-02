@@ -44,6 +44,9 @@ export const users = mysqlTable("users", {
   dailyRecapEnabled: boolean("daily_recap_enabled").notNull().default(true),
   reminderHourLocal: int("reminder_hour_local").notNull().default(10),
   recapHourLocal: int("recap_hour_local").notNull().default(10),
+  // Paiements en ligne (Stripe)
+  stripeSecretKey: varchar("stripe_secret_key", { length: 255 }),
+  stripeDepositPercent: int("stripe_deposit_percent").default(0),
   // Phase 1 — Facturation
   billingCompanyName: varchar("billing_company_name", { length: 255 }),
   billingSiret: varchar("billing_siret", { length: 32 }),
@@ -176,6 +179,8 @@ export const appointments = mysqlTable("appointments", {
   location: varchar("location", { length: 50 }),
   googleEventId: varchar("google_event_id", { length: 255 }),
   googleMeetLink: varchar("google_meet_link", { length: 512 }),
+  stripeSessionId: varchar("stripe_session_id", { length: 255 }),
+  depositAmountCents: int("deposit_amount_cents"),
   reminderSent: boolean("reminder_sent").notNull().default(false),
   reminderSentAt: bigint("reminder_sent_at", { mode: "number" }),
   // Phase 0.7 — Tokens publics pour confirmer/annuler depuis l'email

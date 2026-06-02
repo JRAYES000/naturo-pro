@@ -58,6 +58,9 @@ export function registerProfileRoutes(app: Express): void {
     // Avis Google
     googleReviewUrl: z.string().url().nullable().optional(),
     reviewRequestEnabled: z.boolean().optional(),
+    // Paiements en ligne (Stripe)
+    stripeSecretKey: z.string().nullable().optional(),
+    stripeDepositPercent: z.number().int().min(0).max(100).optional(),
   });
 
   app.patch("/api/profile", requireAuth, async (req: AuthedRequest, res) => {

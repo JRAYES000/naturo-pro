@@ -27,6 +27,7 @@ import { randomBytes } from "node:crypto";
 import { storage } from "../storage";
 import { type AuthedRequest } from "../auth";
 import { sendEmail, renderClientCancellationEmail, formatRdvDate } from "../email";
+import { createCheckoutSession, retrieveCheckoutSession } from "../stripe";
 import { renderUserTemplate } from "../email-templates/render-user";
 import type { TemplateVars } from "../email-templates/render";
 import { syncApptToGoogle } from "./helpers/google-sync";
@@ -143,6 +144,31 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     const overlap = sameDayAppts.some(a => a.status !== "cancelled" && startAt < a.endAt && endAt > a.startAt);
     if (overlap) return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
 
+    // ── Acompte Stripe : si activé, on redirige vers le paiement AVANT de créer le RDV.
+    //    Le RDV ne sera créé qu'au retour (success_url) une fois le paiement confirmé.
+    const depositPercent = (u as any).stripeDepositPercent || 0;
+    const stripeKey = (u as any).stripeSecretKey || "";
+    if (stripeKey && depositPercent > 0 && cat.priceCents > 0) {
+      const depositCents = Math.round((cat.priceCents * depositPercent) / 100);
+      if (depositCents > 0) {
+        const APP = process.env.APP_URL || "https://app.ecole-naturo.fr";
+        const session = await createCheckoutSession(stripeKey, {
+          amountCents: depositCents,
+          productName: `Acompte — ${cat.name} (${u.name})`,
+          customerEmail: email,
+          successUrl: `${APP}/api/public/pay/success?u=${u.id}&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${APP}/api/public/pay/cancel`,
+          metadata: {
+            userId: String(u.id), categoryId: String(categoryId), startAt: String(startAt),
+            firstName, lastName, email, phone, notes: notes || "", depositCents: String(depositCents),
+          },
+        });
+        if ("url" in session) return res.json({ checkoutUrl: session.url });
+        // Échec Stripe → on log et on retombe sur une réservation normale (ne jamais bloquer le client).
+        console.error("[booking][stripe] création session échouée:", session.error);
+      }
+    }
+
     let appt = await storage.createAppointment({
       userId: u.id, clientId: null, categoryId,
       startAt, endAt, status: "confirmed",
@@ -169,6 +195,75 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     }
 
     res.json({ appointment: appt, category: cat });
+  });
+
+  // ── Retour de paiement Stripe (acompte) ──────────────────────────────────────
+  // success_url : on récupère la session avec la clé du praticien pour confirmer
+  // le paiement, puis on crée le RDV (idempotent via stripe_session_id).
+  app.get("/api/public/pay/success", async (req, res) => {
+    const fail = (msg: string) =>
+      res.status(400).type("html").send(htmlFeedbackPage("error", "Paiement", msg));
+    const userId = Number(req.query.u);
+    const sessionId = String(req.query.session_id || "");
+    if (!userId || !sessionId) return fail("Lien de retour invalide.");
+    const u = await storage.getUserById(userId);
+    if (!u || !(u as any).stripeSecretKey) return fail("Praticien introuvable.");
+
+    // Idempotence : si le RDV a déjà été créé pour cette session, afficher le succès.
+    const already = await storage.getAppointmentByStripeSessionId(sessionId);
+    if (already) {
+      return res.type("html").send(htmlFeedbackPage("success", "Rendez-vous confirmé",
+        "Votre acompte a été reçu et votre rendez-vous est confirmé. À très vite !"));
+    }
+
+    const session = await retrieveCheckoutSession((u as any).stripeSecretKey, sessionId);
+    if (!session) return fail("Impossible de vérifier le paiement auprès de Stripe.");
+    if (session.payment_status !== "paid") {
+      return res.type("html").send(htmlFeedbackPage("warning", "Paiement non finalisé",
+        "Votre paiement n'a pas été confirmé. Votre rendez-vous n'a pas été réservé."));
+    }
+
+    const m = session.metadata || {};
+    const categoryId = Number(m.categoryId);
+    const startAt = Number(m.startAt);
+    const cat = categoryId ? await storage.getCategory(categoryId) : null;
+    if (!cat || cat.userId !== u.id || !startAt) return fail("Données de réservation invalides.");
+    const endAt = startAt + cat.durationMinutes * 60000;
+
+    // Re-vérifie l'absence de conflit (best-effort : le créneau a pu être pris entre-temps).
+    const sameDay = await storage.listAppointments(u.id, startAt - 86400000, endAt + 86400000);
+    if (sameDay.some((a) => a.status !== "cancelled" && startAt < a.endAt && endAt > a.startAt)) {
+      return res.type("html").send(htmlFeedbackPage("warning", "Créneau indisponible",
+        "Ce créneau vient d'être réservé entre-temps. Votre acompte vous sera remboursé — contactez votre praticien."));
+    }
+
+    const depositCents = Number(m.depositCents) || Number(session.amount_total) || 0;
+    let appt = await storage.createAppointment({
+      userId: u.id, clientId: null, categoryId,
+      startAt, endAt, status: "confirmed",
+      clientFirstName: m.firstName || "", clientLastName: m.lastName || "",
+      clientEmail: m.email || null, clientPhone: m.phone || null,
+      notesBefore: m.notes || null,
+      location: cat.location, googleEventId: null, reminderSent: false,
+      paymentStatus: "paid", paymentAmountCents: depositCents,
+      stripeSessionId: sessionId, depositAmountCents: depositCents,
+    } as any);
+
+    const eventId = await syncApptToGoogle("create", u.id, appt);
+    if (eventId) {
+      const refreshed = await storage.updateAppointment(appt.id, { googleEventId: eventId } as any);
+      if (refreshed) appt = refreshed;
+    }
+    if (m.email) {
+      void sendBookingConfirmationEmail(u, appt, cat).catch((e) => console.error("[pay-confirm]", e));
+    }
+    return res.type("html").send(htmlFeedbackPage("success", "Rendez-vous confirmé",
+      "Votre acompte a été reçu et votre rendez-vous est confirmé. Vous allez recevoir un email de confirmation. À très vite !"));
+  });
+
+  app.get("/api/public/pay/cancel", async (_req, res) => {
+    res.type("html").send(htmlFeedbackPage("warning", "Paiement annulé",
+      "Votre rendez-vous n'a pas été réservé (paiement annulé). Vous pouvez relancer la réservation quand vous le souhaitez."));
   });
 
   app.get("/api/rdv/confirm/:token", async (req, res) => {

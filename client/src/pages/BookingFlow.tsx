@@ -171,7 +171,12 @@ export default function BookingFlow() {
       }
       return r.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Acompte Stripe activé → on redirige vers la page de paiement sécurisée.
+      if (data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
       setConfirmedAt({ when: new Date(selectedSlot!), cat });
       setStep(5);
     },

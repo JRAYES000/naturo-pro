@@ -308,6 +308,8 @@ if (DB_DRIVER !== "mysql") {
     "payment_amount_cents INTEGER DEFAULT 0",
     "source TEXT DEFAULT 'manual'",
     "google_meet_link TEXT",
+    "stripe_session_id TEXT",
+    "deposit_amount_cents INTEGER",
   ];
   for (const col of apptMigCols) {
     try { raw.exec(`ALTER TABLE appointments ADD COLUMN ${col}`); } catch { /* already exists */ }
@@ -374,6 +376,14 @@ if (DB_DRIVER !== "mysql") {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
   }
   try { raw.exec(`ALTER TABLE appointments ADD COLUMN review_email_sent_at INTEGER`); } catch { /* already exists */ }
+  // Paiements Stripe — colonnes sur users (best-effort migration SQLite)
+  const stripeUserCols = [
+    "stripe_secret_key TEXT",
+    "stripe_deposit_percent INTEGER DEFAULT 0",
+  ];
+  for (const col of stripeUserCols) {
+    try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
+  }
   raw.close();
 }
 
@@ -481,6 +491,11 @@ async function runMysqlMigrations(): Promise<void> {
       "ALTER TABLE users ADD COLUMN google_review_url VARCHAR(512) NULL",
       "ALTER TABLE users ADD COLUMN review_request_enabled TINYINT(1) NOT NULL DEFAULT 0",
       "ALTER TABLE appointments ADD COLUMN review_email_sent_at BIGINT NULL",
+      // Paiements Stripe (acompte à la réservation)
+      "ALTER TABLE users ADD COLUMN stripe_secret_key VARCHAR(255) NULL",
+      "ALTER TABLE users ADD COLUMN stripe_deposit_percent INT DEFAULT 0",
+      "ALTER TABLE appointments ADD COLUMN stripe_session_id VARCHAR(255) NULL",
+      "ALTER TABLE appointments ADD COLUMN deposit_amount_cents INT NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -614,6 +629,7 @@ export interface IStorage {
   listAppointmentsWithGoogleEventId(userId: number, from: number, to: number): Promise<Appointment[]>;
   getAppointmentByConfirmToken(token: string): Promise<Appointment | undefined>;
   getAppointmentByCancelToken(token: string): Promise<Appointment | undefined>;
+  getAppointmentByStripeSessionId(sessionId: string): Promise<Appointment | undefined>;
   // PHASE 3.5-B — Manage token
   setCancelToken(appointmentId: number, token: string): Promise<Appointment | undefined>;
   ensureCancelToken(appointmentId: number): Promise<string>;
@@ -922,6 +938,11 @@ export class DatabaseStorage implements IStorage {
   async getAppointmentByCancelToken(token: string): Promise<Appointment | undefined> {
     if (!token) return undefined;
     return first(db.select().from(appointments).where(eq(appointments.cancelToken, token)));
+  }
+
+  async getAppointmentByStripeSessionId(sessionId: string): Promise<Appointment | undefined> {
+    if (!sessionId) return undefined;
+    return first(db.select().from(appointments).where(eq(appointments.stripeSessionId, sessionId)));
   }
 
   /** RDV pour lesquels il faut envoyer un rappel J-1 (RDV du jour suivant non encore notifié). */

@@ -34,6 +34,9 @@ export const users = sqliteTable("users", {
   dailyRecapEnabled: integer("daily_recap_enabled", { mode: "boolean" }).default(true),
   reminderHourLocal: integer("reminder_hour_local").default(10), // heure locale Europe/Bucharest
   recapHourLocal: integer("recap_hour_local").default(10),
+  // Paiements en ligne (Stripe) — clé secrète perso + acompte (% du tarif, 0 = désactivé)
+  stripeSecretKey: text("stripe_secret_key"),
+  stripeDepositPercent: integer("stripe_deposit_percent").default(0),
   // Phase 1 — Facturation
   billingCompanyName: text("billing_company_name"),
   billingSiret: text("billing_siret"),
@@ -161,6 +164,8 @@ export const appointments = sqliteTable("appointments", {
   location: text("location"),
   googleEventId: text("google_event_id"),
   googleMeetLink: text("google_meet_link"),
+  stripeSessionId: text("stripe_session_id"),
+  depositAmountCents: integer("deposit_amount_cents"),
   reminderSent: integer("reminder_sent", { mode: "boolean" }).default(false),
   reminderSentAt: integer("reminder_sent_at"),
   // Phase 0.7 — Tokens publics pour confirmer/annuler depuis l'email
