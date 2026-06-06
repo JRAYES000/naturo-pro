@@ -6,7 +6,7 @@ Ce fichier est lu automatiquement par Claude Code à chaque session. Il contient
 
 ## 🚨 Règles absolues (ne JAMAIS violer)
 
-1. **Ne JAMAIS déployer en production sans validation explicite de l'utilisateur.** Toujours demander confirmation avant `scp` du bundle ou modification de la prod.
+1. **Déploiement prod : autonomie autorisée (mise à jour 2026-06-06).** Julien a explicitement levé l'exigence de validation préalable : je peux committer, pousser et déployer en production (build + `scp`/upload du bundle, modification de la prod) de ma propre initiative, sans demander d'abord. Garde-fous (qualité, pas permission) : VÉRIFIER que ça build et que les types passent (`npm run check`) avant d'expédier, et PRÉVENIR avant toute opération destructrice/irréversible sur la base prod (DROP/wipe de tables, suppression de données réelles). Jamais de secrets commités (cf. règle 2).
 2. **Ne JAMAIS commit de secrets** (mots de passe, clés API, tokens, IPs serveur). Le repo est public.
 3. **Toute UI doit être en français** — l'app est utilisée par des praticiens francophones.
 4. **Ne pas migrer vers Supabase / Next.js / autre stack** sans validation explicite. Le stack actuel (Express + Drizzle + Wouter + Vite) est volontairement conservé.
