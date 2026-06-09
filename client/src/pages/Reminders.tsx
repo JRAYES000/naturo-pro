@@ -345,7 +345,7 @@ export default function Reminders() {
         Pour activer ou désactiver les rappels, rendez-vous dans{" "}
         <Link
           href="/app/settings"
-          className="underline text-[#186749] hover:text-[#1b4332]"
+          className="underline text-[#186749] hover:text-heading"
           data-testid="link-settings-reminders"
         >
           Paramètres → Resend

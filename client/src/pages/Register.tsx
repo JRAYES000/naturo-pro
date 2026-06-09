@@ -46,7 +46,7 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2" style={{ color: "#1b4332" }}>Créer mon compte</h1>
+          <h1 className="text-3xl font-extrabold mb-2 text-heading">Créer mon compte</h1>
           <p className="text-muted-foreground">C'est gratuit, et ça ne prend qu'une minute.</p>
         </div>
         <div className="card-naturo">

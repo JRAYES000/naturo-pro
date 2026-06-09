@@ -190,7 +190,7 @@ export default function Stats() {
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">CA encaissé</p>
                 <TrendingUp className="h-4 w-4 text-primary" />
               </div>
-              <p className="text-2xl font-extrabold" style={{ color: "#1b4332" }}>
+              <p className="text-2xl font-extrabold text-heading">
                 {formatPrice(data?.caEncaisseCents ?? 0)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">factures payées</p>
@@ -212,7 +212,7 @@ export default function Stats() {
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">RDV réalisés</p>
                 <Calendar className="h-4 w-4 text-primary" />
               </div>
-              <p className="text-2xl font-extrabold" style={{ color: "#1b4332" }}>
+              <p className="text-2xl font-extrabold text-heading">
                 {data?.nbRdv ?? 0}
               </p>
               <p className="text-xs text-muted-foreground mt-1">hors annulés</p>

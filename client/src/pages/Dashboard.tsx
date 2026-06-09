@@ -69,7 +69,7 @@ export default function Dashboard() {
                     <li key={a.id} className="flex items-center gap-4 p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary transition" data-testid={`appt-row-${a.id}`}>
                       <div className="text-center min-w-[72px]">
                         <p className="text-xs uppercase font-bold text-primary">{new Date(a.startAt).toLocaleDateString("fr-FR", { weekday: "short" })}</p>
-                        <p className="text-2xl font-extrabold leading-none" style={{ color: "#1b4332" }}>{new Date(a.startAt).getDate()}</p>
+                        <p className="text-2xl font-extrabold leading-none text-heading">{new Date(a.startAt).getDate()}</p>
                         <p className="text-xs text-muted-foreground">{new Date(a.startAt).toLocaleDateString("fr-FR", { month: "short" })}</p>
                       </div>
                       <div className="flex-1">
@@ -131,7 +131,7 @@ function StatCard({ label, value, icon: Icon, testid }: any) {
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
         <Icon className="h-4 w-4 text-primary" />
       </div>
-      <p className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>{value}</p>
+      <p className="text-3xl font-extrabold text-heading">{value}</p>
     </div>
   );
 }

@@ -236,7 +236,7 @@ export default function AnamnesePage() {
 
         {/* Réponses reçues */}
         <div className="mt-8">
-          <h2 className="text-xl font-extrabold mb-4" style={{ color: "#1b4332" }}>Réponses reçues</h2>
+          <h2 className="text-xl font-extrabold mb-4 text-heading">Réponses reçues</h2>
           {responses.length === 0 ? (
             <div className="card-naturo text-center py-10">
               <p className="text-sm text-muted-foreground">

@@ -209,7 +209,7 @@ export default function BookingFlow() {
           <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1b4332" }}>Impossible de charger</h1>
+          <h1 className="text-2xl font-extrabold mb-2 text-heading">Impossible de charger</h1>
           <p className="text-muted-foreground text-sm mb-6">
             Une erreur réseau est survenue. Vérifiez votre connexion et rechargez la page.
           </p>
@@ -262,8 +262,7 @@ export default function BookingFlow() {
         {step === 1 && (
           <div>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2"
-              style={{ color: "#1b4332" }}
+              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
               data-testid="text-step1-title"
             >
               Choisissez une prestation
@@ -327,8 +326,7 @@ export default function BookingFlow() {
               <ArrowLeft className="h-4 w-4" /> Étape précédente
             </button>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2"
-              style={{ color: "#1b4332" }}
+              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
               data-testid="text-step2-title"
             >
               Choisissez une date
@@ -392,8 +390,7 @@ export default function BookingFlow() {
                         {date.toLocaleDateString("fr-FR", { weekday: "short" })}
                       </p>
                       <p
-                        className="text-2xl font-extrabold leading-none my-1"
-                        style={{ color: "#1b4332" }}
+                        className="text-2xl font-extrabold leading-none my-1 text-heading"
                       >
                         {date.getDate()}
                       </p>
@@ -424,8 +421,7 @@ export default function BookingFlow() {
               <ArrowLeft className="h-4 w-4" /> Étape précédente
             </button>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2"
-              style={{ color: "#1b4332" }}
+              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
               data-testid="text-step3-title"
             >
               Choisissez un créneau
@@ -480,8 +476,7 @@ export default function BookingFlow() {
               <ArrowLeft className="h-4 w-4" /> Étape précédente
             </button>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2"
-              style={{ color: "#1b4332" }}
+              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
               data-testid="text-step4-title"
             >
               Vos coordonnées

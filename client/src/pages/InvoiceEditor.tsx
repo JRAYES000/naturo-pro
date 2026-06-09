@@ -307,7 +307,7 @@ export default function InvoiceEditor() {
           {/* Colonne gauche : client + lignes + dates */}
           <div className="lg:col-span-2 space-y-4">
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3" style={{ color: "#1b4332" }}>Client</h3>
+              <h3 className="font-extrabold mb-3 text-heading">Client</h3>
               {isNew && clients.length > 0 && (
                 <div className="mb-3">
                   <Label>Sélectionner un client existant</Label>
@@ -355,7 +355,7 @@ export default function InvoiceEditor() {
             </div>
 
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3" style={{ color: "#1b4332" }}>Lignes</h3>
+              <h3 className="font-extrabold mb-3 text-heading">Lignes</h3>
               <div className="space-y-2">
                 <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground uppercase">
                   <div className="col-span-6">Description</div>
@@ -421,13 +421,13 @@ export default function InvoiceEditor() {
                   {totals.vatEnabled && (
                     <div className="flex justify-between text-muted-foreground"><span>TVA ({(totals.vatRate / 100).toFixed(0)}%)</span><span>{formatPrice(totals.vat)}</span></div>
                   )}
-                  <div className="flex justify-between text-base pt-1 border-t mt-1"><span className="font-bold">Total</span><span className="font-extrabold" style={{ color: "#1b4332" }}>{formatPrice(totals.total)}</span></div>
+                  <div className="flex justify-between text-base pt-1 border-t mt-1"><span className="font-bold">Total</span><span className="font-extrabold text-heading">{formatPrice(totals.total)}</span></div>
                 </div>
               </div>
             </div>
 
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3" style={{ color: "#1b4332" }}>Notes</h3>
+              <h3 className="font-extrabold mb-3 text-heading">Notes</h3>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Mentions, message au client…" data-testid="input-notes" />
             </div>
           </div>
@@ -435,7 +435,7 @@ export default function InvoiceEditor() {
           {/* Colonne droite : statut + paiement + dates */}
           <div className="space-y-4">
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3" style={{ color: "#1b4332" }}>Dates</h3>
+              <h3 className="font-extrabold mb-3 text-heading">Dates</h3>
               <div className="space-y-3">
                 <div>
                   <Label>Date d'émission</Label>
@@ -451,7 +451,7 @@ export default function InvoiceEditor() {
             {!isNew && (
               <>
                 <div className="card-naturo">
-                  <h3 className="font-extrabold mb-3" style={{ color: "#1b4332" }}>Statut</h3>
+                  <h3 className="font-extrabold mb-3 text-heading">Statut</h3>
                   <div className="space-y-2">
                     {(["draft", "sent", "paid", "cancelled"] as const).map((s) => (
                       <button
@@ -469,7 +469,7 @@ export default function InvoiceEditor() {
                 </div>
 
                 <div className="card-naturo">
-                  <h3 className="font-extrabold mb-3" style={{ color: "#1b4332" }}>Paiement</h3>
+                  <h3 className="font-extrabold mb-3 text-heading">Paiement</h3>
                   <div className="space-y-3">
                     <div>
                       <Label>Mode de paiement</Label>

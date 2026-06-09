@@ -56,7 +56,7 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref }: Book
         </div>
       </div>
 
-      <h1 className="text-3xl sm:text-4xl font-extrabold mb-3" style={{ color: "#1b4332" }} data-testid="text-confirmation-title">
+      <h1 className="text-3xl sm:text-4xl font-extrabold mb-3 text-heading" data-testid="text-confirmation-title">
         C'est confirmé&nbsp;!
       </h1>
       <p className="text-muted-foreground mb-2 max-w-sm mx-auto">

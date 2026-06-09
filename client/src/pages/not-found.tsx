@@ -7,7 +7,7 @@ export default function NotFound() {
       <div className="text-center">
         <Logo className="mx-auto mb-8" />
         <p className="text-7xl font-extrabold mb-4" style={{ color: "#186749" }}>404</p>
-        <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1b4332" }}>Page introuvable</h1>
+        <h1 className="text-2xl font-extrabold mb-2 text-heading">Page introuvable</h1>
         <p className="text-muted-foreground mb-6">La page que vous cherchez n'existe pas (ou plus).</p>
         <Link href="/" className="btn-primary-naturo inline-flex">Retour à l'accueil</Link>
       </div>

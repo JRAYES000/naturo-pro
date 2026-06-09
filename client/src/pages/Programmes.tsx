@@ -483,8 +483,7 @@ export default function ProgrammesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className="font-bold text-base truncate"
-                        style={{ color: "#1b4332" }}
+                        className="font-bold text-base truncate text-heading"
                         data-testid={`text-title-${prog.id}`}
                       >
                         {prog.title}

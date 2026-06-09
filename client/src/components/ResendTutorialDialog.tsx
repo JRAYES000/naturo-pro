@@ -20,7 +20,7 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl" style={{ color: "#1b4332" }}>
+          <DialogTitle className="text-xl text-heading">
             Comment créer votre compte Resend (5 minutes)
           </DialogTitle>
           <DialogDescription>
@@ -43,8 +43,7 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
                 href="https://resend.com/signup"
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold underline inline-flex items-center gap-1"
-                style={{ color: "#1b4332" }}
+                className="font-semibold underline inline-flex items-center gap-1 text-heading"
               >
                 resend.com/signup <ExternalLink className="h-3 w-3" />
               </a>{" "}
@@ -158,9 +157,9 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
           {/* Bloc aide */}
           <div
             className="rounded-md p-4 text-sm"
-            style={{ background: "#f0fdf4", border: "1px solid #1b4332" }}
+            style={{ background: "#f0fdf4", border: "1px solid hsl(var(--heading))" }}
           >
-            <p className="font-semibold mb-1" style={{ color: "#1b4332" }}>
+            <p className="font-semibold mb-1 text-heading">
               Besoin d'aide ?
             </p>
             <p className="text-xs text-muted-foreground">
@@ -190,15 +189,14 @@ function Step({
   return (
     <div className="flex gap-3">
       <div
-        className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-bold text-white"
-        style={{ background: "#1b4332" }}
+        className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-bold text-white bg-heading"
       >
         {num}
       </div>
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-2">
-          <span style={{ color: "#1b4332" }}>{icon}</span>
-          <h3 className="font-semibold" style={{ color: "#1b4332" }}>
+          <span className="text-heading">{icon}</span>
+          <h3 className="font-semibold text-heading">
             {title}
           </h3>
         </div>

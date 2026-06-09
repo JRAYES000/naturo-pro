@@ -116,7 +116,7 @@ export default function AdminUserDetail() {
       <AppLayout>
         <div className="max-w-xl mx-auto card-naturo text-center py-10">
           <Shield className="h-10 w-10 mx-auto mb-3 text-destructive" />
-          <h1 className="text-xl font-extrabold mb-2" style={{ color: "#1b4332" }}>
+          <h1 className="text-xl font-extrabold mb-2 text-heading">
             {denied ? "Accès refusé" : "Erreur"}
           </h1>
           <p className="text-muted-foreground">
@@ -157,7 +157,7 @@ export default function AdminUserDetail() {
         />
 
         <div className="card-naturo space-y-3">
-          <h2 className="font-bold text-lg" style={{ color: "#1b4332" }}>Identité</h2>
+          <h2 className="font-bold text-lg text-heading">Identité</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div><span className="text-muted-foreground">Email · </span><span className="font-semibold">{u.email}</span></div>
             <div><span className="text-muted-foreground">Slug · </span><span className="font-mono">{u.slug}</span></div>
@@ -169,7 +169,7 @@ export default function AdminUserDetail() {
         </div>
 
         <div className="card-naturo space-y-3">
-          <h2 className="font-bold text-lg" style={{ color: "#1b4332" }}>Statistiques</h2>
+          <h2 className="font-bold text-lg text-heading">Statistiques</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="p-3 rounded-[15px] bg-secondary/50">
               <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.appointments}</div>
@@ -187,7 +187,7 @@ export default function AdminUserDetail() {
         </div>
 
         <div className="card-naturo space-y-4">
-          <h2 className="font-bold text-lg" style={{ color: "#1b4332" }}>Modifier l'abonnement</h2>
+          <h2 className="font-bold text-lg text-heading">Modifier l'abonnement</h2>
           <div>
             <Label htmlFor="plan">Plan</Label>
             <select
@@ -233,7 +233,7 @@ export default function AdminUserDetail() {
         </div>
 
         <div className="card-naturo space-y-3">
-          <h2 className="font-bold text-lg" style={{ color: "#1b4332" }}>Actions rapides</h2>
+          <h2 className="font-bold text-lg text-heading">Actions rapides</h2>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -276,7 +276,7 @@ export default function AdminUserDetail() {
 
         {me?.id !== u.id && (
           <div className="card-naturo space-y-3">
-            <h2 className="font-bold text-lg" style={{ color: "#1b4332" }}>Mode incarnation</h2>
+            <h2 className="font-bold text-lg text-heading">Mode incarnation</h2>
             <p className="text-sm text-muted-foreground">
               Se connecter en tant que cet utilisateur pour debug. Votre session admin sera remplacée.
             </p>

@@ -12,6 +12,7 @@
 
   --background: 36 38% 97%;          /* #FAF8F4 */
   --foreground: 220 8% 22%;          /* #33373d */
+  --heading: 154 43% 18%;            /* #1b4332 — couleur des titres */
   --border: 138 56% 85%;             /* light green border */
   --card: 0 0% 100%;
   --card-foreground: 220 8% 22%;
@@ -83,6 +84,7 @@
   --elevate-2: rgba(255, 255, 255, 0.09);
   --background: 152 30% 8%;
   --foreground: 36 38% 95%;
+  --heading: 36 38% 95%;
   --border: 152 30% 18%;
   --card: 152 30% 11%;
   --card-foreground: 36 38% 95%;
@@ -148,7 +150,7 @@
     @apply font-sans antialiased bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.01em; color: hsl(152 80% 16%); }
+  h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.01em; color: hsl(var(--heading)); }
   .dark h1, .dark h2, .dark h3, .dark h4 { color: hsl(36 38% 95%); }
 }
 

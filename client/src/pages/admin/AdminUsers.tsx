@@ -118,7 +118,7 @@ export default function AdminUsers() {
       <AppLayout>
         <div className="max-w-xl mx-auto card-naturo text-center py-10">
           <Shield className="h-10 w-10 mx-auto mb-3 text-destructive" />
-          <h1 className="text-xl font-extrabold mb-2" style={{ color: "#1b4332" }}>
+          <h1 className="text-xl font-extrabold mb-2 text-heading">
             {denied ? "Accès refusé" : "Erreur"}
           </h1>
           <p className="text-muted-foreground">

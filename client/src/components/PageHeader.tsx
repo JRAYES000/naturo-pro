@@ -45,7 +45,7 @@ export function PageHeader({ title, subtitle, kicker, icon: Icon, backTo, action
           )}
           <div className="min-w-0">
             {kicker && <p className="text-sm text-muted-foreground mb-0.5">{kicker}</p>}
-            <h1 className="text-2xl lg:text-3xl font-extrabold leading-tight" style={{ color: "#1b4332" }}>
+            <h1 className="text-2xl lg:text-3xl font-extrabold leading-tight text-heading">
               {title}
             </h1>
             {subtitle && <p className="text-muted-foreground text-sm mt-1 max-w-2xl">{subtitle}</p>}

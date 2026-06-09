@@ -105,7 +105,7 @@ export default function PublicPage() {
           <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1b4332" }}>Page introuvable</h1>
+          <h1 className="text-2xl font-extrabold mb-2 text-heading">Page introuvable</h1>
           <p className="text-muted-foreground mb-6 text-sm">
             Ce naturopathe n'existe pas ou sa page est désactivée.
           </p>
@@ -207,7 +207,7 @@ export default function PublicPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8 sm:mb-10">
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Mes prestations</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold" style={{ color: "#1b4332" }}>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-heading">
               Nos consultations
             </h2>
           </div>
@@ -280,7 +280,7 @@ export default function PublicPage() {
       <section className="py-12 lg:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <Sparkles className="h-10 w-10 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3" style={{ color: "#1b4332" }}>
+          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-heading">
             Prêt(e) à commencer&nbsp;?
           </h2>
           <p className="text-muted-foreground mb-6 text-sm sm:text-base">

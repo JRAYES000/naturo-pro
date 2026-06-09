@@ -43,13 +43,13 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2" style={{ color: "#1b4332" }}>Mot de passe oublié</h1>
+          <h1 className="text-3xl font-extrabold mb-2 text-heading">Mot de passe oublié</h1>
           <p className="text-muted-foreground">Entrez votre email, nous vous enverrons un lien.</p>
         </div>
         <div className="card-naturo">
           {submitted ? (
             <div className="text-center py-4">
-              <p className="font-semibold mb-2" style={{ color: "#1b4332" }}>Si un compte existe avec cet email, vous recevrez un lien.</p>
+              <p className="font-semibold mb-2 text-heading">Si un compte existe avec cet email, vous recevrez un lien.</p>
               <p className="text-sm text-muted-foreground">Pensez à vérifier vos spams.</p>
             </div>
           ) : (

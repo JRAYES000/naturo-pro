@@ -145,7 +145,7 @@ function SidebarFooter({
             {initials(user.name)}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold truncate" style={{ color: "#1b4332" }}>{user.name}</p>
+            <p className="text-sm font-bold truncate text-heading">{user.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
         </div>

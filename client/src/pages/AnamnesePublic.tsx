@@ -121,7 +121,7 @@ export default function AnamnesePublicPage() {
           {alreadySubmitted ? (
             <>
               <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-primary" />
-              <h2 className="text-xl font-extrabold mb-2" style={{ color: "#1b4332" }}>
+              <h2 className="text-xl font-extrabold mb-2 text-heading">
                 Questionnaire déjà soumis
               </h2>
               <p className="text-muted-foreground text-sm">
@@ -145,7 +145,7 @@ export default function AnamnesePublicPage() {
       <PublicShell>
         <div className="text-center py-16 px-4">
           <CheckCircle2 className="h-14 w-14 mx-auto mb-5 text-primary" />
-          <h2 className="text-2xl font-extrabold mb-3" style={{ color: "#1b4332" }}>
+          <h2 className="text-2xl font-extrabold mb-3 text-heading">
             Merci !
           </h2>
           <p className="text-muted-foreground">
@@ -161,7 +161,7 @@ export default function AnamnesePublicPage() {
     <PublicShell>
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1b4332" }}>{data.name}</h1>
+          <h1 className="text-2xl font-extrabold mb-2 text-heading">{data.name}</h1>
           {data.description && (
             <p className="text-muted-foreground text-sm">{data.description}</p>
           )}
@@ -216,7 +216,7 @@ function PublicShell({ children }: { children: React.ReactNode }) {
         <div className="h-8 w-8 rounded-full flex items-center justify-center" style={{ background: "#186749" }}>
           <span className="text-white font-extrabold text-sm">N</span>
         </div>
-        <span className="font-extrabold text-sm" style={{ color: "#1b4332" }}>Naturo Pro</span>
+        <span className="font-extrabold text-sm text-heading">Naturo Pro</span>
       </header>
       <main>{children}</main>
     </div>

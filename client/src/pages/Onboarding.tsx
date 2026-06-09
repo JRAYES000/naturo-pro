@@ -121,13 +121,13 @@ export default function Onboarding() {
           style={{ background: "rgba(23, 236, 155, 0.12)", border: "1px solid rgba(24, 103, 73, 0.18)" }}
         >
           <Sparkles className="h-5 w-5 flex-shrink-0" style={{ color: "#186749" }} />
-          <p className="text-sm font-semibold" style={{ color: "#1b4332" }}>
+          <p className="text-sm font-semibold text-heading">
             Configurez votre compte pour commencer 🌿
           </p>
         </div>
 
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2 text-sm font-semibold" style={{ color: "#1b4332" }}>
+          <div className="flex items-center justify-between mb-2 text-sm font-semibold text-heading">
             <span>Étape {step} sur {totalSteps}</span>
             <span>{Math.round(progress)}%</span>
           </div>
@@ -138,7 +138,7 @@ export default function Onboarding() {
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-extrabold mb-1" style={{ color: "#1b4332" }}>Votre profil pro</h2>
+                <h2 className="text-2xl font-extrabold mb-1 text-heading">Votre profil pro</h2>
                 <p className="text-sm text-muted-foreground">Ces informations apparaîtront sur votre page publique.</p>
               </div>
               <div>
@@ -191,7 +191,7 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-extrabold mb-1" style={{ color: "#1b4332" }}>Vos spécialités</h2>
+                <h2 className="text-2xl font-extrabold mb-1 text-heading">Vos spécialités</h2>
                 <p className="text-sm text-muted-foreground">Choisissez celles qui vous correspondent.</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -264,7 +264,7 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-extrabold mb-1" style={{ color: "#1b4332" }}>Votre première prestation</h2>
+                <h2 className="text-2xl font-extrabold mb-1 text-heading">Votre première prestation</h2>
                 <p className="text-sm text-muted-foreground">Vous pourrez en ajouter d'autres ensuite.</p>
               </div>
               <div>

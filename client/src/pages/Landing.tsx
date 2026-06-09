@@ -67,7 +67,7 @@ function SectionHeading({ eyebrow, title, lead }: { eyebrow: string; title: stri
   return (
     <div className="max-w-2xl">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary/80 mb-3">{eyebrow}</p>
-      <h2 className="font-display text-3xl lg:text-[2.75rem] leading-[1.12]" style={{ color: "#1b4332" }}>{title}</h2>
+      <h2 className="font-display text-3xl lg:text-[2.75rem] leading-[1.12] text-heading">{title}</h2>
       {lead && <p className="text-muted-foreground text-lg mt-4 leading-relaxed">{lead}</p>}
     </div>
   );
@@ -84,7 +84,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         aria-expanded={open}
         data-testid={`faq-toggle-${q.slice(0, 12)}`}
       >
-        <span className="font-display text-lg group-hover:text-primary transition-colors" style={{ color: "#1b4332" }}>{q}</span>
+        <span className="font-display text-lg group-hover:text-primary transition-colors text-heading">{q}</span>
         <ChevronDown className={`h-5 w-5 text-primary shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && <p className="text-muted-foreground leading-relaxed pb-5 -mt-1 max-w-[62ch]">{a}</p>}
@@ -122,7 +122,7 @@ export default function Landing() {
             Logiciel pour les naturopathes
             <span className="h-px w-8 bg-primary/25" aria-hidden="true" />
           </div>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[1.05] mb-5" style={{ color: "#1b4332" }}>
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[1.05] mb-5 text-heading">
             Gérez tout votre cabinet,<br />
             <span style={{ color: "#186749" }}>au même endroit.</span>
           </h1>
@@ -176,7 +176,7 @@ export default function Landing() {
               <div key={group.label} className="grid lg:grid-cols-[16rem_minmax(0,1fr)] gap-x-12 gap-y-6 border-t border-border pt-8">
                 <div>
                   <span className="font-display text-2xl text-primary/30">{String(gi + 1).padStart(2, "0")}</span>
-                  <h3 className="font-display text-2xl mt-1" style={{ color: "#1b4332" }}>{group.label}</h3>
+                  <h3 className="font-display text-2xl mt-1 text-heading">{group.label}</h3>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-[28ch]">{group.blurb}</p>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-x-10 gap-y-7">
@@ -184,7 +184,7 @@ export default function Landing() {
                     <div key={title} className="flex gap-3.5">
                       <Icon className="h-5 w-5 text-primary shrink-0 mt-1" strokeWidth={2} />
                       <div>
-                        <h4 className="font-bold text-[0.975rem]" style={{ color: "#1b4332" }}>{title}</h4>
+                        <h4 className="font-bold text-[0.975rem] text-heading">{title}</h4>
                         <p className="text-sm text-muted-foreground leading-relaxed mt-1">{desc}</p>
                       </div>
                     </div>
@@ -209,7 +209,7 @@ export default function Landing() {
             {WHY.map((w, i) => (
               <div key={w.title} className="border-t border-primary/15 pt-5">
                 <span className="font-display text-3xl text-primary/25">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className="font-display text-xl mt-2" style={{ color: "#1b4332" }}>{w.title}</h3>
+                <h3 className="font-display text-xl mt-2 text-heading">{w.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-2">{w.desc}</p>
               </div>
             ))}
@@ -235,7 +235,7 @@ export default function Landing() {
       {/* CTA finale — section immersive vert profond */}
       <section className="py-12 lg:py-16">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="relative overflow-hidden rounded-[28px] px-8 py-14 lg:px-16 lg:py-20 text-center" style={{ background: "linear-gradient(150deg, #1b4332 0%, #013F27 100%)" }}>
+          <div className="relative overflow-hidden rounded-[28px] px-8 py-14 lg:px-16 lg:py-20 text-center" style={{ background: "linear-gradient(150deg, hsl(var(--heading)) 0%, #013F27 100%)" }}>
             <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(23,236,155,0.22), transparent 70%)" }} />
             <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-24 h-80 w-80 rounded-full" style={{ background: "radial-gradient(circle, rgba(23,236,155,0.10), transparent 70%)" }} />
             <div className="relative">

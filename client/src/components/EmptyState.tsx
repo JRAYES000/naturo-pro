@@ -22,7 +22,7 @@ export function EmptyState({ icon: Icon, title, description, action, card = true
       <div className="h-12 w-12 mx-auto rounded-full bg-secondary text-primary flex items-center justify-center mb-3">
         <Icon className="h-6 w-6" />
       </div>
-      <p className="font-bold mb-1" style={{ color: "#1b4332" }}>{title}</p>
+      <p className="font-bold mb-1 text-heading">{title}</p>
       {description && <p className="text-sm text-muted-foreground max-w-sm mx-auto">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

@@ -53,7 +53,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2" style={{ color: "#1b4332" }}>Nouveau mot de passe</h1>
+          <h1 className="text-3xl font-extrabold mb-2 text-heading">Nouveau mot de passe</h1>
           <p className="text-muted-foreground">Choisissez un nouveau mot de passe sécurisé.</p>
         </div>
         <div className="card-naturo">

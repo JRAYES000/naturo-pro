@@ -63,7 +63,7 @@ export function TrialBanner() {
           data-testid="trial-banner-info"
         >
           <Sparkles className="h-5 w-5 flex-shrink-0" style={{ color: "#186749" }} />
-          <p className="text-sm font-semibold flex-1 min-w-0" style={{ color: "#1b4332" }}>
+          <p className="text-sm font-semibold flex-1 min-w-0 text-heading">
             Vous êtes en essai gratuit · {days} jour{days > 1 ? "s" : ""} restant{days > 1 ? "s" : ""}
           </p>
           <Link href="/app/settings">

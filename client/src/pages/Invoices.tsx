@@ -91,7 +91,7 @@ export default function InvoicesPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">CA encaissé</p>
-            <p className="text-2xl font-extrabold" style={{ color: "#1b4332" }} data-testid="text-kpi-paid">
+            <p className="text-2xl font-extrabold text-heading" data-testid="text-kpi-paid">
               {formatPrice(kpis.caEncaisseCents)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">{kpis.paidCount} facture{kpis.paidCount > 1 ? "s" : ""} payée{kpis.paidCount > 1 ? "s" : ""}</p>
@@ -105,13 +105,13 @@ export default function InvoicesPage() {
           </div>
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">Total factures</p>
-            <p className="text-2xl font-extrabold" style={{ color: "#1b4332" }} data-testid="text-kpi-total">
+            <p className="text-2xl font-extrabold text-heading" data-testid="text-kpi-total">
               {kpis.totalCount}
             </p>
           </div>
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">Année en cours</p>
-            <p className="text-2xl font-extrabold" style={{ color: "#1b4332" }}>
+            <p className="text-2xl font-extrabold text-heading">
               {new Date().getFullYear()}
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function InvoicesPage() {
                 {filtered.map((inv) => (
                   <tr key={inv.id} className="border-t hover:bg-secondary/20" data-testid={`row-invoice-${inv.id}`}>
                     <td className="px-4 py-3 font-bold">
-                      <Link href={`/app/invoices/${inv.id}`} className="hover:underline" style={{ color: "#1b4332" }}>
+                      <Link href={`/app/invoices/${inv.id}`} className="hover:underline text-heading">
                         {inv.number}
                       </Link>
                     </td>

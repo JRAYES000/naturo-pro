@@ -174,7 +174,7 @@ export default function Settings() {
 
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5" style={{ color: "#1b4332" }} />
+            <Mail className="h-5 w-5 text-heading" />
             <h2 className="font-extrabold">Rappels email (Resend)</h2>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -197,8 +197,7 @@ export default function Settings() {
                 trigger={
                   <button
                     type="button"
-                    className="underline font-medium hover:opacity-80 text-left"
-                    style={{ color: "#1b4332" }}
+                    className="underline font-medium hover:opacity-80 text-left text-heading"
                     data-testid="link-resend-tutorial"
                   >
                     Suivez ce tutoriel rapide pour créer un compte Resend et obtenir votre clé API.
@@ -280,7 +279,7 @@ export default function Settings() {
 
         <div className="card-naturo space-y-3">
           <div className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" style={{ color: "#1b4332" }} />
+            <CalendarIcon className="h-5 w-5 text-heading" />
             <h2 className="font-extrabold">Google Calendar</h2>
           </div>
 
@@ -304,7 +303,7 @@ export default function Settings() {
 
           {googleStatus?.configured && googleStatus?.connected && (
             <>
-              <div className="flex items-center gap-2 text-sm" style={{ color: "#1b4332" }}>
+              <div className="flex items-center gap-2 text-sm text-heading">
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Connecté{googleStatus.email ? <> en tant que <strong>{googleStatus.email}</strong></> : ""}</span>
               </div>
@@ -517,7 +516,7 @@ export default function Settings() {
         {/* Avis Google */}
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
-            <Star className="h-5 w-5" style={{ color: "#1b4332" }} />
+            <Star className="h-5 w-5 text-heading" />
             <h2 className="font-extrabold">Avis Google</h2>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -555,7 +554,7 @@ export default function Settings() {
         {/* Paiements en ligne (Stripe) */}
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" style={{ color: "#1b4332" }} />
+            <CreditCard className="h-5 w-5 text-heading" />
             <h2 className="font-extrabold">Paiements en ligne (Stripe)</h2>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -675,7 +674,7 @@ function PrivacySection({ userEmail }: { userEmail?: string }) {
   return (
     <div className="card-naturo space-y-4">
       <div className="flex items-center gap-2">
-        <Shield className="h-5 w-5" style={{ color: "#1b4332" }} />
+        <Shield className="h-5 w-5 text-heading" />
         <h2 className="font-extrabold">Confidentialité (RGPD)</h2>
       </div>
       <p className="text-sm text-muted-foreground">

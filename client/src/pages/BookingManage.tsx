@@ -119,7 +119,7 @@ function StatusBadge({ status }: { status: string }) {
     );
   }
   return (
-    <Badge className="bg-[#1b4332] text-white text-xs">
+    <Badge className="bg-heading text-white text-xs">
       Confirmé
     </Badge>
   );
@@ -233,7 +233,7 @@ function ManageSlotPicker({
                     <span className="text-xs text-muted-foreground capitalize">
                       {d.toLocaleDateString("fr-FR", { month: "short" })}
                     </span>
-                    <span className="text-xs text-[#1b4332] dark:text-[#17EC9B] font-medium">
+                    <span className="text-xs text-heading dark:text-[#17EC9B] font-medium">
                       {count} {count > 1 ? "créneaux" : "créneau"}
                     </span>
                   </button>
@@ -261,7 +261,7 @@ function ManageSlotPicker({
                       key={iso}
                       data-testid={`slot-${ms}`}
                       onClick={() => onSelect(ms)}
-                      className="rounded-[12px] py-3 text-sm font-bold border-2 border-[#1b4332] text-[#1b4332] dark:border-[#17EC9B] dark:text-[#17EC9B] hover:bg-[#1b4332] hover:text-white dark:hover:bg-[#17EC9B] dark:hover:text-[#1b4332] transition-colors"
+                      className="rounded-[12px] py-3 text-sm font-bold border-2 border-heading text-heading dark:border-[#17EC9B] dark:text-[#17EC9B] hover:bg-heading hover:text-white dark:hover:bg-[#17EC9B] dark:hover:text-heading transition-colors"
                     >
                       {formatTime(iso)}
                     </button>
@@ -386,8 +386,8 @@ export default function BookingManage() {
       <div className="min-h-screen leaf-bg bg-background flex items-center justify-center p-4">
         <Card className="card-naturo max-w-md w-full">
           <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4 text-center">
-            <div className="w-14 h-14 rounded-full bg-[#1b4332]/10 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-[#1b4332] dark:text-[#17EC9B]" />
+            <div className="w-14 h-14 rounded-full bg-heading/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-heading dark:text-[#17EC9B]" />
             </div>
             <h1 className="text-xl font-bold text-foreground">
               {step === "done_cancel" ? "RDV annulé" : "Ce RDV a été annulé"}
@@ -425,7 +425,7 @@ export default function BookingManage() {
         <Card className="card-naturo max-w-md w-full">
           <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4 text-center">
             <div className="w-14 h-14 rounded-full bg-[#17EC9B]/20 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-[#1b4332] dark:text-[#17EC9B]" />
+              <CheckCircle2 className="h-7 w-7 text-heading dark:text-[#17EC9B]" />
             </div>
             <h1 className="text-xl font-bold text-foreground">RDV reporté !</h1>
             <p className="text-sm text-muted-foreground">
@@ -438,7 +438,7 @@ export default function BookingManage() {
             </p>
             <div className="flex flex-col gap-2 w-full mt-2">
               <Button
-                className="rounded-[15px] py-6 font-bold bg-[#1b4332] hover:bg-[#1b4332]/90 text-white"
+                className="rounded-[15px] py-6 font-bold bg-heading hover:bg-heading/90 text-white"
                 onClick={() => navigate(`/manage/${newToken}`)}
               >
                 Gérer le nouveau RDV
@@ -519,7 +519,7 @@ export default function BookingManage() {
                 <p className="font-bold text-foreground text-lg">
                   {formatDay(selectedSlotMs)}
                 </p>
-                <p className="text-[#1b4332] dark:text-[#17EC9B] font-bold text-xl">
+                <p className="text-heading dark:text-[#17EC9B] font-bold text-xl">
                   {formatTime(selectedSlotMs)}
                 </p>
                 {appt.duration && (
@@ -541,7 +541,7 @@ export default function BookingManage() {
                 data-testid="button-confirm-reschedule"
                 onClick={() => selectedSlotMs && rescheduleMutation.mutate(selectedSlotMs)}
                 disabled={rescheduleMutation.isPending}
-                className="rounded-[15px] py-6 font-bold bg-[#1b4332] hover:bg-[#1b4332]/90 text-white"
+                className="rounded-[15px] py-6 font-bold bg-heading hover:bg-heading/90 text-white"
               >
                 {rescheduleMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -594,7 +594,7 @@ export default function BookingManage() {
           <CardContent className="space-y-3">
             {/* Date */}
             <div className="flex items-start gap-3">
-              <Calendar className="h-5 w-5 text-[#1b4332] dark:text-[#17EC9B] shrink-0 mt-0.5" />
+              <Calendar className="h-5 w-5 text-heading dark:text-[#17EC9B] shrink-0 mt-0.5" />
               <div>
                 <p
                   className="font-medium text-foreground capitalize"
@@ -612,7 +612,7 @@ export default function BookingManage() {
             {/* Practitioner */}
             {appt.practitionerName && (
               <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-[#1b4332] dark:text-[#17EC9B] shrink-0" />
+                <User className="h-5 w-5 text-heading dark:text-[#17EC9B] shrink-0" />
                 <p className="text-foreground">{appt.practitionerName}</p>
               </div>
             )}
@@ -620,7 +620,7 @@ export default function BookingManage() {
             {/* Address */}
             {appt.address && (
               <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-[#1b4332] dark:text-[#17EC9B] shrink-0 mt-0.5" />
+                <MapPin className="h-5 w-5 text-heading dark:text-[#17EC9B] shrink-0 mt-0.5" />
                 <p className="text-muted-foreground text-sm">{appt.address}</p>
               </div>
             )}
@@ -634,7 +634,7 @@ export default function BookingManage() {
               <Button
                 data-testid="button-reschedule-rdv"
                 variant="outline"
-                className="flex-1 rounded-[15px] py-6 font-bold border-[#1b4332] text-[#1b4332] hover:bg-[#1b4332] hover:text-white dark:border-[#17EC9B] dark:text-[#17EC9B]"
+                className="flex-1 rounded-[15px] py-6 font-bold border-heading text-heading hover:bg-heading hover:text-white dark:border-[#17EC9B] dark:text-[#17EC9B]"
                 onClick={() => setStep("reschedule")}
               >
                 <Clock className="h-4 w-4 mr-2" />
@@ -678,7 +678,7 @@ export default function BookingManage() {
             >
               {formatDay(appt.startAt)}
             </p>
-            <p className="text-[#1b4332] dark:text-[#17EC9B] font-bold text-lg">
+            <p className="text-heading dark:text-[#17EC9B] font-bold text-lg">
               {formatTime(appt.startAt)}
             </p>
             {appt.categoryName && (
