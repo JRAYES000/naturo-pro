@@ -1,14 +1,17 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useRoute, useLocation, Link } from "wouter";
-import { ArrowLeft, Trash2, Plus, Save, Download, Mail, CheckCircle2, XCircle } from "lucide-react";
+import { useRoute, useLocation } from "wouter";
+import { Trash2, Plus, Save, Download, Mail, Receipt } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatPrice } from "@/lib/format";
 import type { Client, Invoice, InvoiceItem } from "@shared/schema";
@@ -22,13 +25,6 @@ interface ItemDraft {
 interface InvoiceWithItems extends Invoice {
   items: InvoiceItem[];
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Brouillon",
-  sent: "Envoyée",
-  paid: "Payée",
-  cancelled: "Annulée",
-};
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "Espèces",
@@ -77,6 +73,7 @@ export default function InvoiceEditor() {
   const [, params] = useRoute("/app/invoices/:id");
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const id = params?.id;
   const isNew = id === "new";
   const numericId = isNew ? null : Number(id);
@@ -196,7 +193,7 @@ export default function InvoiceEditor() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      toast({ title: "Facture créée", description: data.number });
+      toast({ title: "Facture créée", description: data.number, variant: "success" });
       navigate(`/app/invoices/${data.id}`);
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -210,7 +207,7 @@ export default function InvoiceEditor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", numericId] });
-      toast({ title: "Facture mise à jour" });
+      toast({ title: "Facture mise à jour", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -219,7 +216,7 @@ export default function InvoiceEditor() {
     mutationFn: async () => apiRequest("DELETE", `/api/invoices/${numericId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      toast({ title: "Facture supprimée" });
+      toast({ title: "Facture supprimée", variant: "success" });
       navigate("/app/invoices");
     },
   });
@@ -232,7 +229,7 @@ export default function InvoiceEditor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", numericId] });
-      toast({ title: "Email envoyé", description: "La facture a été envoyée au client avec le PDF en pièce jointe." });
+      toast({ title: "Email envoyé", description: "La facture a été envoyée au client avec le PDF en pièce jointe.", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur d'envoi", description: e.message, variant: "destructive" }),
   });
@@ -277,22 +274,13 @@ export default function InvoiceEditor() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/app/invoices" className="p-2 rounded-md hover:bg-secondary" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="flex-1">
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>
-              {isNew ? "Nouvelle facture" : invoice?.number}
-            </h1>
-            {!isNew && invoice && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Créée le {new Date(invoice.createdAt).toLocaleDateString("fr-FR")}
-              </p>
-            )}
-          </div>
-          {!isNew && invoice && (
-            <div className="flex gap-2 flex-wrap">
+        <PageHeader
+          title={isNew ? "Nouvelle facture" : (invoice?.number ?? "")}
+          subtitle={!isNew && invoice ? `Créée le ${new Date(invoice.createdAt).toLocaleDateString("fr-FR")}` : undefined}
+          icon={Receipt}
+          backTo={{ href: "/app/invoices", label: "Factures" }}
+          actions={!isNew && invoice ? (
+            <>
               <a
                 href={`/api/invoices/${numericId}/pdf`}
                 target="_blank"
@@ -311,9 +299,9 @@ export default function InvoiceEditor() {
               >
                 <Mail className="h-4 w-4 mr-1" /> Envoyer
               </Button>
-            </div>
-          )}
-        </div>
+            </>
+          ) : undefined}
+        />
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Colonne gauche : client + lignes + dates */}
@@ -474,7 +462,7 @@ export default function InvoiceEditor() {
                         }`}
                         data-testid={`button-status-${s}`}
                       >
-                        {STATUS_LABELS[s]}
+                        <StatusBadge domain="invoice" status={s} />
                       </button>
                     ))}
                   </div>
@@ -512,7 +500,16 @@ export default function InvoiceEditor() {
               {!isNew && (
                 <Button
                   variant="outline"
-                  onClick={() => { if (confirm("Supprimer cette facture ?")) deleteMut.mutate(); }}
+                  onClick={async () => {
+                    if (!(await confirm({
+                      title: "Supprimer cette facture ?",
+                      description: "Cette action est définitive et ne peut pas être annulée.",
+                      confirmLabel: "Supprimer",
+                      cancelLabel: "Annuler",
+                      destructive: true,
+                    }))) return;
+                    deleteMut.mutate();
+                  }}
                   className="w-full rounded-[15px] font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
                   data-testid="button-delete"
                 >

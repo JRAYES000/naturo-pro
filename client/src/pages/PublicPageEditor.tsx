@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ExternalLink, Save, Globe, Copy, Check, Link as LinkIcon, AlertCircle, RotateCcw, Upload, Image as ImageIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,7 +112,7 @@ export default function PublicPageEditor() {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       refetch();
-      toast({ title: "Page publique enregistrée" });
+      toast({ title: "Page publique enregistrée", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -119,17 +120,16 @@ export default function PublicPageEditor() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Ma page publique</h1>
-            <p className="text-muted-foreground text-sm mt-1">L'écran que voient vos clientes lorsqu'elles veulent prendre RDV.</p>
-          </div>
-          {user && (
+        <PageHeader
+          title="Page publique"
+          subtitle="Personnalisez votre page de réservation en ligne."
+          icon={Globe}
+          actions={user && (
             <a href={`/#/p/${user.slug}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-primary inline-flex items-center gap-1 hover:underline" data-testid="link-preview-public">
               Aperçu <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
-        </div>
+        />
 
         {/* Phase 3 Lot 2 — Lien public sur sous-domaine personnel */}
         <div className="card-naturo space-y-3 mb-5" data-testid="card-public-url">

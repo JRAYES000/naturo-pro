@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { TrendingUp, Calendar, Download, BarChart2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPrice } from "@/lib/format";
@@ -112,24 +114,23 @@ export default function Stats() {
     <AppLayout>
       <div className="max-w-6xl">
         {/* Entête */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Statistiques</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Suivez votre activité et exportez vos recettes pour la comptabilité.
-            </p>
-          </div>
-          <Button
-            onClick={handleExportCsv}
-            disabled={downloading}
-            variant="outline"
-            className="rounded-[15px] font-bold"
-            data-testid="button-export-csv"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            {downloading ? "Téléchargement…" : "Exporter le journal des recettes (CSV)"}
-          </Button>
-        </div>
+        <PageHeader
+          title="Statistiques"
+          subtitle="L'activité de votre cabinet en un coup d'œil."
+          icon={BarChart2}
+          actions={
+            <Button
+              onClick={handleExportCsv}
+              disabled={downloading}
+              variant="outline"
+              className="rounded-[15px] font-bold"
+              data-testid="button-export-csv"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              {downloading ? "Téléchargement…" : "Exporter le journal des recettes (CSV)"}
+            </Button>
+          }
+        />
 
         {/* Aide */}
         <HelpNote>
@@ -244,13 +245,12 @@ export default function Stats() {
               ))}
             </div>
           ) : top.length === 0 ? (
-            <div className="text-center py-10">
-              <BarChart2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="font-bold mb-1">Aucune donnée</p>
-              <p className="text-sm text-muted-foreground">
-                Aucun rendez-vous enregistré sur cette période.
-              </p>
-            </div>
+            <EmptyState
+              icon={BarChart2}
+              title="Aucune donnée"
+              description="Aucun rendez-vous enregistré sur cette période."
+              card={false}
+            />
           ) : (
             <div className="space-y-3">
               {top.map((item, idx) => (

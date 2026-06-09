@@ -13,10 +13,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 const locales = { fr };
 const localizer = dateFnsLocalizer({
@@ -73,7 +75,7 @@ export default function Agenda() {
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/appointments/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-      toast({ title: "Rendez-vous supprimé" });
+      toast({ title: "Rendez-vous supprimé", variant: "success" });
       setSelected(null);
     },
   });
@@ -97,12 +99,16 @@ export default function Agenda() {
   return (
     <AppLayout>
       <div className="max-w-7xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Agenda</h1>
-          <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-[15px] font-bold" data-testid="button-new-appointment">
-            <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
-          </Button>
-        </div>
+        <PageHeader
+          title="Agenda"
+          icon={Calendar}
+          subtitle="Vos rendez-vous en vue mois, semaine ou jour."
+          actions={
+            <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-[15px] font-bold" data-testid="button-new-appointment">
+              <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
+            </Button>
+          }
+        />
 
         <div className="card-naturo p-4">
           <BigCalendar
@@ -173,7 +179,7 @@ export default function Agenda() {
                       </a>
                     </p>
                   )}
-                  <p><strong>Statut :</strong> {selected.status}{(selected as any).clientConfirmedAt ? " — ✓ confirmé par la cliente" : ""}{(selected as any).clientCancelledAt ? " — ✕ annulé par la cliente" : ""}</p>
+                  <p className="flex items-center gap-2"><strong>Statut :</strong> <StatusBadge domain="appointment" status={selected.status} />{(selected as any).clientConfirmedAt ? <span>— ✓ confirmé par la cliente</span> : null}{(selected as any).clientCancelledAt ? <span>— ✕ annulé par la cliente</span> : null}</p>
                   {(selected as any).reminderSentAt && (
                     <p className="text-xs text-muted-foreground">✉ Rappel envoyé le {new Date((selected as any).reminderSentAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
                   )}
@@ -330,7 +336,7 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
       const nb = recurrence !== "none" ? Number(occurrences) : 1;
-      toast({ title: nb > 1 ? `${nb} rendez-vous créés` : "Rendez-vous créé" });
+      toast({ title: nb > 1 ? `${nb} rendez-vous créés` : "Rendez-vous créé", variant: "success" });
       reset(); onClose();
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),

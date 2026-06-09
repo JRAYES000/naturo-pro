@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,41 +108,6 @@ function TableSkeleton() {
   );
 }
 
-// ── Empty state ────────────────────────────────────────────────────────────────
-
-function EmptyState() {
-  return (
-    <div
-      className="flex flex-col items-center justify-center py-16 text-center gap-4"
-      data-testid="text-empty-reminders"
-    >
-      {/* Illustration légère */}
-      <div className="relative">
-        <div className="w-20 h-20 rounded-full bg-[#dcfce7] flex items-center justify-center">
-          <Bell className="h-10 w-10 text-[#186749] opacity-60" />
-        </div>
-        <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-          <span className="text-gray-400 text-xs font-bold">0</span>
-        </div>
-      </div>
-      <div>
-        <p className="text-base font-semibold text-foreground">
-          Aucun rappel programmé pour le moment
-        </p>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          Les rappels J-1 s'envoient automatiquement lorsque vous avez des
-          rendez-vous à venir avec des clients ayant une adresse email.
-        </p>
-      </div>
-      <Button asChild variant="outline" size="sm" className="mt-2">
-        <Link href="/app/settings" data-testid="button-configure-reminders">
-          Configurer les rappels
-        </Link>
-      </Button>
-    </div>
-  );
-}
-
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -215,26 +182,18 @@ export default function Reminders() {
   return (
     <AppLayout>
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[15px] bg-[#186749] flex items-center justify-center flex-shrink-0">
-            <Bell className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground" data-testid="text-page-title">
-              Rappels email
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Suivi des rappels J-1 envoyés à vos clients
-            </p>
-          </div>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/app/settings" data-testid="button-configure-settings">
-            Configurer les rappels
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Rappels"
+        subtitle="Le suivi de vos rappels automatiques J-1."
+        icon={Bell}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/app/settings" data-testid="button-configure-settings">
+              Configurer les rappels
+            </Link>
+          </Button>
+        }
+      />
 
       <HelpNote>
         <p>
@@ -316,7 +275,20 @@ export default function Reminders() {
               <TableSkeleton />
             </div>
           ) : isEmpty ? (
-            <EmptyState />
+            <EmptyState
+              icon={Bell}
+              title="Aucun rappel programmé"
+              description="Les rappels J-1 s'envoient automatiquement lorsque vous avez des rendez-vous à venir avec des clients ayant une adresse email."
+              card={false}
+              testid="text-empty-reminders"
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/app/settings" data-testid="button-configure-reminders">
+                    Configurer les rappels
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Shield, ArrowLeft, ExternalLink } from "lucide-react";
+import { Shield, ExternalLink } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 
@@ -48,6 +50,7 @@ export default function AdminUserDetail() {
   const id = Number(params.id);
   const { user: me } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
 
@@ -76,7 +79,7 @@ export default function AdminUserDetail() {
     onSuccess: async () => {
       await refetch();
       qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Utilisateur mis à jour" });
+      toast({ title: "Utilisateur mis à jour", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Action impossible", variant: "destructive" }),
   });
@@ -88,7 +91,7 @@ export default function AdminUserDetail() {
     onSuccess: async () => {
       await refetch();
       qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Trial prolongé" });
+      toast({ title: "Trial prolongé", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Action impossible", variant: "destructive" }),
   });
@@ -99,7 +102,7 @@ export default function AdminUserDetail() {
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      toast({ title: "Connecté en tant que cet utilisateur" });
+      toast({ title: "Connecté en tant que cet utilisateur", variant: "success" });
       window.location.hash = "#/app";
       window.location.reload();
     },
@@ -146,18 +149,12 @@ export default function AdminUserDetail() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-3xl">
-        <div>
-          <Link href="/admin/users" className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1" data-testid="link-back-admin">
-            <ArrowLeft className="h-4 w-4" />
-            Retour à la liste
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <Shield className="h-6 w-6" style={{ color: "#186749" }} />
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1b4332" }}>{u.name}</h1>
-          {planBadge(u.plan)}
-        </div>
+        <PageHeader
+          title={u.name || "Détail utilisateur"}
+          icon={Shield}
+          backTo={{ href: "/admin/users", label: "Utilisateurs" }}
+          actions={planBadge(u.plan)}
+        />
 
         <div className="card-naturo space-y-3">
           <h2 className="font-bold text-lg" style={{ color: "#1b4332" }}>Identité</h2>
@@ -284,8 +281,14 @@ export default function AdminUserDetail() {
               Se connecter en tant que cet utilisateur pour debug. Votre session admin sera remplacée.
             </p>
             <Button
-              onClick={() => {
-                if (!confirm(`Se connecter en tant que ${u.email} ?`)) return;
+              onClick={async () => {
+                if (!(await confirm({
+                  title: "Se connecter en tant que cet utilisateur ?",
+                  description: `Votre session admin sera remplacée par celle de ${u.email}. Vous devrez vous reconnecter pour revenir à votre compte.`,
+                  confirmLabel: "Se connecter",
+                  cancelLabel: "Annuler",
+                  destructive: true,
+                }))) return;
                 impersonate.mutate();
               }}
               disabled={impersonate.isPending}

@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { Link } from "wouter";
 import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/lib/auth";
 import { formatTime, formatDay, durationLabel } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,12 +32,10 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="max-w-6xl">
-        <header className="mb-8">
-          <p className="text-sm text-muted-foreground mb-1">Bonjour {user?.name?.split(" ")[0]}</p>
-          <h1 className="text-3xl lg:text-4xl font-extrabold" style={{ color: "#1b4332" }}>
-            Votre cabinet, en un coup d'œil
-          </h1>
-        </header>
+        <PageHeader
+          kicker={`Bonjour ${user?.name?.split(" ")[0] ?? ""}`.trim()}
+          title="Votre cabinet, en un coup d'œil"
+        />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="RDV aujourd'hui" value={todayCount} icon={Calendar} testid="stat-today" />
@@ -58,7 +58,8 @@ export default function Dashboard() {
               <EmptyState
                 icon={Calendar}
                 title="Aucun rendez-vous à venir"
-                desc="Vos prochaines consultations apparaîtront ici."
+                description="Vos prochaines consultations apparaîtront ici."
+                card={false}
               />
             ) : (
               <ul className="space-y-3">
@@ -131,16 +132,6 @@ function StatCard({ label, value, icon: Icon, testid }: any) {
         <Icon className="h-4 w-4 text-primary" />
       </div>
       <p className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>{value}</p>
-    </div>
-  );
-}
-
-function EmptyState({ icon: Icon, title, desc }: any) {
-  return (
-    <div className="text-center py-10">
-      <div className="h-12 w-12 mx-auto rounded-full bg-secondary text-primary flex items-center justify-center mb-3"><Icon className="h-6 w-6" /></div>
-      <p className="font-bold mb-1">{title}</p>
-      <p className="text-sm text-muted-foreground">{desc}</p>
     </div>
   );
 }

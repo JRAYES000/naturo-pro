@@ -11,6 +11,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Search, Pencil, Trash2, Leaf } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { useConfirm } from "@/hooks/use-confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +35,7 @@ const CATEGORIES = ["Plante", "Huile essentielle", "Complément", "Fleur de Bach
 
 export default function Solutions() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: solutions = [], isLoading } = useQuery<NaturalSolution[]>({ queryKey: ["/api/solutions"] });
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<string>("all");
@@ -51,22 +55,23 @@ export default function Solutions() {
 
   const delMut = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/solutions/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/solutions"] }); toast({ title: "Solution supprimée" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/solutions"] }); toast({ title: "Solution supprimée", variant: "success" }); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
   return (
     <AppLayout>
       <div className="max-w-5xl">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Bibliothèque de référence</h1>
-            <p className="text-muted-foreground text-sm mt-1">Votre base de plantes, huiles essentielles, compléments et fleurs de Bach pour construire vos programmes.</p>
-          </div>
-          <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-solution">
-            <Plus className="h-4 w-4 mr-1" /> Ajouter une solution
-          </Button>
-        </div>
+        <PageHeader
+          title="Bibliothèque de référence"
+          subtitle="Votre catalogue de solutions naturelles."
+          icon={Leaf}
+          actions={
+            <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-solution">
+              <Plus className="h-4 w-4 mr-1" /> Ajouter une solution
+            </Button>
+          }
+        />
 
         <HelpNote>
           <p>
@@ -112,11 +117,11 @@ export default function Solutions() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground py-10 text-center">Chargement…</p>
         ) : filtered.length === 0 ? (
-          <div className="card-naturo text-center py-16">
-            <Leaf className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-bold mb-1">Aucune solution trouvée</p>
-            <p className="text-sm text-muted-foreground">Modifiez votre recherche ou ajoutez votre propre fiche.</p>
-          </div>
+          <EmptyState
+            icon={Leaf}
+            title="Aucune solution trouvée"
+            description="Modifiez votre recherche ou ajoutez votre propre fiche."
+          />
         ) : (
           <ul className="grid sm:grid-cols-2 gap-4">
             {filtered.map((s) => (
@@ -129,7 +134,7 @@ export default function Solutions() {
                   {s.userId !== null && (
                     <div className="flex gap-1 shrink-0">
                       <button className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" onClick={() => setEditing(s)} data-testid={`button-edit-solution-${s.id}`}><Pencil className="h-4 w-4" /></button>
-                      <button className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" onClick={() => { if (confirm("Supprimer cette solution ?")) delMut.mutate(s.id); }} data-testid={`button-delete-solution-${s.id}`}><Trash2 className="h-4 w-4" /></button>
+                      <button className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" onClick={async () => { if (!(await confirm({ title: "Supprimer cette solution ?", description: "Cette action est définitive.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(s.id); }} data-testid={`button-delete-solution-${s.id}`}><Trash2 className="h-4 w-4" /></button>
                     </div>
                   )}
                 </div>
@@ -165,7 +170,7 @@ function SolutionEditor({ editing, onClose }: { editing: NaturalSolution | "new"
       if (isNew) await apiRequest("POST", "/api/solutions", body);
       else await apiRequest("PATCH", `/api/solutions/${(editing as NaturalSolution).id}`, body);
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/solutions"] }); toast({ title: "Solution enregistrée" }); onClose(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/solutions"] }); toast({ title: "Solution enregistrée", variant: "success" }); onClose(); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 

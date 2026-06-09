@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +31,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AnamnesisTemplate, AnamnesisResponse } from "@shared/schema";
 
@@ -98,6 +101,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 
 export default function AnamnesePage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [editingTpl, setEditingTpl] = useState<AnamnesisTemplate | "new" | null>(null);
   const [viewingResp, setViewingResp] = useState<AnamnesisResponse | null>(null);
   const [shareTplId, setShareTplId] = useState<number | null>(null);
@@ -116,7 +120,7 @@ export default function AnamnesePage() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/anamnesis-templates/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-templates"] });
-      toast({ title: "Modèle supprimé" });
+      toast({ title: "Modèle supprimé", variant: "success" });
     },
   });
 
@@ -124,19 +128,20 @@ export default function AnamnesePage() {
   return (
     <AppLayout>
       <div className="max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Anamnèses</h1>
-            <p className="text-muted-foreground text-sm mt-1">Questionnaires d'intake envoyés aux clientes avant le rendez-vous.</p>
-          </div>
-          <Button
-            onClick={() => setEditingTpl("new")}
-            className="rounded-[15px] font-bold"
-            data-testid="button-new-template"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Nouveau modèle
-          </Button>
-        </div>
+        <PageHeader
+          title="Anamnèses"
+          subtitle="Vos questionnaires de bilan à envoyer aux clients."
+          icon={ClipboardList}
+          actions={
+            <Button
+              onClick={() => setEditingTpl("new")}
+              className="rounded-[15px] font-bold"
+              data-testid="button-new-template"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Nouveau modèle
+            </Button>
+          }
+        />
 
         <HelpNote>
           <p>
@@ -163,13 +168,11 @@ export default function AnamnesePage() {
 
         {/* Liste des modèles */}
         {templates.length === 0 ? (
-          <div className="card-naturo text-center py-16">
-            <ClipboardList className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-bold mb-1">Aucun modèle de questionnaire</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Créez votre premier modèle pour commencer à envoyer des anamnèses à vos clientes.
-            </p>
-          </div>
+          <EmptyState
+            icon={ClipboardList}
+            title="Aucun modèle de questionnaire"
+            description="Créez votre premier modèle pour commencer à envoyer des anamnèses à vos clientes."
+          />
         ) : (
           <ul className="space-y-3 mb-10">
             {templates.map(tpl => {
@@ -209,7 +212,16 @@ export default function AnamnesePage() {
                       </button>
                       <button
                         className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
-                        onClick={() => { if (confirm("Supprimer ce modèle ?")) delMut.mutate(tpl.id); }}
+                        onClick={async () => {
+                          if (!(await confirm({
+                            title: "Supprimer ce modèle ?",
+                            description: "Le questionnaire et sa configuration seront définitivement supprimés. Cette action est irréversible.",
+                            confirmLabel: "Supprimer",
+                            cancelLabel: "Annuler",
+                            destructive: true,
+                          }))) return;
+                          delMut.mutate(tpl.id);
+                        }}
                         data-testid={`button-delete-${tpl.id}`}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -326,7 +338,7 @@ function TemplateDialog({ open, editing, onClose }: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-templates"] });
-      toast({ title: "Modèle enregistré" });
+      toast({ title: "Modèle enregistré", variant: "success" });
       onClose();
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),

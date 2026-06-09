@@ -1,28 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Plus, Receipt, Download, Mail, FileText } from "lucide-react";
+import { Plus, Receipt, Download, FileText } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPrice } from "@/lib/format";
 import type { Invoice } from "@shared/schema";
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Brouillon",
-  sent: "Envoyée",
-  paid: "Payée",
-  cancelled: "Annulée",
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground",
-  sent: "bg-amber-100 text-amber-800",
-  paid: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-red-100 text-red-800",
-};
 
 function formatDateShort(ms: number | null | undefined) {
   if (!ms) return "—";
@@ -64,17 +53,18 @@ export default function InvoicesPage() {
   return (
     <AppLayout>
       <div className="max-w-6xl">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Factures</h1>
-            <p className="text-muted-foreground text-sm mt-1">Suivi de votre facturation et chiffre d'affaires.</p>
-          </div>
-          <Link href="/app/invoices/new">
-            <Button className="rounded-[15px] font-bold" data-testid="button-new-invoice">
-              <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
-            </Button>
-          </Link>
-        </div>
+        <PageHeader
+          title="Factures"
+          subtitle="Émettez et suivez vos factures."
+          icon={Receipt}
+          actions={
+            <Link href="/app/invoices/new">
+              <Button className="rounded-[15px] font-bold" data-testid="button-new-invoice">
+                <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
+              </Button>
+            </Link>
+          }
+        />
 
         <HelpNote>
           <p>
@@ -156,22 +146,24 @@ export default function InvoicesPage() {
             <p className="text-muted-foreground">Chargement…</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="card-naturo text-center py-16">
-            <Receipt className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-bold mb-1">Aucune facture</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              {invoices.length === 0
+          <EmptyState
+            icon={Receipt}
+            title="Aucune facture"
+            description={
+              invoices.length === 0
                 ? "Créez votre première facture ou activez la facturation automatique sur RDV terminés."
-                : "Aucune facture ne correspond à ces filtres."}
-            </p>
-            {invoices.length === 0 && (
-              <Link href="/app/invoices/new">
-                <Button className="rounded-[15px] font-bold">
-                  <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
-                </Button>
-              </Link>
-            )}
-          </div>
+                : "Aucune facture ne correspond à ces filtres."
+            }
+            action={
+              invoices.length === 0 ? (
+                <Link href="/app/invoices/new">
+                  <Button className="rounded-[15px] font-bold">
+                    <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="card-naturo overflow-x-auto p-0">
             <table className="w-full text-sm">
@@ -199,9 +191,7 @@ export default function InvoicesPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-bold">{formatPrice(inv.totalCents)}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-md ${STATUS_STYLES[inv.status] || ""}`}>
-                        {STATUS_LABELS[inv.status] || inv.status}
-                      </span>
+                      <StatusBadge domain="invoice" status={inv.status} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">

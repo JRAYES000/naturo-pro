@@ -11,6 +11,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, FileText, Download, X, Leaf } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, NaturalSolution } from "@shared/schema";
 
@@ -51,16 +55,6 @@ function parseSections(raw: string): ProgramSection[] {
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Brouillon",
-  sent: "Envoyé",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-amber-100 text-amber-800 border-amber-200",
-  sent: "bg-green-100 text-green-800 border-green-200",
-};
 
 // ── Éditeur de programme ──────────────────────────────────────────────────────
 
@@ -175,7 +169,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
-      toast({ title: isNew ? "Programme créé" : "Programme mis à jour" });
+      toast({ title: isNew ? "Programme créé" : "Programme mis à jour", variant: "success" });
       onClose();
     },
     onError: () => toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" }),
@@ -389,6 +383,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
 
 export default function ProgrammesPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<Program | "new" | null>(null);
 
   const { data: programmes = [], isLoading } = useQuery<Program[]>({
@@ -403,7 +398,7 @@ export default function ProgrammesPage() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/programmes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
-      toast({ title: "Programme supprimé" });
+      toast({ title: "Programme supprimé", variant: "success" });
     },
     onError: () => toast({ title: "Erreur lors de la suppression", variant: "destructive" }),
   });
@@ -426,21 +421,20 @@ export default function ProgrammesPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Programmes</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Protocoles d'hygiène de vie personnalisés à remettre à vos clientes.
-            </p>
-          </div>
-          <Button
-            onClick={() => setEditing("new")}
-            className="rounded-[15px] font-bold"
-            data-testid="button-new-programme"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Nouveau programme
-          </Button>
-        </div>
+        <PageHeader
+          title="Programmes"
+          subtitle="Vos programmes d'hygiène de vie personnalisés."
+          icon={FileText}
+          actions={
+            <Button
+              onClick={() => setEditing("new")}
+              className="rounded-[15px] font-bold"
+              data-testid="button-new-programme"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Nouveau programme
+            </Button>
+          }
+        />
 
         <HelpNote>
           <p>
@@ -465,20 +459,20 @@ export default function ProgrammesPage() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : programmes.length === 0 ? (
-          <div className="card-naturo text-center py-16">
-            <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-bold mb-1">Aucun programme</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Créez votre premier programme d'hygiène de vie.
-            </p>
-            <Button
-              onClick={() => setEditing("new")}
-              className="rounded-[15px] font-bold"
-              data-testid="button-new-programme-empty"
-            >
-              <Plus className="h-4 w-4 mr-1" /> Créer un programme
-            </Button>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Aucun programme"
+            description="Créez votre premier programme d'hygiène de vie."
+            action={
+              <Button
+                onClick={() => setEditing("new")}
+                className="rounded-[15px] font-bold"
+                data-testid="button-new-programme-empty"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Créer un programme
+              </Button>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {programmes.map(prog => {
@@ -495,9 +489,7 @@ export default function ProgrammesPage() {
                       >
                         {prog.title}
                       </span>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${STATUS_COLORS[prog.status] ?? ""}`}>
-                        {STATUS_LABELS[prog.status] ?? prog.status}
-                      </span>
+                      <StatusBadge domain="program" status={prog.status} />
                     </div>
                     {cn && (
                       <p className="text-sm text-muted-foreground mt-0.5">
@@ -542,8 +534,15 @@ export default function ProgrammesPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        if (window.confirm("Supprimer ce programme ?")) deleteMut.mutate(prog.id);
+                      onClick={async () => {
+                        if (!(await confirm({
+                          title: "Supprimer ce programme ?",
+                          description: "Cette action est définitive et le programme ne pourra pas être récupéré.",
+                          confirmLabel: "Supprimer",
+                          cancelLabel: "Annuler",
+                          destructive: true,
+                        }))) return;
+                        deleteMut.mutate(prog.id);
                       }}
                       className="rounded-[12px] text-destructive hover:text-destructive"
                       data-testid={`button-delete-${prog.id}`}

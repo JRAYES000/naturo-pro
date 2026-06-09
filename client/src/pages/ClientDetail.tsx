@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Calendar, FileText, Save, Trash2, Upload, Download, File } from "lucide-react";
+import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { useConfirm } from "@/hooks/use-confirm";
 import type { Client, Appointment, ConsultationNote } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel } from "@/lib/format";
 
@@ -36,6 +39,7 @@ export default function ClientDetail() {
   const { id } = useParams();
   const cid = Number(id);
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: client, isLoading } = useQuery<Client>({ queryKey: ["/api/clients", cid] });
   const { data: appts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/clients", cid, "appointments"] });
   const { data: notes = [] } = useQuery<ConsultationNote[]>({ queryKey: ["/api/clients", cid, "notes"] });
@@ -50,7 +54,7 @@ export default function ClientDetail() {
     mutationFn: async () => apiRequest("PATCH", `/api/clients/${cid}`, draft),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", cid] });
-      toast({ title: "Fiche enregistrée" });
+      toast({ title: "Fiche enregistrée", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -59,7 +63,7 @@ export default function ClientDetail() {
     mutationFn: async () => apiRequest("DELETE", `/api/clients/${cid}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: "Client supprimé" });
+      toast({ title: "Client supprimé", variant: "success" });
       window.location.hash = "#/app/clients";
     },
   });
@@ -68,7 +72,7 @@ export default function ClientDetail() {
     mutationFn: async (docId: number) => apiRequest("DELETE", `/api/documents/${docId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] });
-      toast({ title: "Document supprimé" });
+      toast({ title: "Document supprimé", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -97,7 +101,7 @@ export default function ClientDetail() {
           dataBase64: base64,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] });
-        toast({ title: "Document enregistré", description: file.name });
+        toast({ title: "Document enregistré", description: file.name, variant: "success" });
       } catch (err: any) {
         toast({ title: "Erreur lors de l'envoi", description: err.message, variant: "destructive" });
       } finally {
@@ -118,25 +122,21 @@ export default function ClientDetail() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
-        <Link href="/app/clients" className="text-sm text-muted-foreground inline-flex items-center gap-2 mb-4 hover:text-primary" data-testid="link-back-clients">
-          <ArrowLeft className="h-4 w-4" /> Tous les clients
-        </Link>
-
-        <div className="flex flex-wrap items-center gap-4 justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-secondary text-primary flex items-center justify-center text-2xl font-extrabold">
-              {client.firstName[0]}{client.lastName[0]}
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>{client.firstName} {client.lastName}</h1>
-              {client.dateOfBirth && <p className="text-sm text-muted-foreground">Né(e) le {new Date(client.dateOfBirth).toLocaleDateString("fr-FR")}</p>}
-            </div>
-          </div>
-          <Button variant="outline" size="sm" className="rounded-[12px] text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={() => { if (confirm("Supprimer cette fiche client ?")) delMut.mutate(); }} data-testid="button-delete-client">
-            <Trash2 className="h-4 w-4 mr-1" /> Supprimer
-          </Button>
-        </div>
+        <PageHeader
+          icon={Users}
+          title={`${client.firstName} ${client.lastName}`}
+          subtitle={client.dateOfBirth ? `Né(e) le ${new Date(client.dateOfBirth).toLocaleDateString("fr-FR")}` : undefined}
+          backTo={{ href: "/app/clients", label: "Clients" }}
+          actions={
+            <Button variant="outline" size="sm" className="rounded-[12px] text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={async () => {
+                if (!(await confirm({ title: "Supprimer cette fiche client ?", description: "Cette action est définitive et supprimera toutes les données associées à ce client.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
+                delMut.mutate();
+              }} data-testid="button-delete-client">
+              <Trash2 className="h-4 w-4 mr-1" /> Supprimer
+            </Button>
+          }
+        />
 
         <Tabs defaultValue="info">
           <TabsList className="rounded-[12px]">
@@ -168,11 +168,11 @@ export default function ClientDetail() {
 
           <TabsContent value="history">
             {notes.length === 0 ? (
-              <div className="card-naturo text-center py-12">
-                <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                <p className="font-bold mb-1">Aucune note pour ce client</p>
-                <p className="text-sm text-muted-foreground">Les notes des consultations apparaîtront ici.</p>
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="Aucune note pour ce client"
+                description="Les notes des consultations apparaîtront ici."
+              />
             ) : (
               <div className="space-y-3">
                 {notes.map(n => (
@@ -192,10 +192,10 @@ export default function ClientDetail() {
 
           <TabsContent value="appts">
             {appts.length === 0 ? (
-              <div className="card-naturo text-center py-12">
-                <Calendar className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                <p className="font-bold mb-1">Aucun rendez-vous</p>
-              </div>
+              <EmptyState
+                icon={Calendar}
+                title="Aucun rendez-vous"
+              />
             ) : (
               <ul className="space-y-3">
                 {appts.map(a => (
@@ -282,7 +282,10 @@ export default function ClientDetail() {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => { if (confirm(`Supprimer "${doc.filename}" ?`)) delDocMut.mutate(doc.id); }}
+                      onClick={async () => {
+                        if (!(await confirm({ title: "Supprimer ce document ?", description: `Le fichier « ${doc.filename} » sera supprimé définitivement.`, confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
+                        delDocMut.mutate(doc.id);
+                      }}
                       data-testid={`button-delete-document-${doc.id}`}
                       title="Supprimer"
                     >

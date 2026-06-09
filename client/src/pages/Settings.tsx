@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard } from "lucide-react";
+import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard, Settings as SettingsIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,7 +131,11 @@ export default function Settings() {
   return (
     <AppLayout>
       <div className="max-w-2xl space-y-6">
-        <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Paramètres</h1>
+        <PageHeader
+          icon={SettingsIcon}
+          title="Paramètres"
+          subtitle="Configurez votre compte, l'envoi des emails, votre facturation et vos intégrations."
+        />
 
         <HelpNote>
           <p>

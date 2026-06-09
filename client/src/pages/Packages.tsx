@@ -13,6 +13,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { useConfirm } from "@/hooks/use-confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,6 +63,7 @@ function progressColor(used: number, total: number): string {
 
 export default function Packages() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<Package | "new" | null>(null);
   const [filterClientId, setFilterClientId] = useState<string>("all");
 
@@ -89,7 +93,7 @@ export default function Packages() {
       }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-      toast({ title: "Forfait créé" });
+      toast({ title: "Forfait créé", variant: "success" });
       setEditing(null);
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -105,7 +109,7 @@ export default function Packages() {
       }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-      toast({ title: "Forfait mis à jour" });
+      toast({ title: "Forfait mis à jour", variant: "success" });
       setEditing(null);
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -115,7 +119,7 @@ export default function Packages() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/packages/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-      toast({ title: "Forfait supprimé" });
+      toast({ title: "Forfait supprimé", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -127,7 +131,7 @@ export default function Packages() {
       }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-      toast({ title: "Séance enregistrée" });
+      toast({ title: "Séance enregistrée", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -136,21 +140,20 @@ export default function Packages() {
     <AppLayout>
       <div className="max-w-5xl">
         {/* En-tête */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Forfaits</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Gérez vos carnets de séances prépayées et suivez la consommation de chaque cliente.
-            </p>
-          </div>
-          <Button
-            onClick={() => setEditing("new")}
-            className="rounded-[15px] font-bold"
-            data-testid="button-new-package"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Nouveau forfait
-          </Button>
-        </div>
+        <PageHeader
+          title="Forfaits"
+          subtitle="Les forfaits de séances prépayées de vos clients."
+          icon={Ticket}
+          actions={
+            <Button
+              onClick={() => setEditing("new")}
+              className="rounded-[15px] font-bold"
+              data-testid="button-new-package"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Nouveau forfait
+            </Button>
+          }
+        />
 
         <HelpNote title="Comment fonctionnent les forfaits ?">
           <p>
@@ -191,11 +194,11 @@ export default function Packages() {
         {isLoading ? (
           <p className="text-muted-foreground text-sm">Chargement…</p>
         ) : displayed.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <Ticket className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Aucun forfait pour le moment.</p>
-            <p className="text-xs mt-1">Cliquez sur « Nouveau forfait » pour commencer.</p>
-          </div>
+          <EmptyState
+            icon={Ticket}
+            title="Aucun forfait pour le moment."
+            description="Cliquez sur « Nouveau forfait » pour commencer."
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {displayed.map((pkg) => {
@@ -262,8 +265,15 @@ export default function Packages() {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => {
-                        if (confirm("Supprimer ce forfait ?")) deleteMut.mutate(pkg.id);
+                      onClick={async () => {
+                        if (!(await confirm({
+                          title: "Supprimer ce forfait ?",
+                          description: "Cette action est définitive et supprimera le suivi des séances de ce forfait.",
+                          confirmLabel: "Supprimer",
+                          cancelLabel: "Annuler",
+                          destructive: true,
+                        }))) return;
+                        deleteMut.mutate(pkg.id);
                       }}
                       data-testid={`button-delete-package-${pkg.id}`}
                     >

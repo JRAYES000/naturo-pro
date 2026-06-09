@@ -28,8 +28,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
+import { MailOpen, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import {
   EditorProvider, Editor, Toolbar,
@@ -144,7 +145,7 @@ export default function EmailTemplates() {
       }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email-templates"] });
-      toast({ title: "Modèle enregistré", description: "Vos modifications ont été enregistrées." });
+      toast({ title: "Modèle enregistré", description: "Vos modifications ont été enregistrées.", variant: "success" });
     },
     onError: (e: any) => {
       toast({ title: "Erreur", description: e?.message || "Impossible de sauvegarder.", variant: "destructive" });
@@ -161,7 +162,7 @@ export default function EmailTemplates() {
       setBodyDraft((p) => ({ ...p, [activeKind]: def.bodyHtml }));
       setAdvanced((p) => ({ ...p, [activeKind]: isFullDoc(def.bodyHtml) }));
       setPreview(null);
-      toast({ title: "Modèle réinitialisé", description: "Le modèle par défaut a été restauré. Cliquez sur Enregistrer pour le conserver." });
+      toast({ title: "Modèle réinitialisé", description: "Le modèle par défaut a été restauré. Cliquez sur Enregistrer pour le conserver.", variant: "success" });
     },
     onError: (e: any) => {
       toast({ title: "Erreur", description: e?.message || "Impossible de réinitialiser.", variant: "destructive" });
@@ -231,19 +232,12 @@ export default function EmailTemplates() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-            <Mail className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Modèles d'emails</h1>
-            <p className="text-sm text-muted-foreground">
-              Personnalisez les emails envoyés automatiquement à vos clients.
-            </p>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto">
+        <PageHeader
+          title="Templates email"
+          subtitle="Personnalisez les emails envoyés à vos clients."
+          icon={MailOpen}
+        />
 
         {/* Encart d'aide repliable */}
         <HelpNote>

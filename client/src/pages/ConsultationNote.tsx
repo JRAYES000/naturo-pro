@@ -1,8 +1,9 @@
-import { useParams, Link } from "wouter";
+import { useParams } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { Check, Loader2, FileText } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,20 +77,18 @@ export default function ConsultationNotePage() {
   return (
     <AppLayout>
       <div className="max-w-3xl">
-        <Link href="/app/agenda" className="text-sm text-muted-foreground inline-flex items-center gap-2 mb-3 hover:text-primary" data-testid="link-back-agenda">
-          <ArrowLeft className="h-4 w-4" /> Retour à l'agenda
-        </Link>
-
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Note de consultation</h1>
-            {appt && <p className="text-sm text-muted-foreground">{appt.clientFirstName} {appt.clientLastName} • {formatDay(appt.startAt)} • {formatTime(appt.startAt)}</p>}
-          </div>
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            {status === "saving" && <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement…</>}
-            {status === "saved" && <span className="text-primary inline-flex items-center gap-1"><Check className="h-4 w-4" /> Enregistré</span>}
-          </div>
-        </div>
+        <PageHeader
+          title="Note de consultation"
+          subtitle={appt ? `${appt.clientFirstName} ${appt.clientLastName} • ${formatDay(appt.startAt)} • ${formatTime(appt.startAt)}` : undefined}
+          icon={FileText}
+          backTo={{ href: "/app/agenda", label: "Retour" }}
+          actions={
+            <div className="text-sm text-muted-foreground flex items-center gap-2" data-testid="status-save">
+              {status === "saving" && <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement…</>}
+              {status === "saved" && <span className="text-primary inline-flex items-center gap-1"><Check className="h-4 w-4" /> Enregistré</span>}
+            </div>
+          }
+        />
 
         <div className="card-naturo space-y-5">
           {FIELDS.map(([key, label, hint]) => (

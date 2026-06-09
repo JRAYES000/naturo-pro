@@ -3,6 +3,9 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { useConfirm } from "@/hooks/use-confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,26 +19,28 @@ import type { AppointmentCategory } from "@shared/schema";
 
 export default function CategoriesPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: cats = [] } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
   const [editing, setEditing] = useState<AppointmentCategory | "new" | null>(null);
 
   const delMut = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/categories/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/categories"] }); toast({ title: "Prestation supprimée" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/categories"] }); toast({ title: "Prestation supprimée", variant: "success" }); },
   });
 
   return (
     <AppLayout>
       <div className="max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Prestations</h1>
-            <p className="text-muted-foreground text-sm mt-1">Vos catégories de rendez-vous, durées et tarifs.</p>
-          </div>
-          <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-category">
-            <Plus className="h-4 w-4 mr-1" /> Nouvelle
-          </Button>
-        </div>
+        <PageHeader
+          title="Prestations"
+          icon={Tag}
+          subtitle="Les types de séances que vous proposez."
+          actions={
+            <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-category">
+              <Plus className="h-4 w-4 mr-1" /> Nouvelle
+            </Button>
+          }
+        />
 
         <HelpNote>
           <p>
@@ -75,11 +80,11 @@ export default function CategoriesPage() {
         </HelpNote>
 
         {cats.length === 0 ? (
-          <div className="card-naturo text-center py-16">
-            <Tag className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-bold mb-1">Aucune prestation</p>
-            <p className="text-sm text-muted-foreground mb-4">Créez vos premières prestations pour permettre la réservation en ligne.</p>
-          </div>
+          <EmptyState
+            icon={Tag}
+            title="Aucune prestation"
+            description="Créez vos premières prestations pour permettre la réservation en ligne."
+          />
         ) : (
           <ul className="grid sm:grid-cols-2 gap-4">
             {cats.map(c => (
@@ -91,7 +96,7 @@ export default function CategoriesPage() {
                   </div>
                   <div className="flex gap-1">
                     <button className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" onClick={() => setEditing(c)} data-testid={`button-edit-${c.id}`}><Pencil className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" onClick={() => { if (confirm("Supprimer ?")) delMut.mutate(c.id); }} data-testid={`button-delete-${c.id}`}><Trash2 className="h-4 w-4" /></button>
+                    <button className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" onClick={async () => { if (!(await confirm({ title: "Supprimer cette prestation ?", description: "Cette action est définitive et ne peut pas être annulée.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(c.id); }} data-testid={`button-delete-${c.id}`}><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
                 {c.description && <p className="text-sm text-muted-foreground mb-3">{c.description}</p>}
@@ -129,7 +134,7 @@ function CategoryDialog({ open, editing, onClose }: any) {
       if (editing === "new") await apiRequest("POST", "/api/categories", data);
       else await apiRequest("PATCH", `/api/categories/${editing.id}`, data);
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/categories"] }); toast({ title: "Enregistré" }); setData(null); onClose(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/categories"] }); toast({ title: "Enregistré", variant: "success" }); setData(null); onClose(); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 

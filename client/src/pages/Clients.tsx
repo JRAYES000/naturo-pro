@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Search, Mail, Phone, ArrowRight, Users } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,12 +25,16 @@ export default function Clients() {
   return (
     <AppLayout>
       <div className="max-w-6xl">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Clients</h1>
-          <Button onClick={() => setCreating(true)} className="rounded-[15px] font-bold" data-testid="button-new-client">
-            <Plus className="h-4 w-4 mr-1" /> Nouveau client
-          </Button>
-        </div>
+        <PageHeader
+          icon={Users}
+          title="Clients"
+          subtitle="Vos fiches clients : coordonnées, antécédents et historique de consultations."
+          actions={
+            <Button onClick={() => setCreating(true)} className="rounded-[15px] font-bold" data-testid="button-new-client">
+              <Plus className="h-4 w-4 mr-1" /> Nouveau client
+            </Button>
+          }
+        />
 
         <div className="card-naturo mb-6">
           <div className="relative">
@@ -46,12 +52,17 @@ export default function Clients() {
         {isLoading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
         ) : (list || []).length === 0 ? (
-          <div className="card-naturo text-center py-16">
-            <div className="h-12 w-12 mx-auto rounded-full bg-secondary text-primary flex items-center justify-center mb-3"><Users className="h-6 w-6" /></div>
-            <p className="font-bold mb-1">Aucun client {search ? "trouvé" : "pour le moment"}</p>
-            <p className="text-sm text-muted-foreground mb-4">{search ? "Essayez avec un autre mot-clé." : "Créez votre première fiche client."}</p>
-            {!search && <Button onClick={() => setCreating(true)} className="rounded-[15px]" data-testid="button-empty-create"><Plus className="h-4 w-4 mr-1" /> Nouveau client</Button>}
-          </div>
+          <EmptyState
+            icon={Users}
+            title={`Aucun client ${search ? "trouvé" : "pour le moment"}`}
+            description={search ? "Essayez avec un autre mot-clé." : "Créez votre première fiche client pour commencer."}
+            action={!search ? (
+              <Button onClick={() => setCreating(true)} className="rounded-[15px]" data-testid="button-empty-create">
+                <Plus className="h-4 w-4 mr-1" /> Nouveau client
+              </Button>
+            ) : undefined}
+            testid="empty-clients"
+          />
         ) : (
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(list || []).map(c => (
@@ -90,7 +101,7 @@ function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void
     mutationFn: async () => apiRequest("POST", "/api/clients", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: "Client créé" });
+      toast({ title: "Client créé", variant: "success" });
       setData({ firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "" });
       onClose();
     },

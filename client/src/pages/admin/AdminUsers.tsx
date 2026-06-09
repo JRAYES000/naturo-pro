@@ -3,10 +3,12 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Shield, Search, ExternalLink, Clock, Check, X } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 
@@ -51,6 +53,7 @@ function trialDays(u: AdminUser): string {
 export default function AdminUsers() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
@@ -79,7 +82,7 @@ export default function AdminUsers() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Trial prolongé", description: "Le compte a été mis à jour." });
+      toast({ title: "Trial prolongé", description: "Le compte a été mis à jour.", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Action impossible", variant: "destructive" }),
   });
@@ -90,7 +93,7 @@ export default function AdminUsers() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Compte mis à jour" });
+      toast({ title: "Compte mis à jour", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Action impossible", variant: "destructive" }),
   });
@@ -101,7 +104,7 @@ export default function AdminUsers() {
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      toast({ title: "Connecté en tant que cet utilisateur" });
+      toast({ title: "Connecté en tant que cet utilisateur", variant: "success" });
       window.location.hash = "#/app";
       window.location.reload();
     },
@@ -129,10 +132,11 @@ export default function AdminUsers() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Shield className="h-6 w-6" style={{ color: "#186749" }} />
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1b4332" }}>Administration · Utilisateurs</h1>
-        </div>
+        <PageHeader
+          title="Utilisateurs"
+          subtitle="Administration des comptes."
+          icon={Shield}
+        />
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[220px] max-w-md">
@@ -238,8 +242,17 @@ export default function AdminUsers() {
                           variant="outline"
                           className="rounded-[10px] h-7 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
                           disabled={setPlan.isPending}
-                          onClick={() => {
-                            if (!confirm(`Suspendre le compte de ${u.email} ?`)) return;
+                          onClick={async () => {
+                            if (
+                              !(await confirm({
+                                title: "Suspendre ce compte ?",
+                                description: `Le compte de ${u.email} sera suspendu et l'utilisateur perdra l'accès à l'application.`,
+                                confirmLabel: "Suspendre",
+                                cancelLabel: "Annuler",
+                                destructive: true,
+                              }))
+                            )
+                              return;
                             setPlan.mutate({ id: u.id, plan: "suspended" });
                           }}
                           data-testid={`button-suspend-${u.id}`}
@@ -253,8 +266,16 @@ export default function AdminUsers() {
                           variant="outline"
                           className="rounded-[10px] h-7 px-2 text-xs"
                           disabled={impersonate.isPending}
-                          onClick={() => {
-                            if (!confirm(`Se connecter en tant que ${u.email} ? Votre session admin sera remplacée.`)) return;
+                          onClick={async () => {
+                            if (
+                              !(await confirm({
+                                title: "Se connecter en tant que cet utilisateur ?",
+                                description: `Vous allez vous connecter en tant que ${u.email}. Votre session admin sera remplacée.`,
+                                confirmLabel: "Se connecter",
+                                cancelLabel: "Annuler",
+                              }))
+                            )
+                              return;
                             impersonate.mutate(u.id);
                           }}
                           data-testid={`button-impersonate-${u.id}`}

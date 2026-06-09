@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Clock } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +33,7 @@ export default function Availability() {
 
   const saveMut = useMutation({
     mutationFn: async () => apiRequest("PUT", "/api/availability", draft),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/availability"] }); toast({ title: "Disponibilités enregistrées" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/availability"] }); toast({ title: "Disponibilités enregistrées", variant: "success" }); },
   });
 
   function add(dow: number) {
@@ -48,15 +49,16 @@ export default function Availability() {
   return (
     <AppLayout>
       <div className="max-w-3xl">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-extrabold" style={{ color: "#1b4332" }}>Disponibilités</h1>
-            <p className="text-muted-foreground text-sm mt-1">Définissez vos plages horaires récurrentes. Les créneaux libres seront calculés automatiquement.</p>
-          </div>
-          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-availability">
-            {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
-          </Button>
-        </div>
+        <PageHeader
+          title="Disponibilités"
+          subtitle="Vos plages horaires d'ouverture, par jour de la semaine."
+          icon={Clock}
+          actions={
+            <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-availability">
+              {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+          }
+        />
 
         <HelpNote>
           <p>

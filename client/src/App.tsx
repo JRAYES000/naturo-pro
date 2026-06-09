@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
+import { ConfirmProvider } from "@/hooks/use-confirm";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -97,7 +98,9 @@ export default function App() {
         <Toaster />
         <Router hook={useHashLocation}>
           <AuthProvider>
-            <AppRouter />
+            <ConfirmProvider>
+              <AppRouter />
+            </ConfirmProvider>
           </AuthProvider>
         </Router>
       </TooltipProvider>
