@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatPrice, durationLabel } from "@/lib/format";
 import { apiRequest } from "@/lib/queryClient";
+import { brandThemeVars } from "@/lib/brand-theme";
 // Phase 3 Lot 2 — fallback sous-domaine
 import { getCurrentTenant, isOnTenantSubdomain } from "@/lib/tenant";
 
@@ -133,7 +134,7 @@ export default function PublicPage() {
   const primary = naturo.primaryColor || "#186749";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={brandThemeVars(naturo.primaryColor, naturo.accentColor)}>
       {/* Header minimal */}
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">

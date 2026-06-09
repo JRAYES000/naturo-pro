@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatPrice, durationLabel } from "@/lib/format";
+import { brandThemeVars } from "@/lib/brand-theme";
 import { BookingStepIndicator } from "@/components/BookingStepIndicator";
 import { BookingConfirmation } from "@/components/BookingConfirmation";
 // Phase 3 Lot 2 — fallback sous-domaine
@@ -235,7 +236,7 @@ export default function BookingFlow() {
   const backHref = onSub ? "/" : `/p/${slug}`;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={brandThemeVars(data.naturo.primaryColor)}>
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
           <Link href={backHref}><Logo /></Link>
