@@ -35,7 +35,7 @@ app.use(
         connectSrc: isDev
           ? ["'self'", "ws://localhost:*", "wss://localhost:*"]
           : ["'self'"],
-        frameSrc: ["'none'"],
+        frameSrc: ["'self'", "https://www.loom.com"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],

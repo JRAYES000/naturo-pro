@@ -3,28 +3,9 @@ import { Link } from "wouter";
 import {
   Calendar, CalendarClock, Globe, Video, Users, ClipboardList, FileText,
   Sprout, BookOpen, Package, Receipt, CreditCard, BellRing, BarChart3,
-  ShieldCheck, Leaf, Heart, Sparkles, ArrowRight, Check, ChevronDown, MapPin,
+  ShieldCheck, Leaf, Sparkles, ArrowRight, Check, ChevronDown, MapPin,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
-
-// Listing complet des fonctionnalités, affiché en "chips" dans le hero.
-const HERO_FEATURES = [
-  "Agenda intelligent",
-  "Réservation en ligne",
-  "Synchronisation Google Agenda",
-  "Rendez-vous en visio (Google Meet)",
-  "Dossiers clients enrichis",
-  "Anamnèses personnalisées",
-  "Notes de consultation",
-  "Programmes d'hygiène de vie",
-  "Bibliothèque de solutions naturelles",
-  "Forfaits & carnets de séances",
-  "Facturation conforme & PDF",
-  "Acompte en ligne (Stripe)",
-  "Rappels automatiques",
-  "Statistiques & export comptable",
-  "Conformité RGPD",
-];
 
 // Fonctionnalités détaillées (toutes réelles, vérifiées dans le code).
 const FEATURES = [
@@ -119,16 +100,6 @@ export default function Landing() {
             Fini les fichiers éparpillés. Naturo Pro centralise votre agenda, vos dossiers clients, vos anamnèses, vos comptes-rendus, votre facturation et votre page de réservation en ligne.
           </p>
 
-          {/* Listing des fonctionnalités (chips) */}
-          <div className="flex flex-wrap justify-center gap-2 mb-10 max-w-4xl mx-auto">
-            {HERO_FEATURES.map((f) => (
-              <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-sm font-bold text-primary">
-                <Check className="h-3.5 w-3.5 text-accent" />
-                {f}
-              </span>
-            ))}
-          </div>
-
           <div className="flex flex-wrap justify-center gap-3 mb-6">
             <Link href="/register" className="btn-primary-naturo" data-testid="cta-hero-register">
               Démarrer gratuitement <ArrowRight className="h-4 w-4" />
@@ -143,49 +114,17 @@ export default function Landing() {
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> En français</span>
           </div>
 
-          {/* Aperçu / mockup */}
-          <div className="relative max-w-3xl mx-auto">
-            <div className="card-naturo p-0 overflow-hidden text-left">
-              <img
-                src="https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=1200&q=80"
-                alt="Tisane et nature, ambiance naturopathie"
-                className="w-full h-64 lg:h-80 object-cover"
+          {/* Vidéo de présentation */}
+          <div className="max-w-3xl mx-auto card-naturo p-0 overflow-hidden">
+            <div className="aspect-video w-full bg-black">
+              <iframe
+                src="https://www.loom.com/embed/4aa64b9616a54cc29c02e4f5a6988055"
+                title="Présentation de Naturo Pro"
+                allow="fullscreen; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+                style={{ border: 0 }}
               />
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=80" alt="" className="h-10 w-10 rounded-full object-cover" />
-                  <div>
-                    <p className="font-extrabold">Marie Dupont</p>
-                    <p className="text-xs text-muted-foreground">Naturopathe certifiée • Lyon</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  3 rendez-vous aujourd'hui • 2 nouvelles réservations cette semaine
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-secondary rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Cette sem.</p>
-                    <p className="font-extrabold text-primary">12 RDV</p>
-                  </div>
-                  <div className="bg-secondary rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Clients</p>
-                    <p className="font-extrabold text-primary">38</p>
-                  </div>
-                  <div className="bg-secondary rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Page vue</p>
-                    <p className="font-extrabold text-primary">204×</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-6 -left-6 hidden md:block">
-              <div className="card-naturo p-3 flex items-center gap-3 max-w-[240px]">
-                <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center"><Heart className="h-5 w-5 text-primary" /></div>
-                <div>
-                  <p className="font-bold text-sm">Nouveau RDV</p>
-                  <p className="text-xs text-muted-foreground">Sophie a réservé un suivi</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
