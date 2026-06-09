@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AppLayout } from "@/components/AppLayout";
+import { Loading } from "@/components/Loading";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -117,11 +118,22 @@ export default function Packages() {
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/packages/${id}`),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/packages"] });
+      const prev = queryClient.getQueryData<Package[]>(["/api/packages"]);
+      queryClient.setQueryData<Package[]>(["/api/packages"], (old) =>
+        (old ?? []).filter((it) => it.id !== id),
+      );
+      return { prev };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
       toast({ title: "Forfait supprimé", variant: "success" });
     },
-    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(["/api/packages"], ctx.prev);
+      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/packages"] }),
   });
 
   const useMut = useMutation({
@@ -192,7 +204,7 @@ export default function Packages() {
 
         {/* Liste des forfaits */}
         {isLoading ? (
-          <p className="text-muted-foreground text-sm">Chargement…</p>
+          <Loading variant="cards" label="Chargement des forfaits…" />
         ) : displayed.length === 0 ? (
           <EmptyState
             icon={Ticket}

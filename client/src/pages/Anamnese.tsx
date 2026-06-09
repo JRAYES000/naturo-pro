@@ -118,10 +118,21 @@ export default function AnamnesePage() {
 
   const delMut = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/anamnesis-templates/${id}`),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/anamnesis-templates"] });
+      const prev = queryClient.getQueryData<AnamnesisTemplate[]>(["/api/anamnesis-templates"]);
+      queryClient.setQueryData(["/api/anamnesis-templates"], (old: any) =>
+        (old ?? []).filter((it: any) => it.id !== id));
+      return { prev };
+    },
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(["/api/anamnesis-templates"], ctx.prev);
+      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-templates"] });
       toast({ title: "Modèle supprimé", variant: "success" });
     },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-templates"] }),
   });
 
   // ── Templates list ──────────────────────────────────────────────────────────

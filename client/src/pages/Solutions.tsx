@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Search, Pencil, Trash2, Leaf } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { Loading } from "@/components/Loading";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -55,8 +56,18 @@ export default function Solutions() {
 
   const delMut = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/solutions/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/solutions"] }); toast({ title: "Solution supprimée", variant: "success" }); },
-    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/solutions"] });
+      const prev = queryClient.getQueryData(["/api/solutions"]);
+      queryClient.setQueryData(["/api/solutions"], (old: any) => (old ?? []).filter((it: any) => it.id !== id));
+      return { prev };
+    },
+    onSuccess: () => { toast({ title: "Solution supprimée", variant: "success" }); },
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(["/api/solutions"], ctx.prev);
+      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/solutions"] }),
   });
 
   return (
@@ -115,7 +126,7 @@ export default function Solutions() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground py-10 text-center">Chargement…</p>
+          <Loading variant="cards" count={4} label="Chargement des solutions…" />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={Leaf}

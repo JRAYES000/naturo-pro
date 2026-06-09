@@ -398,11 +398,22 @@ export default function ProgrammesPage() {
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/programmes/${id}`),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/programmes"] });
+      const prev = queryClient.getQueryData(["/api/programmes"]);
+      queryClient.setQueryData(["/api/programmes"], (old: any) =>
+        (old ?? []).filter((it: any) => it.id !== id),
+      );
+      return { prev };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
       toast({ title: "Programme supprimé", variant: "success" });
     },
-    onError: () => toast({ title: "Erreur lors de la suppression", variant: "destructive" }),
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(["/api/programmes"], ctx.prev);
+      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/programmes"] }),
   });
 
   function clientName(clientId: number | null): string {

@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MailOpen, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
 import { HelpNote } from "@/components/HelpNote";
+import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
 import {
@@ -301,9 +302,7 @@ export default function EmailTemplates() {
         </Tabs>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20" aria-busy="true">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <Loading variant="inline" />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* ── Colonne gauche : éditeur ────────────────────────────────── */}

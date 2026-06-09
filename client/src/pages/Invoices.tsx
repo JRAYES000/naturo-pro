@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,9 +143,7 @@ export default function InvoicesPage() {
 
         {/* Liste */}
         {isLoading ? (
-          <div className="card-naturo text-center py-16" aria-busy="true">
-            <p className="text-muted-foreground">Chargement…</p>
-          </div>
+          <Loading variant="list" />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={Receipt}

@@ -25,7 +25,18 @@ export default function CategoriesPage() {
 
   const delMut = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/categories/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/categories"] }); toast({ title: "Prestation supprimée", variant: "success" }); },
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/categories"] });
+      const prev = queryClient.getQueryData<AppointmentCategory[]>(["/api/categories"]);
+      queryClient.setQueryData(["/api/categories"], (old: any) => (old ?? []).filter((it: any) => it.id !== id));
+      return { prev };
+    },
+    onSuccess: () => { toast({ title: "Prestation supprimée", variant: "success" }); },
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(["/api/categories"], ctx.prev);
+      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/categories"] }),
   });
 
   return (

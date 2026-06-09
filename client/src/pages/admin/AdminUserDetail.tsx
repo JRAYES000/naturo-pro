@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import { Loading } from "@/components/Loading";
 
 type AdminUser = {
   id: number;
@@ -130,7 +131,7 @@ export default function AdminUserDetail() {
   if (isLoading || !u) {
     return (
       <AppLayout>
-        <div className="text-muted-foreground">Chargement…</div>
+        <Loading variant="inline" />
       </AppLayout>
     );
   }

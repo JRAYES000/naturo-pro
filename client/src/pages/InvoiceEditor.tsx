@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Trash2, Plus, Save, Download, Mail, Receipt } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -268,7 +269,7 @@ export default function InvoiceEditor() {
   }
 
   if (!isNew && isLoading) {
-    return <AppLayout><div className="p-8">Chargement…</div></AppLayout>;
+    return <AppLayout><Loading variant="inline" /></AppLayout>;
   }
 
   return (
