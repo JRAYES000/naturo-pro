@@ -155,59 +155,58 @@ export default function AdminUsers() {
         </div>
 
         <div className="card-naturo overflow-x-auto p-0">
-          <table className="w-full text-sm" aria-busy={isLoading || undefined}>
+          <table className="table-naturo" aria-busy={isLoading || undefined}>
             <thead>
-              <tr className="text-left border-b border-border bg-secondary/40">
-                <th className="px-3 py-2 font-bold">Nom</th>
-                <th className="px-3 py-2 font-bold">Email</th>
-                <th className="px-3 py-2 font-bold">Slug</th>
-                <th className="px-3 py-2 font-bold">Plan</th>
-                <th className="px-3 py-2 font-bold">Trial</th>
-                <th className="px-3 py-2 font-bold">Email</th>
-                <th className="px-3 py-2 font-bold">Onboard.</th>
-                <th className="px-3 py-2 font-bold">Inscription</th>
-                <th className="px-3 py-2 font-bold">Stats</th>
-                <th className="px-3 py-2 font-bold">Actions</th>
+              <tr>
+                <th>Nom</th>
+                <th>Email</th>
+                <th>Slug</th>
+                <th>Plan</th>
+                <th>Trial</th>
+                <th>Email</th>
+                <th>Onboard.</th>
+                <th>Inscription</th>
+                <th>Stats</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">Chargement…</td>
+                  <td colSpan={10} className="py-8 text-center text-muted-foreground">Chargement…</td>
                 </tr>
               )}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">Aucun utilisateur.</td>
+                  <td colSpan={10} className="py-8 text-center text-muted-foreground">Aucun utilisateur.</td>
                 </tr>
               )}
               {filtered.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-b border-border hover:bg-secondary/30"
                   data-testid={`row-user-${u.id}`}
                 >
-                  <td className="px-3 py-2 font-semibold">{u.name}</td>
-                  <td className="px-3 py-2">{u.email}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{u.slug}</td>
-                  <td className="px-3 py-2">{planBadge(u.plan)}</td>
-                  <td className="px-3 py-2">
+                  <td className="font-semibold">{u.name}</td>
+                  <td>{u.email}</td>
+                  <td className="font-mono text-xs">{u.slug}</td>
+                  <td>{planBadge(u.plan)}</td>
+                  <td>
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {trialDays(u)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     {u.emailVerifiedAt ? <Check className="h-4 w-4 text-primary" /> : <X className="h-4 w-4 text-destructive" />}
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     {u.onboardingCompletedAt ? <Check className="h-4 w-4 text-primary" /> : <X className="h-4 w-4 text-destructive" />}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{fmtDate(u.createdAt)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
+                  <td className="whitespace-nowrap">{fmtDate(u.createdAt)}</td>
+                  <td className="whitespace-nowrap text-xs text-muted-foreground">
                     {u._stats.appointments} RDV · {u._stats.clients} clients · {u._stats.invoices} factures
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     <div className="flex flex-wrap gap-1">
                       <Link href={`/admin/users/${u.id}`}>
                         <Button size="sm" variant="outline" className="rounded-[10px] h-7 px-2 text-xs" data-testid={`button-view-${u.id}`}>

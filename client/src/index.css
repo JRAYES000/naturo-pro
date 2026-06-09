@@ -177,6 +177,12 @@
     font-weight: 600;
     letter-spacing: -0.005em;
   }
+
+  /* Tableau de données unifié (factures, admin…) */
+  .table-naturo { @apply w-full text-sm; }
+  .table-naturo thead th { @apply px-4 py-3 text-left font-bold text-xs uppercase tracking-wide text-muted-foreground bg-secondary/40 border-b border-border; }
+  .table-naturo tbody td { @apply px-4 py-3 border-b border-border; }
+  .table-naturo tbody tr { @apply transition-colors hover:bg-secondary/20; }
 }
 
 @layer utilities {

@@ -166,34 +166,34 @@ export default function InvoicesPage() {
           />
         ) : (
           <div className="card-naturo overflow-x-auto p-0">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/40">
-                <tr className="text-left">
-                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide">Numéro</th>
-                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide">Date</th>
-                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide">Client</th>
-                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-right">Total</th>
-                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide">Statut</th>
-                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide w-1"></th>
+            <table className="table-naturo">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Date</th>
+                  <th>Client</th>
+                  <th className="text-right">Total</th>
+                  <th>Statut</th>
+                  <th className="w-1"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((inv) => (
-                  <tr key={inv.id} className="border-t hover:bg-secondary/20" data-testid={`row-invoice-${inv.id}`}>
-                    <td className="px-4 py-3 font-bold">
+                  <tr key={inv.id} data-testid={`row-invoice-${inv.id}`}>
+                    <td className="font-bold">
                       <Link href={`/app/invoices/${inv.id}`} className="hover:underline text-heading">
                         {inv.number}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDateShort(inv.issueDate)}</td>
-                    <td className="px-4 py-3">
+                    <td className="text-muted-foreground">{formatDateShort(inv.issueDate)}</td>
+                    <td>
                       {`${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.trim() || <span className="text-muted-foreground italic">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold">{formatPrice(inv.totalCents)}</td>
-                    <td className="px-4 py-3">
+                    <td className="text-right font-bold">{formatPrice(inv.totalCents)}</td>
+                    <td>
                       <StatusBadge domain="invoice" status={inv.status} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <div className="flex items-center gap-1">
                         <a
                           href={`/api/invoices/${inv.id}/pdf`}
