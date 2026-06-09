@@ -72,7 +72,7 @@ export default function ConsultationNotePage() {
     }, 800);
   }
 
-  if (isLoading) return <AppLayout><Skeleton className="h-96" /></AppLayout>;
+  if (isLoading) return <AppLayout><Skeleton className="h-96" aria-busy="true" /></AppLayout>;
 
   return (
     <AppLayout>

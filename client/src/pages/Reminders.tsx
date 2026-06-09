@@ -220,7 +220,7 @@ export default function Reminders() {
       </HelpNote>
 
       {/* ── Stats cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" aria-busy={statsLoading}>
         {statsLoading ? (
           <>
             <StatCardSkeleton />
@@ -269,7 +269,7 @@ export default function Reminders() {
             Derniers rappels (J-7 → J+30)
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4 px-0">
+        <CardContent className="pt-4 px-0" aria-busy={logLoading}>
           {logLoading ? (
             <div className="px-6">
               <TableSkeleton />

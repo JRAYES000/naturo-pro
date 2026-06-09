@@ -91,7 +91,7 @@ export default function Availability() {
               <div key={d.dow} className="border-b border-border pb-3 last:border-0 last:pb-0">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-extrabold text-primary">{d.label}</h3>
-                  <button onClick={() => add(d.dow)} className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline" data-testid={`button-add-${d.dow}`}>
+                  <button onClick={() => add(d.dow)} className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" data-testid={`button-add-${d.dow}`}>
                     <Plus className="h-3.5 w-3.5" /> Ajouter une plage
                   </button>
                 </div>
@@ -104,7 +104,7 @@ export default function Availability() {
                         <Input type="time" value={s.startTime} onChange={e => update(i, { startTime: e.target.value })} className="w-32 rounded-[10px]" data-testid={`input-start-${i}`} />
                         <span className="text-muted-foreground">–</span>
                         <Input type="time" value={s.endTime} onChange={e => update(i, { endTime: e.target.value })} className="w-32 rounded-[10px]" data-testid={`input-end-${i}`} />
-                        <button onClick={() => remove(i)} className="p-1.5 rounded-md text-destructive hover:bg-destructive/10" data-testid={`button-remove-${i}`}>
+                        <button onClick={() => remove(i)} aria-label="Supprimer la plage horaire" className="h-9 w-9 inline-flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" data-testid={`button-remove-${i}`}>
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>

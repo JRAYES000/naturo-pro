@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDate, formatTime, formatDay, durationLabel } from "@/lib/format";
+import { brandThemeVars } from "@/lib/brand-theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ interface ManageAppointment {
   categoryName: string | null;
   practitionerName: string | null;
   practitionerSlug: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
   address: string | null;
   status: string;
   clientFirstName: string | null;
@@ -119,7 +122,7 @@ function StatusBadge({ status }: { status: string }) {
     );
   }
   return (
-    <Badge className="bg-heading text-white text-xs">
+    <Badge className="bg-primary text-primary-foreground text-xs">
       Confirmé
     </Badge>
   );
@@ -220,8 +223,8 @@ function ManageSlotPicker({
                     onClick={() => setSelectedDay(isSelected ? null : day)}
                     className={`card-naturo py-4 px-3 flex flex-col items-center gap-1 transition-all cursor-pointer border-2 ${
                       isSelected
-                        ? "border-[#17EC9B] bg-[#17EC9B]/10"
-                        : "border-transparent hover:border-[#17EC9B]/50"
+                        ? "border-primary bg-primary/10"
+                        : "border-transparent hover:border-primary/50"
                     }`}
                   >
                     <span className="text-xs text-muted-foreground capitalize">
@@ -233,7 +236,7 @@ function ManageSlotPicker({
                     <span className="text-xs text-muted-foreground capitalize">
                       {d.toLocaleDateString("fr-FR", { month: "short" })}
                     </span>
-                    <span className="text-xs text-heading dark:text-[#17EC9B] font-medium">
+                    <span className="text-xs text-primary font-medium">
                       {count} {count > 1 ? "créneaux" : "créneau"}
                     </span>
                   </button>
@@ -261,7 +264,7 @@ function ManageSlotPicker({
                       key={iso}
                       data-testid={`slot-${ms}`}
                       onClick={() => onSelect(ms)}
-                      className="rounded-[12px] py-3 text-sm font-bold border-2 border-heading text-heading dark:border-[#17EC9B] dark:text-[#17EC9B] hover:bg-heading hover:text-white dark:hover:bg-[#17EC9B] dark:hover:text-heading transition-colors"
+                      className="rounded-[12px] py-3 text-sm font-bold border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
                     >
                       {formatTime(iso)}
                     </button>
@@ -383,11 +386,11 @@ export default function BookingManage() {
   // ── Done: cancelled ─────────────────────────────────────────────────────────
   if (step === "done_cancel" || (isCancelled && step === "main" && !canCancel && !canReschedule)) {
     return (
-      <div className="min-h-screen leaf-bg bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen leaf-bg bg-background flex items-center justify-center p-4" style={brandThemeVars(appt?.primaryColor, appt?.accentColor)}>
         <Card className="card-naturo max-w-md w-full">
           <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4 text-center">
-            <div className="w-14 h-14 rounded-full bg-heading/10 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-heading dark:text-[#17EC9B]" />
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-xl font-bold text-foreground">
               {step === "done_cancel" ? "RDV annulé" : "Ce RDV a été annulé"}
@@ -421,11 +424,11 @@ export default function BookingManage() {
   // ── Done: rescheduled ───────────────────────────────────────────────────────
   if (step === "done_reschedule" && newToken) {
     return (
-      <div className="min-h-screen leaf-bg bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen leaf-bg bg-background flex items-center justify-center p-4" style={brandThemeVars(appt?.primaryColor, appt?.accentColor)}>
         <Card className="card-naturo max-w-md w-full">
           <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4 text-center">
-            <div className="w-14 h-14 rounded-full bg-[#17EC9B]/20 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-heading dark:text-[#17EC9B]" />
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-xl font-bold text-foreground">RDV reporté !</h1>
             <p className="text-sm text-muted-foreground">
@@ -438,7 +441,7 @@ export default function BookingManage() {
             </p>
             <div className="flex flex-col gap-2 w-full mt-2">
               <Button
-                className="rounded-[15px] py-6 font-bold bg-heading hover:bg-heading/90 text-white"
+                className="rounded-[15px] py-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => navigate(`/manage/${newToken}`)}
               >
                 Gérer le nouveau RDV
@@ -462,7 +465,7 @@ export default function BookingManage() {
   // ── Reschedule step ─────────────────────────────────────────────────────────
   if (step === "reschedule") {
     return (
-      <div className="min-h-screen leaf-bg bg-background">
+      <div className="min-h-screen leaf-bg bg-background" style={brandThemeVars(appt?.primaryColor, appt?.accentColor)}>
         <header className="border-b border-border bg-background/80 sticky top-0 z-30">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
             <Button
@@ -519,7 +522,7 @@ export default function BookingManage() {
                 <p className="font-bold text-foreground text-lg">
                   {formatDay(selectedSlotMs)}
                 </p>
-                <p className="text-heading dark:text-[#17EC9B] font-bold text-xl">
+                <p className="text-primary font-bold text-xl">
                   {formatTime(selectedSlotMs)}
                 </p>
                 {appt.duration && (
@@ -541,7 +544,7 @@ export default function BookingManage() {
                 data-testid="button-confirm-reschedule"
                 onClick={() => selectedSlotMs && rescheduleMutation.mutate(selectedSlotMs)}
                 disabled={rescheduleMutation.isPending}
-                className="rounded-[15px] py-6 font-bold bg-heading hover:bg-heading/90 text-white"
+                className="rounded-[15px] py-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {rescheduleMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -557,7 +560,7 @@ export default function BookingManage() {
 
   // ── Main view ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen leaf-bg bg-background">
+    <div className="min-h-screen leaf-bg bg-background" style={brandThemeVars(appt?.primaryColor, appt?.accentColor)}>
       <header className="border-b border-border bg-background/80 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <span className="font-bold text-foreground text-lg">Mon rendez-vous</span>
@@ -594,7 +597,7 @@ export default function BookingManage() {
           <CardContent className="space-y-3">
             {/* Date */}
             <div className="flex items-start gap-3">
-              <Calendar className="h-5 w-5 text-heading dark:text-[#17EC9B] shrink-0 mt-0.5" />
+              <Calendar className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <div>
                 <p
                   className="font-medium text-foreground capitalize"
@@ -612,7 +615,7 @@ export default function BookingManage() {
             {/* Practitioner */}
             {appt.practitionerName && (
               <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-heading dark:text-[#17EC9B] shrink-0" />
+                <User className="h-5 w-5 text-primary shrink-0" />
                 <p className="text-foreground">{appt.practitionerName}</p>
               </div>
             )}
@@ -620,7 +623,7 @@ export default function BookingManage() {
             {/* Address */}
             {appt.address && (
               <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-heading dark:text-[#17EC9B] shrink-0 mt-0.5" />
+                <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <p className="text-muted-foreground text-sm">{appt.address}</p>
               </div>
             )}
@@ -634,7 +637,7 @@ export default function BookingManage() {
               <Button
                 data-testid="button-reschedule-rdv"
                 variant="outline"
-                className="flex-1 rounded-[15px] py-6 font-bold border-heading text-heading hover:bg-heading hover:text-white dark:border-[#17EC9B] dark:text-[#17EC9B]"
+                className="flex-1 rounded-[15px] py-6 font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                 onClick={() => setStep("reschedule")}
               >
                 <Clock className="h-4 w-4 mr-2" />
@@ -678,7 +681,7 @@ export default function BookingManage() {
             >
               {formatDay(appt.startAt)}
             </p>
-            <p className="text-heading dark:text-[#17EC9B] font-bold text-lg">
+            <p className="text-primary font-bold text-lg">
               {formatTime(appt.startAt)}
             </p>
             {appt.categoryName && (

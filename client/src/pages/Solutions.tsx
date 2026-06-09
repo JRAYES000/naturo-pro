@@ -133,8 +133,8 @@ export default function Solutions() {
                   </div>
                   {s.userId !== null && (
                     <div className="flex gap-1 shrink-0">
-                      <button className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" onClick={() => setEditing(s)} data-testid={`button-edit-solution-${s.id}`}><Pencil className="h-4 w-4" /></button>
-                      <button className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" onClick={async () => { if (!(await confirm({ title: "Supprimer cette solution ?", description: "Cette action est définitive.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(s.id); }} data-testid={`button-delete-solution-${s.id}`}><Trash2 className="h-4 w-4" /></button>
+                      <button aria-label="Modifier la solution" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={() => setEditing(s)} data-testid={`button-edit-solution-${s.id}`}><Pencil className="h-4 w-4" /></button>
+                      <button aria-label="Supprimer la solution" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={async () => { if (!(await confirm({ title: "Supprimer cette solution ?", description: "Cette action est définitive.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(s.id); }} data-testid={`button-delete-solution-${s.id}`}><Trash2 className="h-4 w-4" /></button>
                     </div>
                   )}
                 </div>

@@ -196,22 +196,25 @@ export default function AnamnesePage() {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button
-                        className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         onClick={() => setShareTplId(tpl.id)}
                         title="Créer un lien de partage"
+                        aria-label="Créer un lien de partage"
                         data-testid={`button-share-${tpl.id}`}
                       >
                         <Link2 className="h-4 w-4" />
                       </button>
                       <button
-                        className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         onClick={() => setEditingTpl(tpl)}
+                        aria-label="Modifier le modèle"
                         data-testid={`button-edit-${tpl.id}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        aria-label="Supprimer le modèle"
                         onClick={async () => {
                           if (!(await confirm({
                             title: "Supprimer ce modèle ?",
@@ -263,8 +266,9 @@ export default function AnamnesePage() {
                         : <Badge variant="secondary" className="text-xs">En attente</Badge>}
                       {resp.submittedAt && (
                         <button
-                          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+                          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           onClick={() => setViewingResp(resp)}
+                          aria-label="Voir les réponses"
                           data-testid={`button-view-${resp.id}`}
                         >
                           <Eye className="h-4 w-4" />
@@ -476,7 +480,8 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
             type="button"
             onClick={() => onMove(-1)}
             disabled={index === 0}
-            className="p-0.5 rounded hover:bg-secondary disabled:opacity-30"
+            className="h-9 w-9 inline-flex items-center justify-center rounded hover:bg-secondary disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Déplacer la question vers le haut"
             data-testid={`button-move-up-${index}`}
           >
             <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -485,7 +490,8 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
             type="button"
             onClick={() => onMove(1)}
             disabled={index === total - 1}
-            className="p-0.5 rounded hover:bg-secondary disabled:opacity-30"
+            className="h-9 w-9 inline-flex items-center justify-center rounded hover:bg-secondary disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Déplacer la question vers le bas"
             data-testid={`button-move-down-${index}`}
           >
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -524,7 +530,8 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
                     <button
                       type="button"
                       onClick={() => removeOption(i)}
-                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Retirer l'option"
+                      className="text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >×</button>
                   </span>
                 ))}
@@ -537,7 +544,7 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addOption(); } }}
                   data-testid={`input-option-${index}`}
                 />
-                <Button type="button" size="sm" variant="outline" onClick={addOption}>
+                <Button type="button" size="sm" variant="outline" onClick={addOption} aria-label="Ajouter l'option">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -560,7 +567,8 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
         <button
           type="button"
           onClick={onRemove}
-          className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive shrink-0"
+          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label="Supprimer la question"
           data-testid={`button-remove-question-${index}`}
         >
           <Trash2 className="h-4 w-4" />

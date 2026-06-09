@@ -197,7 +197,7 @@ export default function Settings() {
                 trigger={
                   <button
                     type="button"
-                    className="underline font-medium hover:opacity-80 text-left text-heading"
+                    className="underline font-medium hover:opacity-80 text-left text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     data-testid="link-resend-tutorial"
                   >
                     Suivez ce tutoriel rapide pour créer un compte Resend et obtenir votre clé API.

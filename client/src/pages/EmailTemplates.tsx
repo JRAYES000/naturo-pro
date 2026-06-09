@@ -301,7 +301,7 @@ export default function EmailTemplates() {
         </Tabs>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-20" aria-busy="true">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
@@ -410,6 +410,7 @@ export default function EmailTemplates() {
                           key={v.placeholder}
                           type="button"
                           data-testid={`var-${v.placeholder.replace(/[{}\.]/g, "")}`}
+                          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           // En mode visuel : onMouseDown + preventDefault pour garder
                           // le focus/curseur dans l'éditeur. En mode avancé : onClick classique.
                           onMouseDown={isAdvanced ? undefined : (e) => { e.preventDefault(); insertVarVisual(v.placeholder); }}

@@ -53,7 +53,7 @@ export default function Dashboard() {
               </Link>
             </div>
             {isLoading ? (
-              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+              <div className="space-y-3" aria-busy="true">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
             ) : upcoming.length === 0 ? (
               <EmptyState
                 icon={Calendar}

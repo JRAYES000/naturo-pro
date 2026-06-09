@@ -95,8 +95,8 @@ export default function CategoriesPage() {
                     <h3 className="font-extrabold">{c.name}</h3>
                   </div>
                   <div className="flex gap-1">
-                    <button className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" onClick={() => setEditing(c)} data-testid={`button-edit-${c.id}`}><Pencil className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive" onClick={async () => { if (!(await confirm({ title: "Supprimer cette prestation ?", description: "Cette action est définitive et ne peut pas être annulée.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(c.id); }} data-testid={`button-delete-${c.id}`}><Trash2 className="h-4 w-4" /></button>
+                    <button aria-label="Modifier la prestation" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={() => setEditing(c)} data-testid={`button-edit-${c.id}`}><Pencil className="h-4 w-4" /></button>
+                    <button aria-label="Supprimer la prestation" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={async () => { if (!(await confirm({ title: "Supprimer cette prestation ?", description: "Cette action est définitive et ne peut pas être annulée.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(c.id); }} data-testid={`button-delete-${c.id}`}><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
                 {c.description && <p className="text-sm text-muted-foreground mb-3">{c.description}</p>}

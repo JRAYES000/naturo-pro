@@ -142,7 +142,7 @@ export default function InvoicesPage() {
 
         {/* Liste */}
         {isLoading ? (
-          <div className="card-naturo text-center py-16">
+          <div className="card-naturo text-center py-16" aria-busy="true">
             <p className="text-muted-foreground">Chargement…</p>
           </div>
         ) : filtered.length === 0 ? (
@@ -199,16 +199,18 @@ export default function InvoicesPage() {
                           href={`/api/invoices/${inv.id}/pdf`}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+                          className="h-10 w-10 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           title="Télécharger le PDF"
+                          aria-label="Télécharger le PDF"
                           data-testid={`button-pdf-${inv.id}`}
                         >
                           <Download className="h-4 w-4" />
                         </a>
                         <Link
                           href={`/app/invoices/${inv.id}`}
-                          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+                          className="h-10 w-10 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           title="Ouvrir"
+                          aria-label="Ouvrir la facture"
                           data-testid={`button-open-${inv.id}`}
                         >
                           <FileText className="h-4 w-4" />

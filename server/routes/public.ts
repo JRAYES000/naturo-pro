@@ -384,6 +384,8 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         categoryName: cat ? cat.name : null,
         practitionerName: user ? user.name : null,
         practitionerSlug: user ? user.slug : null,
+        primaryColor: user ? (user.primaryColor || null) : null,
+        accentColor: user ? (user.accentColor || null) : null,
         address: user ? (user.address || user.city || null) : null,
         status: appt.status || "confirmed",
         startAt: appt.startAt,

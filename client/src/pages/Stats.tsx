@@ -178,7 +178,7 @@ export default function Stats() {
 
         {/* KPIs */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" aria-busy="true">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="card-naturo animate-pulse h-24" />
             ))}
@@ -239,7 +239,7 @@ export default function Stats() {
           </div>
 
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-3" aria-busy="true">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="animate-pulse h-10 bg-secondary/40 rounded-lg" />
               ))}

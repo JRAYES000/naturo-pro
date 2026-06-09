@@ -283,7 +283,7 @@ export default function PublicPageEditor() {
                     <button
                       type="button"
                       onClick={() => setDraft({ ...draft, photoUrl: "" })}
-                      className="text-xs text-muted-foreground hover:text-destructive w-fit"
+                      className="text-xs text-muted-foreground hover:text-destructive w-fit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       data-testid="button-remove-photo"
                     >
                       Retirer la photo
@@ -337,7 +337,7 @@ export default function PublicPageEditor() {
                   <button
                     type="button"
                     onClick={() => setDraft({ ...draft, primaryColor: DEFAULT_PRIMARY, accentColor: DEFAULT_ACCENT })}
-                    className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1"
+                    className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     data-testid="button-reset-colors"
                   >
                     <RotateCcw className="h-3 w-3" /> Réinitialiser

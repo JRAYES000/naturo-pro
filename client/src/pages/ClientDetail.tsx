@@ -116,7 +116,7 @@ export default function ClientDetail() {
   }
 
   if (isLoading || !client) {
-    return <AppLayout><div className="space-y-3"><Skeleton className="h-8 w-72" /><Skeleton className="h-64" /></div></AppLayout>;
+    return <AppLayout><div className="space-y-3" aria-busy="true"><Skeleton className="h-8 w-72" /><Skeleton className="h-64" /></div></AppLayout>;
   }
 
   return (
@@ -272,22 +272,24 @@ export default function ClientDetail() {
                     <a
                       href={`/api/documents/${doc.id}/download`}
                       download={doc.filename}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-[10px] border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                      className="inline-flex items-center justify-center h-10 w-10 rounded-[10px] border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       data-testid={`button-download-document-${doc.id}`}
                       title="Télécharger"
+                      aria-label="Télécharger le document"
                     >
                       <Download className="h-4 w-4" />
                     </a>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
+                      className="h-10 w-10 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
                       onClick={async () => {
                         if (!(await confirm({ title: "Supprimer ce document ?", description: `Le fichier « ${doc.filename} » sera supprimé définitivement.`, confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
                         delDocMut.mutate(doc.id);
                       }}
                       data-testid={`button-delete-document-${doc.id}`}
                       title="Supprimer"
+                      aria-label="Supprimer le document"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

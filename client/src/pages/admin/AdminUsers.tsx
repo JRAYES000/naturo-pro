@@ -155,7 +155,7 @@ export default function AdminUsers() {
         </div>
 
         <div className="card-naturo overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" aria-busy={isLoading || undefined}>
             <thead>
               <tr className="text-left border-b border-border bg-secondary/40">
                 <th className="px-3 py-2 font-bold">Nom</th>

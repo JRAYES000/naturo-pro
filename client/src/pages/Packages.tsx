@@ -255,7 +255,8 @@ export default function Packages() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8"
+                      className="h-10 w-10"
+                      aria-label="Modifier le forfait"
                       onClick={() => setEditing(pkg)}
                       data-testid={`button-edit-package-${pkg.id}`}
                     >
@@ -264,7 +265,8 @@ export default function Packages() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      className="h-10 w-10 text-destructive hover:text-destructive"
+                      aria-label="Supprimer le forfait"
                       onClick={async () => {
                         if (!(await confirm({
                           title: "Supprimer ce forfait ?",

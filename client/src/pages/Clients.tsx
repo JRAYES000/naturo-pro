@@ -50,7 +50,7 @@ export default function Clients() {
         </div>
 
         {isLoading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
         ) : (list || []).length === 0 ? (
           <EmptyState
             icon={Users}

@@ -260,7 +260,8 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                 size="icon"
                 onClick={() => removeSection(sIdx)}
                 data-testid={`button-remove-section-${sIdx}`}
-                className="shrink-0 text-destructive hover:text-destructive"
+                aria-label="Supprimer la section"
+                className="h-10 w-10 shrink-0 text-destructive hover:text-destructive"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -283,7 +284,8 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                     size="icon"
                     onClick={() => removeItem(sIdx, iIdx)}
                     data-testid={`button-remove-item-${sIdx}-${iIdx}`}
-                    className="shrink-0 mt-1 text-muted-foreground hover:text-destructive"
+                    aria-label="Supprimer le conseil"
+                    className="h-10 w-10 shrink-0 mt-1 text-muted-foreground hover:text-destructive"
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
@@ -359,7 +361,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                   key={s.id}
                   type="button"
                   onClick={() => pickerSection !== null && insertSolution(pickerSection, s)}
-                  className="w-full text-left border rounded-[10px] p-3 hover:border-primary hover:bg-primary/5 transition-colors"
+                  className="w-full text-left border rounded-[10px] p-3 hover:border-primary hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   data-testid={`picker-solution-${s.id}`}
                 >
                   <div className="flex items-center gap-2">
@@ -527,6 +529,7 @@ export default function ProgrammesPage() {
                       className="rounded-[12px]"
                       data-testid={`button-edit-${prog.id}`}
                       title="Modifier"
+                      aria-label="Modifier"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -546,6 +549,7 @@ export default function ProgrammesPage() {
                       className="rounded-[12px] text-destructive hover:text-destructive"
                       data-testid={`button-delete-${prog.id}`}
                       title="Supprimer"
+                      aria-label="Supprimer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

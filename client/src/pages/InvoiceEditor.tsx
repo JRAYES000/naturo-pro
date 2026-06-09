@@ -394,9 +394,10 @@ export default function InvoiceEditor() {
                       {formatPrice(Math.max(0, Math.floor(it.quantity || 0)) * Math.max(0, Math.floor(it.unitPriceCents || 0)))}
                     </div>
                     <button
-                      className="col-span-1 p-1.5 rounded-md hover:bg-destructive/10 text-destructive justify-self-end"
+                      className="col-span-1 h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive justify-self-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       onClick={() => setItems(items.filter((_, j) => j !== i))}
                       disabled={items.length <= 1}
+                      aria-label="Supprimer la ligne"
                       data-testid={`button-remove-item-${i}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -457,7 +458,7 @@ export default function InvoiceEditor() {
                       <button
                         key={s}
                         onClick={() => setStatusAndPaid(s)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold border ${
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                           status === s ? "border-primary bg-primary/10 text-primary" : "border-input hover:bg-secondary"
                         }`}
                         data-testid={`button-status-${s}`}
