@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
@@ -54,6 +54,23 @@ export default function Agenda() {
   const { data: appts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
   const { data: cats = [] } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
+  const { data: googleStatus } = useQuery<{ configured: boolean; connected: boolean; email: string | null }>({ queryKey: ["/api/google/status"] });
+
+  // Synchronisation Google Calendar déclenchable directement depuis l'agenda
+  // (même endpoint que Paramètres → Google Calendar).
+  const importGoogleMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", "/api/google/sync-import", {})).json(),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      const { created = 0, updated = 0, deleted = 0, total = 0 } = res || {};
+      toast({
+        title: "Synchronisation Google terminée",
+        description: `${total} événement(s) lus · ${created} créé(s) · ${updated} mis à jour · ${deleted} supprimé(s)`,
+      });
+    },
+    onError: (e: any) => toast({ title: "Erreur synchronisation", description: e?.message || "Échec", variant: "destructive" }),
+  });
 
   const events = useMemo(() => appts
     .filter(a => a.status !== "cancelled")
@@ -104,9 +121,23 @@ export default function Agenda() {
           icon={Calendar}
           subtitle="Vos rendez-vous en vue mois, semaine ou jour."
           actions={
-            <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-[15px] font-bold" data-testid="button-new-appointment">
-              <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {googleStatus?.configured && googleStatus?.connected && (
+                <Button
+                  variant="outline"
+                  onClick={() => importGoogleMut.mutate()}
+                  disabled={importGoogleMut.isPending}
+                  className="rounded-[15px] font-bold"
+                  data-testid="button-sync-google-agenda"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${importGoogleMut.isPending ? "animate-spin" : ""}`} />
+                  {importGoogleMut.isPending ? "Synchronisation…" : "Synchroniser Google"}
+                </Button>
+              )}
+              <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-[15px] font-bold" data-testid="button-new-appointment">
+                <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
+              </Button>
+            </div>
           }
         />
 
