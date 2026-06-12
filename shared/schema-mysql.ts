@@ -76,8 +76,8 @@ export const users = mysqlTable("users", {
   // Avis Google — lien de dépôt d'avis + activation de l'envoi automatique
   googleReviewUrl: varchar("google_review_url", { length: 512 }),
   reviewRequestEnabled: boolean("review_request_enabled").notNull().default(false),
-  // Apparence — préférence de thème de l'interface ("dark" par défaut, "light" sinon).
-  themePreference: varchar("theme_preference", { length: 16 }).notNull().default("dark"),
+  // Apparence — préférence de thème de l'interface ("light" par défaut, "dark" sinon).
+  themePreference: varchar("theme_preference", { length: 16 }).notNull().default("light"),
 });
 
 // ─── Invoices ──────────────────────────────────────────────────────────────────

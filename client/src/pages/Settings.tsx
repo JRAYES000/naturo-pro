@@ -194,7 +194,7 @@ export default function Settings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Mode sombre</p>
-              <p className="text-sm text-muted-foreground">Activé par défaut. Désactivez-le pour passer en mode clair.</p>
+              <p className="text-sm text-muted-foreground">Le thème clair est activé par défaut. Activez cette option pour passer en mode sombre.</p>
             </div>
             <Switch
               checked={themePref === "dark"}

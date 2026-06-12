@@ -23,8 +23,8 @@ export const users = sqliteTable("users", {
   publicPageEnabled: integer("public_page_enabled", { mode: "boolean" }).default(true),
   primaryColor: text("primary_color").default("#186749"),
   accentColor: text("accent_color").default("#17EC9B"),
-  // Apparence — préférence de thème de l'interface ("dark" par défaut, "light" sinon).
-  themePreference: text("theme_preference").default("dark"),
+  // Apparence — préférence de thème de l'interface ("light" par défaut, "dark" sinon).
+  themePreference: text("theme_preference").default("light"),
   // Réseaux sociaux affichés sur la page publique (optionnels).
   instagram: text("instagram"),
   facebook: text("facebook"),

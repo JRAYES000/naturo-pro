@@ -384,8 +384,8 @@ if (DB_DRIVER !== "mysql") {
   for (const col of stripeUserCols) {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
   }
-  // Apparence — préférence de thème (dark par défaut) (best-effort migration SQLite)
-  try { raw.exec(`ALTER TABLE users ADD COLUMN theme_preference TEXT DEFAULT 'dark'`); } catch { /* already exists */ }
+  // Apparence — préférence de thème (light par défaut) (best-effort migration SQLite)
+  try { raw.exec(`ALTER TABLE users ADD COLUMN theme_preference TEXT DEFAULT 'light'`); } catch { /* already exists */ }
   raw.close();
 }
 
@@ -498,8 +498,8 @@ async function runMysqlMigrations(): Promise<void> {
       "ALTER TABLE users ADD COLUMN stripe_deposit_percent INT DEFAULT 0",
       "ALTER TABLE appointments ADD COLUMN stripe_session_id VARCHAR(255) NULL",
       "ALTER TABLE appointments ADD COLUMN deposit_amount_cents INT NULL",
-      // Apparence — préférence de thème de l'interface (dark par défaut)
-      "ALTER TABLE users ADD COLUMN theme_preference VARCHAR(16) NOT NULL DEFAULT 'dark'",
+      // Apparence — préférence de thème de l'interface (light par défaut)
+      "ALTER TABLE users ADD COLUMN theme_preference VARCHAR(16) NOT NULL DEFAULT 'light'",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

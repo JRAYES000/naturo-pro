@@ -36,12 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
-  // Applique la préférence de thème du compte. Le défaut (dark) est déjà posé dans
-  // main.tsx avant le rendu ; ici on ne retire le dark que si l'utilisateur a choisi
-  // "light". Déconnecté / non chargé → on reste sur le défaut dark.
+  // Applique la préférence de thème du compte. Le défaut est le thème clair (aucune
+  // classe posée dans main.tsx) ; ici on n'ajoute le ".dark" que si l'utilisateur a
+  // explicitement choisi "dark". Déconnecté / non chargé → on reste en clair.
   useEffect(() => {
     const pref = data?.user?.themePreference;
-    document.documentElement.classList.toggle("dark", pref !== "light");
+    document.documentElement.classList.toggle("dark", pref === "dark");
   }, [data?.user?.themePreference]);
 
   return (

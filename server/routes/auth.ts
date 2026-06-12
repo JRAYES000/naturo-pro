@@ -81,6 +81,8 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       publicPageEnabled: true,
       primaryColor: "#186749",
       accentColor: "#17EC9B",
+      // Apparence — thème clair par défaut (l'utilisateur peut basculer en sombre).
+      themePreference: "light",
       createdAt: now,
       // Phase 3 Lot 1 — trial 30 j + verification email
       plan: "trial",
