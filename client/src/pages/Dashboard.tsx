@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link } from "wouter";
-import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles } from "lucide-react";
+import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -36,6 +36,35 @@ export default function Dashboard() {
           kicker={`Bonjour ${user?.name?.split(" ")[0] ?? ""}`.trim()}
           title="Votre cabinet, en un coup d'œil"
         />
+
+        {user?.plan === "active" && (
+          <div
+            className="mb-8 rounded-[15px] border border-primary/20 bg-secondary/40 p-4 sm:p-5"
+            data-testid="banner-beta"
+          >
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 shrink-0 rounded-lg bg-accent/30 flex items-center justify-center text-primary">
+                <FlaskConical className="h-5 w-5" />
+              </div>
+              <div className="text-sm leading-relaxed">
+                <p className="font-extrabold text-heading mb-1">Naturo Pro est en version bêta 🧪</p>
+                <p className="text-muted-foreground">
+                  Vous utilisez actuellement une version de test. L'ouverture officielle est prévue le{" "}
+                  <strong className="text-foreground font-bold">1ᵉʳ septembre 2026</strong>. Si vous rencontrez
+                  un bug ou un comportement inattendu, n'hésitez pas à me contacter à{" "}
+                  <a
+                    href="mailto:contact@ecole-naturo.fr"
+                    className="font-bold text-primary underline underline-offset-2"
+                    data-testid="link-beta-contact"
+                  >
+                    contact@ecole-naturo.fr
+                  </a>{" "}
+                  — votre retour m'aide à améliorer l'outil. Merci !
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="RDV aujourd'hui" value={todayCount} icon={Calendar} testid="stat-today" />
