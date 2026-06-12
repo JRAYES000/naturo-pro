@@ -30,6 +30,8 @@ export function registerProfileRoutes(app: Express): void {
     emailRemindersEnabled: z.boolean().optional(),
     primaryColor: z.string().optional(),
     accentColor: z.string().optional(),
+    // Apparence — préférence de thème de l'interface.
+    themePreference: z.enum(["dark", "light"]).optional(),
     instagram: z.string().nullable().optional(),
     facebook: z.string().nullable().optional(),
     websiteUrl: z.string().nullable().optional(),

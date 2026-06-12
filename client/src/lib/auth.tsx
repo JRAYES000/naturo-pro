@@ -8,6 +8,7 @@ export type AuthUser = {
   address?: string | null; city?: string | null;
   publicPageEnabled?: boolean; emailRemindersEnabled?: boolean;
   primaryColor?: string; accentColor?: string;
+  themePreference?: string;
   plan?: string;
   trialEndsAt?: number | null;
   emailVerifiedAt?: number | null;
@@ -34,6 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/auth/me"],
     staleTime: 60_000,
   });
+
+  // Applique la préférence de thème du compte. Le défaut (dark) est déjà posé dans
+  // main.tsx avant le rendu ; ici on ne retire le dark que si l'utilisateur a choisi
+  // "light". Déconnecté / non chargé → on reste sur le défaut dark.
+  useEffect(() => {
+    const pref = data?.user?.themePreference;
+    document.documentElement.classList.toggle("dark", pref !== "light");
+  }, [data?.user?.themePreference]);
+
   return (
     <Ctx.Provider
       value={{

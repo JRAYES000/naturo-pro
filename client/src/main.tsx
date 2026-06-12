@@ -6,11 +6,10 @@ if (!window.location.hash) {
   window.location.hash = "#/";
 }
 
-// Dark mode automatique selon la préférence système (prefers-color-scheme),
-// sans aucun stockage côté client (conforme aux conventions du projet).
-const darkMq = window.matchMedia("(prefers-color-scheme: dark)");
-const applyTheme = (dark: boolean) => document.documentElement.classList.toggle("dark", dark);
-applyTheme(darkMq.matches);
-darkMq.addEventListener("change", (e) => applyTheme(e.matches));
+// Dark mode par défaut pour tout le monde (appliqué avant le rendu React pour
+// éviter tout flash). La préférence par compte ("dark" / "light"), stockée côté
+// backend (cf. users.theme_preference), est appliquée ensuite par AuthProvider
+// une fois le profil chargé — aucun stockage côté client (conforme aux conventions).
+document.documentElement.classList.add("dark");
 
 createRoot(document.getElementById("root")!).render(<App />);

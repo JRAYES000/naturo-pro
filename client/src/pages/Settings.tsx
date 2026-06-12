@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard, Settings as SettingsIcon } from "lucide-react";
+import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard, Settings as SettingsIcon, Moon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
@@ -99,6 +99,20 @@ export default function Settings() {
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec", variant: "destructive" }),
   });
 
+  // Apparence — bascule dark / light, persistée immédiatement (application optimiste).
+  const themePref = data?.user?.themePreference === "light" ? "light" : "dark";
+  const themeMut = useMutation({
+    mutationFn: async (pref: "dark" | "light") => apiRequest("PATCH", "/api/profile", { themePreference: pref }),
+    onMutate: (pref: "dark" | "light") => {
+      document.documentElement.classList.toggle("dark", pref === "dark");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec", variant: "destructive" }),
+  });
+
   const disconnectGoogleMut = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/google/disconnect", {}),
     onSuccess: () => {
@@ -170,6 +184,25 @@ export default function Settings() {
           <h2 className="font-extrabold">Compte</h2>
           <div><Label>Nom</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-name" /></div>
           <div><Label>Email</Label><Input value={draft.email || ""} disabled data-testid="input-email" /></div>
+        </div>
+
+        <div className="card-naturo space-y-4">
+          <div className="flex items-center gap-2">
+            <Moon className="h-5 w-5 text-heading" />
+            <h2 className="font-extrabold">Apparence</h2>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Mode sombre</p>
+              <p className="text-sm text-muted-foreground">Activé par défaut. Désactivez-le pour passer en mode clair.</p>
+            </div>
+            <Switch
+              checked={themePref === "dark"}
+              disabled={themeMut.isPending}
+              onCheckedChange={(v) => themeMut.mutate(v ? "dark" : "light")}
+              data-testid="switch-theme-dark"
+            />
+          </div>
         </div>
 
         <div className="card-naturo space-y-4">
