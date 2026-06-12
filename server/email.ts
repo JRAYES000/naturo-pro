@@ -410,12 +410,12 @@ export function renderWelcomeVerifyEmail(opts: {
   const body = `
     <h1>Bienvenue ${escapeHtml(opts.firstName)} 👋</h1>
     <p>Merci d'avoir créé votre compte <strong>Naturo Pro</strong>, le logiciel pensé pour les naturopathes.</p>
-    <p>Votre essai gratuit de <strong>7 jours</strong> a démarré. Pour activer votre compte, confirmez votre adresse email :</p>
+    <p>Votre essai gratuit de <strong>30 jours</strong> a démarré. Pour activer votre compte, confirmez votre adresse email :</p>
     <div class="btn-row">
       <a href="${escapeHtml(opts.verifyUrl)}" class="btn btn-primary">Confirmer mon email</a>
     </div>
     <p style="font-size:13px;color:#666;">Ou copiez ce lien dans votre navigateur :<br><span style="word-break:break-all;">${escapeHtml(opts.verifyUrl)}</span></p>
-    <p>Pendant vos 7 jours d'essai, vous accédez à <strong>toutes les fonctionnalités</strong> sans aucune limite : agenda, fiches clients, page de réservation publique, factures, rappels automatiques par email…</p>
+    <p>Pendant vos 30 jours d'essai, vous accédez à <strong>toutes les fonctionnalités</strong> sans aucune limite : agenda, fiches clients, page de réservation publique, factures, rappels automatiques par email…</p>
     <p>À très vite,<br>L'équipe Naturo Pro</p>
   `;
   const html = emailShell(subject, body, "Naturo Pro — votre cabinet en mode pro");

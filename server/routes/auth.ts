@@ -60,7 +60,7 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     while (await storage.getUserBySlug(slug)) { slug = `${baseSlug}-${n++}`; }
 
     const now = Date.now();
-    const trialEndsAt = now + 7 * 24 * 60 * 60 * 1000; // 7 jours
+    const trialEndsAt = now + 30 * 24 * 60 * 60 * 1000; // 30 jours
     const verifyToken = randomBytes(32).toString("hex");
     const verifyExpiresAt = now + 24 * 60 * 60 * 1000; // 24 h
 
@@ -82,7 +82,7 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       primaryColor: "#186749",
       accentColor: "#17EC9B",
       createdAt: now,
-      // Phase 3 Lot 1 — trial 7 j + verification email
+      // Phase 3 Lot 1 — trial 30 j + verification email
       plan: "trial",
       trialEndsAt,
       emailVerifyToken: verifyToken,
