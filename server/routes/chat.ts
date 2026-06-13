@@ -32,6 +32,13 @@ export function registerChatRoutes(app: Express): void {
     }
     const userMessage = parsed.data.message;
 
+    const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 50);
+    const day = new Date().toISOString().slice(0, 10);
+    const used = await storage.incrementAiChatUsage(req.userId!, day);
+    if (used > AI_DAILY_LIMIT) {
+      return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} messages/jour). Réessaie demain.` });
+    }
+
     // Contexte récent (chronologique) → tours pour Mistral
     const recent = await storage.listAiChatMessages(req.userId!, CONTEXT_LIMIT);
     const history: ChatTurn[] = recent.map((m) => ({

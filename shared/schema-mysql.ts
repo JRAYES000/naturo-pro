@@ -316,6 +316,14 @@ export const aiChatMessages = mysqlTable("ai_chat_messages", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
+// Assistant IA — quota d'usage quotidien par utilisatrice.
+export const aiChatUsage = mysqlTable("ai_chat_usage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  day: varchar("day", { length: 10 }).notNull(),
+  count: int("count").notNull().default(0),
+});
+
 // ─── Insert schemas (same names as schema.ts so imports are swappable) ────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -333,6 +341,7 @@ export const insertClientDocumentSchema = createInsertSchema(clientDocuments).om
 export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
+export const insertAiChatUsageSchema = createInsertSchema(aiChatUsage).omit({ id: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;
@@ -368,6 +377,8 @@ export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type AiChatMessage = typeof aiChatMessages.$inferSelect;
 export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
+export type AiChatUsage = typeof aiChatUsage.$inferSelect;
+export type InsertAiChatUsage = z.infer<typeof insertAiChatUsageSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

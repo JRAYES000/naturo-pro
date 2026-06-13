@@ -301,6 +301,14 @@ export const aiChatMessages = sqliteTable("ai_chat_messages", {
   createdAt: integer("created_at").notNull(),
 });
 
+// Assistant IA — quota d'usage quotidien par utilisatrice.
+export const aiChatUsage = sqliteTable("ai_chat_usage", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  day: text("day").notNull(), // 'YYYY-MM-DD'
+  count: integer("count").notNull().default(0),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -317,6 +325,7 @@ export const insertClientDocumentSchema = createInsertSchema(clientDocuments).om
 export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
+export const insertAiChatUsageSchema = createInsertSchema(aiChatUsage).omit({ id: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -350,6 +359,8 @@ export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type AiChatMessage = typeof aiChatMessages.$inferSelect;
 export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
+export type AiChatUsage = typeof aiChatUsage.$inferSelect;
+export type InsertAiChatUsage = z.infer<typeof insertAiChatUsageSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

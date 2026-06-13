@@ -20,7 +20,7 @@ import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
-  packages, aiChatMessages,
+  packages, aiChatMessages, aiChatUsage,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -30,7 +30,7 @@ import type {
   AnamnesisTemplate, InsertAnamnesisTemplate, AnamnesisResponse, InsertAnamnesisResponse,
   Program, InsertProgram, ClientDocument, InsertClientDocument,
   NaturalSolution, InsertNaturalSolution,
-  Package, InsertPackage, AiChatMessage,
+  Package, InsertPackage, AiChatMessage, AiChatUsage,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
@@ -719,6 +719,7 @@ export interface IStorage {
   listAiChatMessages(userId: number, limit?: number): Promise<AiChatMessage[]>;
   createAiChatMessage(data: { userId: number; role: string; content: string }): Promise<AiChatMessage>;
   deleteAiChatMessages(userId: number): Promise<void>;
+  incrementAiChatUsage(userId: number, day: string): Promise<number>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1410,6 +1411,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAiChatMessages(userId: number): Promise<void> {
     await db.delete(aiChatMessages).where(eq(aiChatMessages.userId, userId));
+  }
+
+  async incrementAiChatUsage(userId: number, day: string): Promise<number> {
+    const existing = await first<AiChatUsage>(
+      db.select().from(aiChatUsage).where(and(eq(aiChatUsage.userId, userId), eq(aiChatUsage.day, day))),
+    );
+    if (existing) {
+      await db.update(aiChatUsage).set({ count: existing.count + 1 }).where(eq(aiChatUsage.id, existing.id));
+      return existing.count + 1;
+    }
+    await dbInsertReturning<AiChatUsage>(aiChatUsage, { userId, day, count: 1 });
+    return 1;
   }
 }
 

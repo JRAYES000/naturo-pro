@@ -40,6 +40,7 @@ export const clientDocuments = activeSchema.clientDocuments;
 export const naturalSolutions = activeSchema.naturalSolutions;
 export const packages = activeSchema.packages;
 export const aiChatMessages = activeSchema.aiChatMessages;
+export const aiChatUsage = activeSchema.aiChatUsage;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -58,6 +59,7 @@ export const insertClientDocumentSchema = activeSchema.insertClientDocumentSchem
 export const insertNaturalSolutionSchema = activeSchema.insertNaturalSolutionSchema;
 export const insertPackageSchema = activeSchema.insertPackageSchema;
 export const insertAiChatMessageSchema = activeSchema.insertAiChatMessageSchema;
+export const insertAiChatUsageSchema = activeSchema.insertAiChatUsageSchema;
 
 // Re-exports types : on importe toujours depuis le schéma SQLite pour les types
 // (ils sont identiques entre les deux schémas, et TypeScript a besoin d'imports
@@ -75,4 +77,5 @@ export type {
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage,
   AiChatMessage, InsertAiChatMessage,
+  AiChatUsage, InsertAiChatUsage,
 } from "./schema";
