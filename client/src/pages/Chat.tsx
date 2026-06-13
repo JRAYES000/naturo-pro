@@ -1,5 +1,5 @@
 /**
- * client/src/pages/Chat.tsx — Assistant IA naturopathie
+ * client/src/pages/Chat.tsx — Naturobot (assistant IA naturopathie)
  *
  * Conversation continue avec le « formateur virtuel » (API Mistral côté serveur),
  * organisée en discussions (par cliente ou par thématique). Sélection via l'URL
@@ -7,11 +7,12 @@
  * /api/discussions/:id/messages. Les réponses de l'assistant sont rendues en Markdown.
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Loading } from "@/components/Loading";
@@ -21,11 +22,57 @@ import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
 import { NewDiscussionDialog } from "@/components/assistant/NewDiscussionDialog";
 import { DiscussionSidebar } from "@/components/assistant/DiscussionSidebar";
 import type { AiChatMessage, AiDiscussion, Client } from "@shared/schema";
 
-function Bubble({ role, content, typing }: { role: string; content: string; typing?: boolean }) {
+// Portrait de Naturobot — fichier statique servi à la racine (client/public/naturobot.jpg).
+// Si absent, l'avatar retombe proprement sur une icône.
+const NATUROBOT_AVATAR = "/naturobot.jpg";
+
+function initials(name?: string | null): string {
+  if (!name) return "•";
+  return name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+}
+
+// Avatar circulaire : affiche l'image si elle charge, sinon le repli (icône ou initiales).
+function Avatar({ src, fallback, title }: { src?: string | null; fallback: ReactNode; title?: string }) {
+  const [err, setErr] = useState(false);
+  return (
+    <div
+      title={title}
+      className="h-8 w-8 shrink-0 rounded-full overflow-hidden bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold select-none"
+    >
+      {src && !err ? (
+        <img src={src} alt="" className="h-full w-full object-cover" onError={() => setErr(true)} />
+      ) : (
+        fallback
+      )}
+    </div>
+  );
+}
+
+// Rendu Markdown : tables GFM lisibles (bordées + scroll horizontal) et lignes
+// horizontales (`---`) masquées (le modèle en émet entre les chapitres, inutiles).
+const mdComponents: Components = {
+  hr: () => null,
+  table: ({ node, ...props }) => (
+    <div className="overflow-x-auto my-2">
+      <table className="w-full text-xs border-collapse" {...props} />
+    </div>
+  ),
+  th: ({ node, ...props }) => (
+    <th className="border border-border bg-muted px-2 py-1 text-left font-semibold align-top" {...props} />
+  ),
+  td: ({ node, ...props }) => (
+    <td className="border border-border px-2 py-1 align-top" {...props} />
+  ),
+};
+
+function Bubble({ role, content, typing, userPhoto, userName }: {
+  role: string; content: string; typing?: boolean; userPhoto?: string | null; userName?: string | null;
+}) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
   function copy() {
@@ -34,10 +81,16 @@ function Bubble({ role, content, typing }: { role: string; content: string; typi
       setTimeout(() => setCopied(false), 1500);
     });
   }
+  const avatar = isUser ? (
+    <Avatar src={userPhoto} fallback={initials(userName)} title={userName ?? undefined} />
+  ) : (
+    <Avatar src={NATUROBOT_AVATAR} fallback={<Sparkles className="h-4 w-4" />} title="Naturobot" />
+  );
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
+    <div className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
+      {!isUser && avatar}
       <div
-        className={`group relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+        className={`group relative max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-secondary text-foreground"
         } ${typing ? "animate-pulse" : ""}`}
       >
@@ -45,7 +98,7 @@ function Bubble({ role, content, typing }: { role: string; content: string; typi
           content
         ) : (
           <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-pre:bg-muted prose-pre:text-foreground">
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{content}</ReactMarkdown>
           </div>
         )}
         {!isUser && !typing && content && (
@@ -59,6 +112,7 @@ function Bubble({ role, content, typing }: { role: string; content: string; typi
           </button>
         )}
       </div>
+      {isUser && avatar}
     </div>
   );
 }
@@ -66,6 +120,7 @@ function Bubble({ role, content, typing }: { role: string; content: string; typi
 export default function Chat() {
   const { toast } = useToast();
   const confirm = useConfirm();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const params = useParams();
   const selectedId = params.discussionId ? Number(params.discussionId) : null;
@@ -153,7 +208,7 @@ export default function Chat() {
 
   return (
     <AppLayout>
-      <PageHeader title="Assistant IA" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
+      <PageHeader title="Naturobot" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
 
       <div className="rounded-[15px] border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm flex gap-2 items-start mb-4" data-testid="text-disclaimer-sante">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
@@ -202,8 +257,8 @@ export default function Chat() {
               </div>
             ) : isLoading ? <Loading /> : (
               <>
-                {messages.map((m) => <Bubble key={m.id} role={m.role} content={m.content} />)}
-                {pending && <Bubble role="user" content={pending} />}
+                {messages.map((m) => <Bubble key={m.id} role={m.role} content={m.content} userPhoto={user?.photoUrl} userName={user?.name} />)}
+                {pending && <Bubble role="user" content={pending} userPhoto={user?.photoUrl} userName={user?.name} />}
                 {sendMut.isPending && (
                   <div>
                     <Bubble role="assistant" content={streamText || "…"} typing={!streamText} />

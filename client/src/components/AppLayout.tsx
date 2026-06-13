@@ -32,7 +32,7 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       { href: "/app/programmes", label: "Programmes", icon: FileText },
       { href: "/app/forfaits", label: "Forfaits", icon: Ticket },
       { href: "/app/solutions", label: "Bibliothèque de référence", icon: Leaf },
-      { href: "/app/chat", label: "Assistant IA", icon: Sparkles },
+      { href: "/app/chat", label: "Naturobot", icon: Sparkles },
     ],
   },
   {
@@ -130,7 +130,7 @@ function NavLinks({
             data-testid="nav-admin-assistant"
           >
             <BookOpen className={`h-4 w-4 shrink-0 ${location.startsWith("/admin/assistant") ? "" : "text-muted-foreground group-hover:text-primary"}`} />
-            <span>Assistant (admin)</span>
+            <span>Naturobot (admin)</span>
           </Link>
         </div>
       )}

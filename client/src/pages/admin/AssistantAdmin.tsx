@@ -139,8 +139,8 @@ export default function AssistantAdmin() {
   return (
     <AppLayout>
       <PageHeader
-        title="Assistant — Base de connaissances"
-        subtitle="Instructions et supports de cours utilisés par l'assistant IA (réservé à l'admin)."
+        title="Naturobot — Base de connaissances"
+        subtitle="Instructions et supports de cours utilisés par Naturobot (réservé à l'admin)."
         icon={Sparkles}
       />
 
