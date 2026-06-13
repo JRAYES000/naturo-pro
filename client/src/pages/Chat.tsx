@@ -58,15 +58,17 @@ function Avatar({ src, fallback, title }: { src?: string | null; fallback: React
 const mdComponents: Components = {
   hr: () => null,
   table: ({ node, ...props }) => (
-    <div className="overflow-x-auto my-2">
-      <table className="w-full text-xs border-collapse" {...props} />
+    <div className="my-2 rounded-lg border border-border overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse [&_tbody_tr:nth-child(even)]:bg-muted/50" {...props} />
+      </div>
     </div>
   ),
   th: ({ node, ...props }) => (
-    <th className="border border-border bg-muted px-2 py-1 text-left font-semibold align-top" {...props} />
+    <th className="bg-primary !text-primary-foreground px-2.5 py-1.5 text-left font-semibold whitespace-nowrap" {...props} />
   ),
   td: ({ node, ...props }) => (
-    <td className="border border-border px-2 py-1 align-top" {...props} />
+    <td className="px-2.5 py-1.5 border-t border-border align-top" {...props} />
   ),
 };
 
@@ -90,8 +92,8 @@ function Bubble({ role, content, typing, userPhoto, userName }: {
     <div className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
       {!isUser && avatar}
       <div
-        className={`group relative max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-          isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-secondary text-foreground"
+        className={`group relative max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+          isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-card text-foreground border border-border shadow-sm"
         } ${typing ? "animate-pulse" : ""}`}
       >
         {isUser ? (
@@ -248,7 +250,7 @@ export default function Chat() {
             </div>
           )}
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
             {selectedId == null ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-2">
                 <Sparkles className="h-8 w-8 text-primary" />
