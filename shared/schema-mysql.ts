@@ -313,7 +313,19 @@ export const aiChatMessages = mysqlTable("ai_chat_messages", {
   userId: int("user_id").notNull(),
   role: varchar("role", { length: 16 }).notNull(), // 'user' | 'assistant'
   content: text("content").notNull(),
+  discussionId: int("discussion_id"), // null = legacy (backfillé en « Discussion générale »)
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// Assistant IA — discussions (fil par sujet) rattachées à une cliente OU à une thématique.
+export const aiDiscussions = mysqlTable("ai_discussions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  clientId: int("client_id"),
+  theme: varchar("theme", { length: 120 }),
+  title: varchar("title", { length: 255 }).notNull().default("Nouvelle discussion"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
 
 // Assistant IA — quota d'usage quotidien par utilisatrice.
@@ -412,6 +424,7 @@ export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type AiChatMessage = typeof aiChatMessages.$inferSelect;
 export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
+export type AiDiscussion = typeof aiDiscussions.$inferSelect;
 export type AiChatUsage = typeof aiChatUsage.$inferSelect;
 export type InsertAiChatUsage = z.infer<typeof insertAiChatUsageSchema>;
 export type AssistantSettings = typeof assistantSettings.$inferSelect;

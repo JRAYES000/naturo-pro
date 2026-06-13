@@ -40,6 +40,7 @@ export const clientDocuments = activeSchema.clientDocuments;
 export const naturalSolutions = activeSchema.naturalSolutions;
 export const packages = activeSchema.packages;
 export const aiChatMessages = activeSchema.aiChatMessages;
+export const aiDiscussions = activeSchema.aiDiscussions;
 export const aiChatUsage = activeSchema.aiChatUsage;
 export const assistantSettings = activeSchema.assistantSettings;
 export const kbDocuments = activeSchema.kbDocuments;
