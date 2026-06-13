@@ -35,3 +35,15 @@ test("buildMistralMessages — tronque l'historique aux MAX_HISTORY derniers tou
   // Le plus ancien tour conservé doit être history[length - MAX_HISTORY]
   assert.equal(msgs[1].content, history[history.length - MAX_HISTORY].content);
 });
+
+test("buildMistralMessages — injecte les instructions du formateur dans le system", () => {
+  const msgs = buildMistralMessages([], "Q", { customInstructions: "Toujours tutoyer." });
+  assert.equal(msgs[0].role, "system");
+  assert.ok(msgs[0].content.includes("Toujours tutoyer."));
+});
+
+test("buildMistralMessages — injecte les extraits de contexte RAG dans le system", () => {
+  const msgs = buildMistralMessages([], "Q", { contextChunks: ["extrait A", "extrait B"] });
+  assert.ok(msgs[0].content.includes("extrait A"));
+  assert.ok(msgs[0].content.includes("extrait B"));
+});

@@ -9,7 +9,8 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
-import { askNaturoAssistant, type ChatTurn } from "../mistral";
+import { streamNaturoAssistant, type ChatTurn } from "../mistral";
+import { retrieveRelevantChunks } from "../rag";
 
 const chatBodySchema = z.object({
   message: z.string().trim().min(1, "Message vide").max(4000, "Message trop long"),
@@ -45,29 +46,51 @@ export function registerChatRoutes(app: Express): void {
       role: m.role === "assistant" ? "assistant" : "user",
       content: m.content,
     }));
-
-    const result = await askNaturoAssistant(history, userMessage);
-    if (!result.ok) {
-      const message =
-        result.status === 503
-          ? "L'assistant n'est pas encore disponible. Réessaie plus tard."
-          : "L'assistant n'a pas pu répondre, réessaie dans un instant.";
-      return res.status(result.status).json({ message });
+    const instructions = await storage.getAssistantInstructions();
+    let retrieved: { content: string; documentId: number }[] = [];
+    try {
+      retrieved = await retrieveRelevantChunks(userMessage);
+    } catch {
+      retrieved = [];
     }
 
-    // Persistance : message utilisateur puis réponse assistant
-    const userRow = await storage.createAiChatMessage({
-      userId: req.userId!,
-      role: "user",
-      content: userMessage,
-    });
-    const assistantRow = await storage.createAiChatMessage({
-      userId: req.userId!,
-      role: "assistant",
-      content: result.reply,
-    });
+    // Réponse en flux (texte brut, pas de buffering proxy)
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("X-Accel-Buffering", "no");
 
-    res.json({ userMessage: userRow, assistantMessage: assistantRow });
+    let full = "";
+    try {
+      for await (const delta of streamNaturoAssistant(history, userMessage, {
+        customInstructions: instructions,
+        contextChunks: retrieved.map((r) => r.content),
+      })) {
+        full += delta;
+        res.write(delta);
+      }
+    } catch (e: any) {
+      if (!full) {
+        res.statusCode = e?.status === 503 ? 503 : 502;
+        return res.end(
+          e?.status === 503
+            ? "L'assistant n'est pas encore disponible. Réessaie plus tard."
+            : "L'assistant n'a pas pu répondre, réessaie dans un instant.",
+        );
+      }
+    }
+
+    // Sources (titres distincts des supports utilisés) en ligne sentinelle
+    if (retrieved.length) {
+      const ids = Array.from(new Set(retrieved.map((r) => r.documentId)));
+      const docs = await storage.listKbDocuments();
+      const names = ids.map((id) => docs.find((d) => d.id === id)?.title).filter(Boolean);
+      if (names.length) res.write(`\n@@SOURCES@@:${JSON.stringify(names)}`);
+    }
+
+    // Persistance (texte seul, sans la ligne sources)
+    await storage.createAiChatMessage({ userId: req.userId!, role: "user", content: userMessage });
+    await storage.createAiChatMessage({ userId: req.userId!, role: "assistant", content: full });
+    res.end();
   });
 
   // Effacement de l'historique (= droit à l'effacement RGPD)

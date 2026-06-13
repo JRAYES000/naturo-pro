@@ -40,6 +40,7 @@ import BookingManage from "@/pages/BookingManage";
 // Phase 3 Lot 4 — admin
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminUserDetail from "@/pages/admin/AdminUserDetail";
+import AssistantAdmin from "@/pages/admin/AssistantAdmin";
 // Phase 3 Lot 2 — détection sous-domaine personnel
 import { isOnTenantSubdomain } from "@/lib/tenant";
 
@@ -82,6 +83,7 @@ function AppRouter() {
       {/* Phase 3 Lot 4 — admin (le 403 backend renvoie un message géré dans la page) */}
       <Route path="/admin/users" component={() => <ProtectedRoute><AdminUsers /></ProtectedRoute>} />
       <Route path="/admin/users/:id" component={() => <ProtectedRoute><AdminUserDetail /></ProtectedRoute>} />
+      <Route path="/admin/assistant" component={() => <ProtectedRoute><AssistantAdmin /></ProtectedRoute>} />
 
       <Route path="/p/:slug" component={PublicPage} />
       <Route path="/p/:slug/book" component={BookingFlow} />

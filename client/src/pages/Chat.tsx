@@ -70,18 +70,43 @@ export default function Chat() {
   const confirm = useConfirm();
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<string | null>(null);
+  const [streamText, setStreamText] = useState("");
+  const [sources, setSources] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: messages = [], isLoading } = useQuery<AiChatMessage[]>({ queryKey: ["/api/chat"] });
 
   const sendMut = useMutation({
-    mutationFn: (message: string) => apiRequest("POST", "/api/chat", { message }),
+    mutationFn: async (message: string) => {
+      const res = await apiRequest("POST", "/api/chat", { message });
+      setStreamText("");
+      setSources([]);
+      const reader = res.body!.getReader();
+      const dec = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        const sep = acc.indexOf("@@SOURCES@@:");
+        if (sep >= 0) {
+          try { setSources(JSON.parse(acc.slice(sep + "@@SOURCES@@:".length))); } catch { /* ligne partielle */ }
+          setStreamText(acc.slice(0, sep).replace(/\n$/, ""));
+        } else {
+          setStreamText(acc);
+        }
+      }
+    },
     onSuccess: async () => {
       setPending(null);
+      setStreamText("");
+      setSources([]);
       await queryClient.invalidateQueries({ queryKey: ["/api/chat"] });
     },
     onError: (e: any) => {
       setPending(null);
+      setStreamText("");
+      setSources([]);
       toast({
         title: "Erreur",
         description: e?.message || "L'assistant n'a pas pu répondre.",
@@ -102,7 +127,7 @@ export default function Chat() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending, sendMut.isPending]);
+  }, [messages, pending, streamText, sources, sendMut.isPending]);
 
   function submit(text?: string) {
     const t = (text ?? input).trim();
@@ -178,7 +203,16 @@ export default function Chat() {
                 <Bubble key={m.id} role={m.role} content={m.content} />
               ))}
               {pending && <Bubble role="user" content={pending} />}
-              {sendMut.isPending && <Bubble role="assistant" content="…" typing />}
+              {sendMut.isPending && (
+                <div>
+                  <Bubble role="assistant" content={streamText || "…"} typing={!streamText} />
+                  {sources.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1 ml-1" data-testid="text-sources">
+                      Sources : {sources.join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

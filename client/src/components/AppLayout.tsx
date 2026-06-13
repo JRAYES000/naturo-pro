@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Calendar, Users, Tag, Clock, Globe, Settings, LogOut,
   ExternalLink, Receipt, Shield, Bell, MailOpen, ClipboardList, FileText,
-  BarChart2, Leaf, Ticket, Sparkles, Menu,
+  BarChart2, Leaf, Ticket, Sparkles, BookOpen, Menu,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "./Logo";
@@ -117,11 +117,20 @@ function NavLinks({
           <Link
             href="/admin/users"
             onClick={onNavigate}
-            className={navItemClass(location.startsWith("/admin"))}
+            className={navItemClass(location.startsWith("/admin/users"))}
             data-testid="nav-admin"
           >
-            <Shield className={`h-4 w-4 shrink-0 ${location.startsWith("/admin") ? "" : "text-muted-foreground group-hover:text-primary"}`} />
+            <Shield className={`h-4 w-4 shrink-0 ${location.startsWith("/admin/users") ? "" : "text-muted-foreground group-hover:text-primary"}`} />
             <span>Admin</span>
+          </Link>
+          <Link
+            href="/admin/assistant"
+            onClick={onNavigate}
+            className={navItemClass(location.startsWith("/admin/assistant"))}
+            data-testid="nav-admin-assistant"
+          >
+            <BookOpen className={`h-4 w-4 shrink-0 ${location.startsWith("/admin/assistant") ? "" : "text-muted-foreground group-hover:text-primary"}`} />
+            <span>Assistant (admin)</span>
           </Link>
         </div>
       )}
