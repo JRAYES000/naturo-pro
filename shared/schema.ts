@@ -325,6 +325,7 @@ export const kbDocuments = sqliteTable("kb_documents", {
   charCount: integer("char_count").notNull().default(0),
   status: text("status").notNull().default("ready"), // 'ready' | 'error'
   error: text("error"),
+  folder: text("folder"), // dossier d'origine (arborescence Google Drive) ; null = non classé
   createdAt: integer("created_at").notNull(),
 });
 

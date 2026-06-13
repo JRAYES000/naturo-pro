@@ -13,6 +13,7 @@ const docSchema = z.object({
   mimeType: z.string().max(127).nullable().optional(),
   dataBase64: z.string().max(MAX_BASE64).optional(),
   text: z.string().max(2_000_000).optional(),
+  folder: z.string().max(255).nullable().optional(), // rangement (arborescence Google Drive)
 });
 
 export function registerAssistantAdminRoutes(app: Express): void {
@@ -31,24 +32,24 @@ export function registerAssistantAdminRoutes(app: Express): void {
   app.post("/api/admin/assistant/documents", requireAuth, requireAdmin, async (req: AuthedRequest, res) => {
     const p = docSchema.safeParse(req.body);
     if (!p.success) return res.status(400).json({ message: "Données invalides", errors: p.error.errors });
-    const { title, filename, mimeType, dataBase64, text } = p.data;
+    const { title, filename, mimeType, dataBase64, text, folder } = p.data;
     let raw = "";
     try {
       if (text) raw = text;
       else if (dataBase64) raw = await extractText(Buffer.from(dataBase64, "base64"), mimeType ?? null, filename ?? title);
       else return res.status(400).json({ message: "Fournir un texte ou un fichier." });
     } catch (e: any) {
-      const doc = await storage.createKbDocument({ title, filename: filename ?? null, mimeType: mimeType ?? null, charCount: 0, status: "error", error: e?.message || "Extraction échouée" });
+      const doc = await storage.createKbDocument({ title, filename: filename ?? null, mimeType: mimeType ?? null, charCount: 0, status: "error", error: e?.message || "Extraction échouée", folder: folder ?? null });
       return res.status(422).json({ message: doc.error, document: doc });
     }
     const chunks = chunkText(raw);
     let vectors: number[][] = [];
     try { vectors = chunks.length ? await embedTexts(chunks) : []; }
     catch (e: any) {
-      const doc = await storage.createKbDocument({ title, filename: filename ?? null, mimeType: mimeType ?? null, charCount: raw.length, status: "error", error: e?.message || "Embeddings échoués" });
+      const doc = await storage.createKbDocument({ title, filename: filename ?? null, mimeType: mimeType ?? null, charCount: raw.length, status: "error", error: e?.message || "Embeddings échoués", folder: folder ?? null });
       return res.status(502).json({ message: doc.error, document: doc });
     }
-    const doc = await storage.createKbDocument({ title, filename: filename ?? null, mimeType: mimeType ?? null, charCount: raw.length, status: "ready", error: null });
+    const doc = await storage.createKbDocument({ title, filename: filename ?? null, mimeType: mimeType ?? null, charCount: raw.length, status: "ready", error: null, folder: folder ?? null });
     await storage.insertKbChunks(chunks.map((c, i) => ({ documentId: doc.id, chunkIndex: i, content: c, embedding: JSON.stringify(vectors[i]) })));
     invalidateVectorCache();
     res.json({ document: doc, chunks: chunks.length });

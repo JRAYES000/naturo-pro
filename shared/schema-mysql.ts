@@ -341,6 +341,7 @@ export const kbDocuments = mysqlTable("kb_documents", {
   charCount: int("char_count").notNull().default(0),
   status: varchar("status", { length: 16 }).notNull().default("ready"), // 'ready' | 'error'
   error: text("error"),
+  folder: varchar("folder", { length: 255 }), // dossier d'origine (arborescence Google Drive) ; null = non classé
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 

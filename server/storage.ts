@@ -502,6 +502,8 @@ async function runMysqlMigrations(): Promise<void> {
       "ALTER TABLE appointments ADD COLUMN deposit_amount_cents INT NULL",
       // Apparence — préférence de thème de l'interface (light par défaut)
       "ALTER TABLE users ADD COLUMN theme_preference VARCHAR(16) NOT NULL DEFAULT 'light'",
+      // Assistant IA — rangement des supports de cours par dossier source (arborescence Google Drive)
+      "ALTER TABLE kb_documents ADD COLUMN folder VARCHAR(255) NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -727,7 +729,7 @@ export interface IStorage {
   getAssistantInstructions(): Promise<string>;
   setAssistantInstructions(text: string): Promise<void>;
   listKbDocuments(): Promise<KbDocument[]>;
-  createKbDocument(d: { title: string; filename: string | null; mimeType: string | null; charCount: number; status: string; error: string | null }): Promise<KbDocument>;
+  createKbDocument(d: { title: string; filename: string | null; mimeType: string | null; charCount: number; status: string; error: string | null; folder?: string | null }): Promise<KbDocument>;
   deleteKbDocument(id: number): Promise<void>;
   insertKbChunks(rows: { documentId: number; chunkIndex: number; content: string; embedding: string }[]): Promise<void>;
   listAllKbChunks(): Promise<KbChunk[]>;
@@ -1452,8 +1454,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(kbDocuments).orderBy(desc(kbDocuments.createdAt), desc(kbDocuments.id));
   }
 
-  async createKbDocument(d: { title: string; filename: string | null; mimeType: string | null; charCount: number; status: string; error: string | null }): Promise<KbDocument> {
-    return dbInsertReturning<KbDocument>(kbDocuments, { ...d, createdAt: Date.now() });
+  async createKbDocument(d: { title: string; filename: string | null; mimeType: string | null; charCount: number; status: string; error: string | null; folder?: string | null }): Promise<KbDocument> {
+    return dbInsertReturning<KbDocument>(kbDocuments, { ...d, folder: d.folder ?? null, createdAt: Date.now() });
   }
 
   async deleteKbDocument(id: number): Promise<void> {
