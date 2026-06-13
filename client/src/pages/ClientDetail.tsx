@@ -1,6 +1,6 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users } from "lucide-react";
+import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useConfirm } from "@/hooks/use-confirm";
-import type { Client, Appointment, ConsultationNote } from "@shared/schema";
+import type { Client, Appointment, ConsultationNote, AiDiscussion } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel } from "@/lib/format";
 
 // Type métadonnées document (sans dataBase64)
@@ -44,7 +44,10 @@ export default function ClientDetail() {
   const { data: appts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/clients", cid, "appointments"] });
   const { data: notes = [] } = useQuery<ConsultationNote[]>({ queryKey: ["/api/clients", cid, "notes"] });
   const { data: documents = [] } = useQuery<ClientDocumentMeta[]>({ queryKey: ["/api/clients", cid, "documents"] });
+  const { data: allDiscussions = [] } = useQuery<AiDiscussion[]>({ queryKey: ["/api/discussions"] });
+  const clientDiscussions = allDiscussions.filter((d) => d.clientId === Number(cid));
 
+  const [, navigate] = useLocation();
   const [draft, setDraft] = useState<Partial<Client>>({});
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +76,16 @@ export default function ClientDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] });
       toast({ title: "Document supprimé", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const askMut = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/discussions", { clientId: Number(cid) }),
+    onSuccess: async (res) => {
+      const d = await res.json();
+      await queryClient.invalidateQueries({ queryKey: ["/api/discussions"] });
+      navigate(`/app/chat/${d.id}`);
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -188,6 +201,29 @@ export default function ClientDetail() {
                 ))}
               </div>
             )}
+
+            <div className="card-naturo mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-heading">Discussions avec l'assistant</h2>
+                <Button size="sm" onClick={() => askMut.mutate()} disabled={askMut.isPending} className="rounded-[12px]" data-testid="button-ask-assistant">
+                  <Sparkles className="h-4 w-4 mr-1" /> Demander à l'assistant
+                </Button>
+              </div>
+              {clientDiscussions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune discussion pour cette cliente.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {clientDiscussions.map((d) => (
+                    <li key={d.id}>
+                      <Link href={`/app/chat/${d.id}`} className="flex items-center justify-between py-2 hover:text-primary" data-testid={`client-discussion-${d.id}`}>
+                        <span className="text-sm font-medium truncate">{d.title}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{new Date(d.updatedAt).toLocaleDateString("fr-FR")}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="appts">
