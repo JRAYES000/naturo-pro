@@ -171,6 +171,14 @@ export default function Chat() {
       setPending(null); setStreamText(""); setSources([]);
       await queryClient.invalidateQueries({ queryKey: ["/api/discussions", selectedId, "messages"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/discussions"] }); // titre auto + updatedAt
+      // Réponse complète rendue : on cale la question tout en haut (lecture depuis le début).
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const c = scrollRef.current;
+        if (!c) return;
+        const qs = c.querySelectorAll('[data-testid="message-user"]');
+        const q = qs[qs.length - 1] as HTMLElement | undefined;
+        if (q) c.scrollTo({ top: Math.max(0, q.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 12), behavior: "smooth" });
+      }));
     },
     onError: (e: any) => {
       setPending(null); setStreamText(""); setSources([]);
@@ -191,9 +199,25 @@ export default function Chat() {
     },
   });
 
+  // Ouverture d'une discussion (messages chargés) : afficher le dernier échange (bas).
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending, streamText, sources, sendMut.isPending]);
+    if (isLoading || selectedId == null) return;
+    const c = scrollRef.current;
+    if (c) requestAnimationFrame(() => { c.scrollTop = c.scrollHeight; });
+  }, [isLoading, selectedId]);
+
+  // Pendant que Naturobot écrit : on garde la dernière question tout en haut (au
+  // lieu de suivre le bas) — la réponse se construit en dessous et se lit depuis
+  // son début, sans avoir à remonter à la souris. Clampé : à mesure que la réponse
+  // grandit, la question remonte jusqu'en haut.
+  useEffect(() => {
+    if (!(sendMut.isPending || pending != null)) return;
+    const c = scrollRef.current;
+    if (!c) return;
+    const qs = c.querySelectorAll('[data-testid="message-user"]');
+    const q = qs[qs.length - 1] as HTMLElement | undefined;
+    if (q) c.scrollTo({ top: Math.max(0, q.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 12) });
+  }, [streamText, pending, sendMut.isPending]);
 
   function submit(text?: string) {
     const t = (text ?? input).trim();
