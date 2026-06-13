@@ -51,17 +51,29 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    // 2 Mo : couvre les images en base64 (photo de profil, logo facture) envoyées
-    // via PATCH /api/profile. Le défaut Express (100 Ko) renvoyait un 413 dès
-    // qu'une image dépassait ~70 Ko — bug latent sur l'upload de logo.
-    limit: "2mb",
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
+// Body JSON : 2 Mo par défaut (images base64 : photo de profil, logo facture via
+// PATCH /api/profile ; le défaut Express de 100 Ko renvoyait un 413 dès ~70 Ko).
+// Exception : l'upload de supports de cours de l'assistant accepte jusqu'à 30 Mo
+// (PDF de cours jusqu'à ~20 Mo + overhead base64). Limite haute confinée à cette
+// seule route pour ne pas élargir la surface d'attaque ailleurs.
+const jsonSmall = express.json({
+  limit: "2mb",
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  },
+});
+const jsonLarge = express.json({
+  limit: "30mb",
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  },
+});
+app.use((req, res, next) => {
+  if (req.method === "POST" && req.path === "/api/admin/assistant/documents") {
+    return jsonLarge(req, res, next);
+  }
+  return jsonSmall(req, res, next);
+});
 
 app.use(express.urlencoded({ extended: false }));
 

@@ -5,7 +5,7 @@ import { requireAuth, requireAdmin, type AuthedRequest } from "../auth";
 import { extractText } from "../pdf";
 import { chunkText, embedTexts, invalidateVectorCache } from "../rag";
 
-const MAX_BASE64 = 7_000_000;
+const MAX_BASE64 = 28_000_000; // ~20 Mo de fichier (base64 ≈ ×1,34)
 const instrSchema = z.object({ instructions: z.string().max(20000) });
 const docSchema = z.object({
   title: z.string().min(1).max(255),

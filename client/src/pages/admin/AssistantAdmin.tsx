@@ -156,7 +156,7 @@ export default function AssistantAdmin() {
               className="text-sm"
               data-testid="input-doc-file"
             />
-            <span className="text-xs text-muted-foreground">PDF, .txt ou .md (max 5 Mo)</span>
+            <span className="text-xs text-muted-foreground">PDF, .txt ou .md (max 20 Mo)</span>
           </div>
           <div>
             <Label>… ou coller du texte</Label>

@@ -3,6 +3,7 @@ import { storage } from "./storage";
 export const CHUNK_SIZE = 900;
 const CHUNK_OVERLAP = 120;
 const EMBED_MODEL = "mistral-embed";
+const EMBED_BATCH = 64; // chunks par requête embeddings (gros PDF → évite la limite Mistral par requête)
 
 export function chunkText(text: string): string[] {
   const clean = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -33,14 +34,20 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY manquante");
-  const res = await fetch("https://api.mistral.ai/v1/embeddings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
-  });
-  if (!res.ok) throw new Error(`Embeddings Mistral ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data: any = await res.json();
-  return [...data.data].sort((x, y) => x.index - y.index).map((d: any) => d.embedding as number[]);
+  const out: number[][] = [];
+  for (let i = 0; i < texts.length; i += EMBED_BATCH) {
+    const batch = texts.slice(i, i + EMBED_BATCH);
+    const res = await fetch("https://api.mistral.ai/v1/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: EMBED_MODEL, input: batch }),
+    });
+    if (!res.ok) throw new Error(`Embeddings Mistral ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data: any = await res.json();
+    const vecs = [...data.data].sort((x: any, y: any) => x.index - y.index).map((d: any) => d.embedding as number[]);
+    out.push(...vecs);
+  }
+  return out;
 }
 
 // Cache mémoire des vecteurs
