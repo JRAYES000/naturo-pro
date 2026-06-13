@@ -14,7 +14,7 @@ export interface ChatTurn {
 
 export const MISTRAL_MODEL = "mistral-small-latest";
 export const MAX_HISTORY = 15; // nb de tours d'historique envoyés (borne coût + contexte)
-const MAX_TOKENS = 3000; // marge confortable (~2200 mots) — évite les réponses coupées
+const MAX_TOKENS = 4096; // marge confortable (~3000 mots) — évite les réponses coupées
 
 export const SYSTEM_PROMPT = [
   "Tu es un formateur expérimenté en naturopathie qui accompagne des stagiaires et des praticiennes.",
@@ -30,7 +30,7 @@ export const SYSTEM_PROMPT = [
   "",
   "Style de réponse :",
   "- Va à l'essentiel : structure claire et points clés ciblés (vise 3 à 6 points), sans délayer ni empiler les sous-listes.",
-  "- Donne d'abord le cœur de la réponse ; pour un sujet vaste, traite le plus important puis propose d'approfondir un point précis plutôt que de tout dérouler d'un seul message.",
+  "- N'écris JAMAIS une réponse démesurée en un seul message. Pour une demande très large (programme complet, plan sur plusieurs semaines, tableau exhaustif), traite d'abord le plus important de façon synthétique, puis propose explicitement de continuer (« veux-tu que je détaille la suite ? ») au lieu de tout livrer d'un coup.",
   "- Termine toujours par une phrase complète, avec une courte conclusion ou une question d'ouverture.",
 ].join("\n");
 
