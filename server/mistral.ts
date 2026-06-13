@@ -6,6 +6,8 @@
  * La clé est lue dans process.env.MISTRAL_API_KEY (jamais exposée au client).
  */
 
+import { ASSISTANT_THEMES, THEME_OTHER } from "@shared/assistant-themes";
+
 export type ChatRole = "user" | "assistant";
 export interface ChatTurn {
   role: ChatRole;
@@ -42,12 +44,15 @@ export const SYSTEM_PROMPT = [
 export function buildMistralMessages(
   history: ChatTurn[],
   userMessage: string,
-  opts?: { customInstructions?: string; contextChunks?: string[] },
+  opts?: { customInstructions?: string; contextChunks?: string[]; clientContext?: string },
 ): Array<{ role: string; content: string }> {
   const recent = history.slice(-MAX_HISTORY);
   let system = SYSTEM_PROMPT;
   if (opts?.customInstructions?.trim()) {
     system += `\n\nConsignes spécifiques du formateur (à respecter) :\n${opts.customInstructions.trim()}`;
+  }
+  if (opts?.clientContext?.trim()) {
+    system += `\n\n${opts.clientContext.trim()}`;
   }
   if (opts?.contextChunks?.length) {
     system +=
@@ -220,5 +225,42 @@ export async function* streamNaturoAssistant(
     // Coupée par la limite de tokens → on demande la suite et on enchaîne.
     messages.push({ role: "assistant", content: segText });
     messages.push({ role: "user", content: CONTINUE_NUDGE });
+  }
+}
+
+// Génère un titre court + une thématique (parmi ASSISTANT_THEMES) depuis la 1re question.
+// Appel non-streaming, court. Fallback robuste : titre tronqué + « Autre… ».
+export async function generateDiscussionMeta(firstQuestion: string): Promise<{ title: string; theme: string }> {
+  const fallback = {
+    title: firstQuestion.trim().replace(/\s+/g, " ").slice(0, 50) || "Nouvelle discussion",
+    theme: THEME_OTHER,
+  };
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return fallback;
+  const prompt =
+    `Question d'une praticienne en naturopathie : « ${firstQuestion.slice(0, 500)} »\n` +
+    `Donne un titre court (3 à 6 mots, sans guillemets) et LA thématique la plus adaptée, ` +
+    `choisie STRICTEMENT dans cette liste : ${ASSISTANT_THEMES.join(" | ")}.\n` +
+    `Réponds uniquement en JSON compact : {"title":"...","theme":"..."}`;
+  try {
+    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: MISTRAL_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 80, temperature: 0.2,
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!res.ok) return fallback;
+    const data: any = await res.json();
+    const raw = data?.choices?.[0]?.message?.content;
+    const parsed = JSON.parse(raw);
+    const title = String(parsed.title || "").trim().slice(0, 80) || fallback.title;
+    const theme = ASSISTANT_THEMES.includes(parsed.theme) ? parsed.theme : THEME_OTHER;
+    return { title, theme };
+  } catch {
+    return fallback;
   }
 }

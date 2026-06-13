@@ -47,3 +47,9 @@ test("buildMistralMessages — injecte les extraits de contexte RAG dans le syst
   assert.ok(msgs[0].content.includes("extrait A"));
   assert.ok(msgs[0].content.includes("extrait B"));
 });
+
+test("buildMistralMessages — injecte la fiche cliente dans le system", () => {
+  const msgs = buildMistralMessages([], "Q", { clientContext: "Fiche de la cliente : Marie, 42 ans." });
+  assert.equal(msgs[0].role, "system");
+  assert.ok(msgs[0].content.includes("Marie, 42 ans"));
+});
