@@ -98,6 +98,9 @@ export function registerDiscussionRoutes(app: Express): void {
     const prior = await storage.listDiscussionMessages(d.id, CONTEXT_LIMIT);
     const history: ChatTurn[] = prior.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
     const isFirstExchange = prior.length === 0;
+    // Démarre la génération titre/thème EN PARALLÈLE du streaming (1er échange) :
+    // elle se termine pendant la réponse, donc sans rallonger le temps perçu.
+    const metaPromise = isFirstExchange ? generateDiscussionMeta(userMessage).catch(() => null) : null;
     const instructions = await storage.getAssistantInstructions();
 
     let clientContext: string | undefined;
@@ -141,16 +144,17 @@ export function registerDiscussionRoutes(app: Express): void {
     await storage.createDiscussionMessage({ discussionId: d.id, userId: req.userId!, role: "user", content: userMessage });
     await storage.createDiscussionMessage({ discussionId: d.id, userId: req.userId!, role: "assistant", content: full });
     await storage.touchDiscussion(d.id);
-    res.end();
 
-    // Après la réponse : génère titre (+ thème si discussion thématique sans thème).
-    if (isFirstExchange) {
-      try {
-        const meta = await generateDiscussionMeta(userMessage);
+    // Applique le titre/thème (généré en parallèle) AVANT de clore la réponse, pour
+    // que la liste des discussions réinvalidée côté client l'affiche immédiatement.
+    if (metaPromise) {
+      const meta = await metaPromise;
+      if (meta) {
         const patch: { title: string; theme?: string } = { title: meta.title };
         if (d.clientId == null && !d.theme) patch.theme = meta.theme;
         await storage.updateDiscussion(d.id, patch);
-      } catch { /* best-effort */ }
+      }
     }
+    res.end();
   });
 }
