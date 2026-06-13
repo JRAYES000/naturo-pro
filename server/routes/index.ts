@@ -37,7 +37,7 @@ import { registerDocumentRoutes } from "./documents";
 import { registerStatsRoutes } from "./stats";
 import { registerSolutionRoutes } from "./solutions";
 import { registerPackageRoutes } from "./packages";
-import { registerChatRoutes } from "./chat";
+import { registerDiscussionRoutes } from "./discussions";
 import { registerAssistantAdminRoutes } from "./assistant-admin";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -136,7 +136,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerStatsRoutes(app);
   registerSolutionRoutes(app);
   registerPackageRoutes(app);
-  registerChatRoutes(app);
+  registerDiscussionRoutes(app);
   registerAssistantAdminRoutes(app);
 
   startCrons();

@@ -195,7 +195,7 @@ async function* streamMistralSegment(
 export async function* streamNaturoAssistant(
   history: ChatTurn[],
   userMessage: string,
-  opts?: { customInstructions?: string; contextChunks?: string[] },
+  opts?: { customInstructions?: string; contextChunks?: string[]; clientContext?: string },
 ): AsyncGenerator<string, void, unknown> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) {
