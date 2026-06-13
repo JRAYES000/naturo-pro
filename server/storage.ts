@@ -1514,13 +1514,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── Assistant IA — instructions globales + base de connaissances (RAG) ───────
+  // Singleton : on opère toujours sur la ligne d'id le plus bas (la canonique),
+  // jamais sur un id codé en dur (qui pouvait ne pas exister → chaque save créait
+  // une ligne orpheline et getAssistantInstructions renvoyait toujours "").
   async getAssistantInstructions(): Promise<string> {
-    const row = await first<AssistantSettings>(db.select().from(assistantSettings).where(eq(assistantSettings.id, 1)));
+    const row = await first<AssistantSettings>(db.select().from(assistantSettings).orderBy(assistantSettings.id));
     return row?.customInstructions ?? "";
   }
 
   async setAssistantInstructions(text: string): Promise<void> {
-    const row = await first<AssistantSettings>(db.select().from(assistantSettings).where(eq(assistantSettings.id, 1)));
+    const row = await first<AssistantSettings>(db.select().from(assistantSettings).orderBy(assistantSettings.id));
     if (row) await db.update(assistantSettings).set({ customInstructions: text, updatedAt: Date.now() }).where(eq(assistantSettings.id, row.id));
     else await dbInsertReturning<AssistantSettings>(assistantSettings, { customInstructions: text, updatedAt: Date.now() });
   }

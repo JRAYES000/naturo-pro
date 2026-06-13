@@ -57,6 +57,25 @@ export default function AssistantAdmin() {
     onSuccess: () => toast({ title: "Instructions enregistrées", variant: "success" }),
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
+  // Réinitialise (purge) le cadrage global : vide la valeur en base.
+  const resetInstr = useMutation({
+    mutationFn: () => apiRequest("PUT", "/api/admin/assistant/instructions", { instructions: "" }),
+    onSuccess: async () => {
+      setInstructions("");
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/assistant/instructions"] });
+      toast({ title: "Instructions réinitialisées", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+  async function onResetInstructions() {
+    const ok = await confirm({
+      title: "Réinitialiser les instructions globales ?",
+      description: "Le cadrage global sera entièrement vidé en base (purge). Naturobot repart sans aucune consigne personnalisée. Action irréversible.",
+      confirmLabel: "Réinitialiser",
+      destructive: true,
+    });
+    if (ok) resetInstr.mutate();
+  }
 
   // ── Supports de cours ───────────────────────────────────────────────────────
   const { data: docs = [], isLoading: docsLoading } = useQuery<KbDoc[]>({
@@ -160,7 +179,16 @@ export default function AssistantAdmin() {
               placeholder="Ex. : Privilégie une approche douce et progressive ; mentionne toujours les contre-indications ; reste fidèle à la méthode enseignée à l'École Naturo."
               data-testid="input-instructions"
             />
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={onResetInstructions}
+                disabled={resetInstr.isPending || saveInstr.isPending}
+                className="rounded-[12px] text-muted-foreground hover:text-destructive"
+                data-testid="button-reset-instructions"
+              >
+                Réinitialiser
+              </Button>
               <Button onClick={() => saveInstr.mutate()} disabled={saveInstr.isPending} className="rounded-[12px]" data-testid="button-save-instructions">
                 Enregistrer
               </Button>
