@@ -14,7 +14,7 @@ export interface ChatTurn {
 
 export const MISTRAL_MODEL = "mistral-small-latest";
 export const MAX_HISTORY = 15; // nb de tours d'historique envoyés (borne coût + contexte)
-const MAX_TOKENS = 800;
+const MAX_TOKENS = 1500;
 
 export const SYSTEM_PROMPT = [
   "Tu es un formateur expérimenté en naturopathie qui accompagne des stagiaires et des praticiennes.",

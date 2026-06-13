@@ -3,11 +3,13 @@
  *
  * Conversation continue avec le « formateur virtuel » (API Mistral côté serveur).
  * Historique persisté via /api/chat. Bouton « Effacer » pour repartir de zéro.
+ * Les réponses de l'assistant sont rendues en Markdown.
  */
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Trash2, Sparkles, Info } from "lucide-react";
+import { Send, Trash2, Sparkles, Info, Copy, Check } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Loading } from "@/components/Loading";
@@ -18,16 +20,46 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AiChatMessage } from "@shared/schema";
 
+const SUGGESTIONS = [
+  "Quelles plantes pour accompagner un sommeil difficile ?",
+  "Explique-moi le rôle du foie en naturopathie.",
+  "Quels conseils d'hygiène de vie pour le stress ?",
+  "Différence entre prébiotiques et probiotiques ?",
+];
+
 function Bubble({ role, content, typing }: { role: string; content: string; typing?: boolean }) {
   const isUser = role === "user";
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
-          isUser ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
+        className={`group relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+          isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-secondary text-foreground"
         } ${typing ? "animate-pulse" : ""}`}
       >
-        {content}
+        {isUser ? (
+          content
+        ) : (
+          <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-pre:bg-muted prose-pre:text-foreground">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        )}
+        {!isUser && !typing && content && (
+          <button
+            onClick={copy}
+            className="absolute -bottom-2 -right-2 opacity-0 group-hover:opacity-100 transition bg-card border border-border rounded-full p-1 shadow-sm"
+            aria-label="Copier la réponse"
+            data-testid="button-copy-message"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -72,12 +104,12 @@ export default function Chat() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, pending, sendMut.isPending]);
 
-  function submit() {
-    const text = input.trim();
-    if (!text || sendMut.isPending) return;
-    setPending(text);
+  function submit(text?: string) {
+    const t = (text ?? input).trim();
+    if (!t || sendMut.isPending) return;
+    setPending(t);
     setInput("");
-    sendMut.mutate(text);
+    sendMut.mutate(t);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -125,9 +157,20 @@ export default function Chat() {
               <Sparkles className="h-8 w-8 text-primary" />
               <p className="font-semibold text-heading">Pose ta première question</p>
               <p className="text-sm max-w-sm">
-                Par exemple : « Quelles plantes pour accompagner un sommeil difficile ? » ou « Explique-moi le rôle du
-                foie en naturopathie. »
+                Choisis une suggestion ou écris ta propre question.
               </p>
+              <div className="flex flex-wrap gap-2 justify-center mt-2 max-w-md">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => submit(s)}
+                    className="text-xs rounded-full border border-border bg-card px-3 py-1.5 hover:bg-secondary hover:text-primary transition"
+                    data-testid="button-suggestion"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <>
@@ -151,7 +194,7 @@ export default function Chat() {
             data-testid="input-chat-message"
           />
           <Button
-            onClick={submit}
+            onClick={() => submit()}
             disabled={!input.trim() || sendMut.isPending}
             className="rounded-[12px] shrink-0"
             data-testid="button-send-message"
