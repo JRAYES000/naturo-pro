@@ -324,6 +324,37 @@ export const aiChatUsage = mysqlTable("ai_chat_usage", {
   count: int("count").notNull().default(0),
 });
 
+// Assistant IA — réglages globaux (1 ligne).
+// ⚠️ MySQL : TEXT n'accepte pas de DEFAULT non-null → pas de .default("") sur custom_instructions.
+export const assistantSettings = mysqlTable("assistant_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  customInstructions: text("custom_instructions").notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+// Base de connaissances (RAG) — documents sources.
+export const kbDocuments = mysqlTable("kb_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  filename: varchar("filename", { length: 255 }),
+  mimeType: varchar("mime_type", { length: 127 }),
+  charCount: int("char_count").notNull().default(0),
+  status: varchar("status", { length: 16 }).notNull().default("ready"), // 'ready' | 'error'
+  error: text("error"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// Base de connaissances (RAG) — chunks vectorisés.
+// ⚠️ MySQL : embedding est un TEXT (pas de DEFAULT). 1024 floats ≈ 12 Ko < 64 Ko.
+export const kbChunks = mysqlTable("kb_chunks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("document_id").notNull(),
+  chunkIndex: int("chunk_index").notNull(),
+  content: text("content").notNull(),
+  embedding: text("embedding").notNull(), // JSON array de floats
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 // ─── Insert schemas (same names as schema.ts so imports are swappable) ────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -342,6 +373,9 @@ export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).
 export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
 export const insertAiChatUsageSchema = createInsertSchema(aiChatUsage).omit({ id: true });
+export const insertAssistantSettingsSchema = createInsertSchema(assistantSettings).omit({ id: true, updatedAt: true });
+export const insertKbDocumentSchema = createInsertSchema(kbDocuments).omit({ id: true, createdAt: true });
+export const insertKbChunkSchema = createInsertSchema(kbChunks).omit({ id: true, createdAt: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;
@@ -379,6 +413,12 @@ export type AiChatMessage = typeof aiChatMessages.$inferSelect;
 export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
 export type AiChatUsage = typeof aiChatUsage.$inferSelect;
 export type InsertAiChatUsage = z.infer<typeof insertAiChatUsageSchema>;
+export type AssistantSettings = typeof assistantSettings.$inferSelect;
+export type InsertAssistantSettings = z.infer<typeof insertAssistantSettingsSchema>;
+export type KbDocument = typeof kbDocuments.$inferSelect;
+export type InsertKbDocument = z.infer<typeof insertKbDocumentSchema>;
+export type KbChunk = typeof kbChunks.$inferSelect;
+export type InsertKbChunk = z.infer<typeof insertKbChunkSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

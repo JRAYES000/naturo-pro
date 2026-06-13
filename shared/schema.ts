@@ -309,6 +309,35 @@ export const aiChatUsage = sqliteTable("ai_chat_usage", {
   count: integer("count").notNull().default(0),
 });
 
+// Assistant IA — réglages globaux (1 ligne) : instructions personnalisées du formateur.
+export const assistantSettings = sqliteTable("assistant_settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  customInstructions: text("custom_instructions").notNull().default(""),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+// Base de connaissances (RAG) — documents sources curatés par l'admin.
+export const kbDocuments = sqliteTable("kb_documents", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  filename: text("filename"),
+  mimeType: text("mime_type"),
+  charCount: integer("char_count").notNull().default(0),
+  status: text("status").notNull().default("ready"), // 'ready' | 'error'
+  error: text("error"),
+  createdAt: integer("created_at").notNull(),
+});
+
+// Base de connaissances (RAG) — chunks vectorisés d'un document.
+export const kbChunks = sqliteTable("kb_chunks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  documentId: integer("document_id").notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  embedding: text("embedding").notNull(), // JSON array de floats
+  createdAt: integer("created_at").notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -326,6 +355,9 @@ export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).
 export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
 export const insertAiChatUsageSchema = createInsertSchema(aiChatUsage).omit({ id: true });
+export const insertAssistantSettingsSchema = createInsertSchema(assistantSettings).omit({ id: true, updatedAt: true });
+export const insertKbDocumentSchema = createInsertSchema(kbDocuments).omit({ id: true, createdAt: true });
+export const insertKbChunkSchema = createInsertSchema(kbChunks).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -361,6 +393,12 @@ export type AiChatMessage = typeof aiChatMessages.$inferSelect;
 export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
 export type AiChatUsage = typeof aiChatUsage.$inferSelect;
 export type InsertAiChatUsage = z.infer<typeof insertAiChatUsageSchema>;
+export type AssistantSettings = typeof assistantSettings.$inferSelect;
+export type InsertAssistantSettings = z.infer<typeof insertAssistantSettingsSchema>;
+export type KbDocument = typeof kbDocuments.$inferSelect;
+export type InsertKbDocument = z.infer<typeof insertKbDocumentSchema>;
+export type KbChunk = typeof kbChunks.$inferSelect;
+export type InsertKbChunk = z.infer<typeof insertKbChunkSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

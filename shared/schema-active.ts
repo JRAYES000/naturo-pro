@@ -41,6 +41,9 @@ export const naturalSolutions = activeSchema.naturalSolutions;
 export const packages = activeSchema.packages;
 export const aiChatMessages = activeSchema.aiChatMessages;
 export const aiChatUsage = activeSchema.aiChatUsage;
+export const assistantSettings = activeSchema.assistantSettings;
+export const kbDocuments = activeSchema.kbDocuments;
+export const kbChunks = activeSchema.kbChunks;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -60,6 +63,9 @@ export const insertNaturalSolutionSchema = activeSchema.insertNaturalSolutionSch
 export const insertPackageSchema = activeSchema.insertPackageSchema;
 export const insertAiChatMessageSchema = activeSchema.insertAiChatMessageSchema;
 export const insertAiChatUsageSchema = activeSchema.insertAiChatUsageSchema;
+export const insertAssistantSettingsSchema = activeSchema.insertAssistantSettingsSchema;
+export const insertKbDocumentSchema = activeSchema.insertKbDocumentSchema;
+export const insertKbChunkSchema = activeSchema.insertKbChunkSchema;
 
 // Re-exports types : on importe toujours depuis le schéma SQLite pour les types
 // (ils sont identiques entre les deux schémas, et TypeScript a besoin d'imports
@@ -78,4 +84,7 @@ export type {
   Package, InsertPackage,
   AiChatMessage, InsertAiChatMessage,
   AiChatUsage, InsertAiChatUsage,
+  AssistantSettings, InsertAssistantSettings,
+  KbDocument, InsertKbDocument,
+  KbChunk, InsertKbChunk,
 } from "./schema";

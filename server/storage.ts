@@ -21,6 +21,7 @@ import {
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
   packages, aiChatMessages, aiChatUsage,
+  assistantSettings, kbDocuments, kbChunks,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -31,6 +32,7 @@ import type {
   Program, InsertProgram, ClientDocument, InsertClientDocument,
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage, AiChatMessage, AiChatUsage,
+  AssistantSettings, KbDocument, KbChunk,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
@@ -720,6 +722,15 @@ export interface IStorage {
   createAiChatMessage(data: { userId: number; role: string; content: string }): Promise<AiChatMessage>;
   deleteAiChatMessages(userId: number): Promise<void>;
   incrementAiChatUsage(userId: number, day: string): Promise<number>;
+
+  // Assistant IA — instructions globales + base de connaissances (RAG)
+  getAssistantInstructions(): Promise<string>;
+  setAssistantInstructions(text: string): Promise<void>;
+  listKbDocuments(): Promise<KbDocument[]>;
+  createKbDocument(d: { title: string; filename: string | null; mimeType: string | null; charCount: number; status: string; error: string | null }): Promise<KbDocument>;
+  deleteKbDocument(id: number): Promise<void>;
+  insertKbChunks(rows: { documentId: number; chunkIndex: number; content: string; embedding: string }[]): Promise<void>;
+  listAllKbChunks(): Promise<KbChunk[]>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1423,6 +1434,39 @@ export class DatabaseStorage implements IStorage {
     }
     await dbInsertReturning<AiChatUsage>(aiChatUsage, { userId, day, count: 1 });
     return 1;
+  }
+
+  // ── Assistant IA — instructions globales + base de connaissances (RAG) ───────
+  async getAssistantInstructions(): Promise<string> {
+    const row = await first<AssistantSettings>(db.select().from(assistantSettings).where(eq(assistantSettings.id, 1)));
+    return row?.customInstructions ?? "";
+  }
+
+  async setAssistantInstructions(text: string): Promise<void> {
+    const row = await first<AssistantSettings>(db.select().from(assistantSettings).where(eq(assistantSettings.id, 1)));
+    if (row) await db.update(assistantSettings).set({ customInstructions: text, updatedAt: Date.now() }).where(eq(assistantSettings.id, row.id));
+    else await dbInsertReturning<AssistantSettings>(assistantSettings, { customInstructions: text, updatedAt: Date.now() });
+  }
+
+  async listKbDocuments(): Promise<KbDocument[]> {
+    return db.select().from(kbDocuments).orderBy(desc(kbDocuments.createdAt), desc(kbDocuments.id));
+  }
+
+  async createKbDocument(d: { title: string; filename: string | null; mimeType: string | null; charCount: number; status: string; error: string | null }): Promise<KbDocument> {
+    return dbInsertReturning<KbDocument>(kbDocuments, { ...d, createdAt: Date.now() });
+  }
+
+  async deleteKbDocument(id: number): Promise<void> {
+    await db.delete(kbChunks).where(eq(kbChunks.documentId, id));
+    await db.delete(kbDocuments).where(eq(kbDocuments.id, id));
+  }
+
+  async insertKbChunks(rows: { documentId: number; chunkIndex: number; content: string; embedding: string }[]): Promise<void> {
+    for (const r of rows) await dbInsertReturning<KbChunk>(kbChunks, { ...r, createdAt: Date.now() });
+  }
+
+  async listAllKbChunks(): Promise<KbChunk[]> {
+    return db.select().from(kbChunks);
   }
 }
 
