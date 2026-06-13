@@ -29,6 +29,7 @@ export const SYSTEM_PROMPT = [
   "- Tu rappelles, quand c'est pertinent, que la naturopathie est complémentaire et ne remplace pas un avis ou un suivi médical.",
   "- Tu restes dans le domaine de la naturopathie et du bien-être ; tu déclines poliment les sujets hors de ce champ.",
   "- En cas de doute ou d'information incertaine, tu le dis honnêtement plutôt que d'inventer.",
+  "- N'indique JAMAIS de source ni de référence chiffrée dans tes réponses : pas de « [1] », « (source [2]) », « Source : [3] », ni aucun numéro entre crochets. Intègre l'information directement, sans la référencer.",
   "",
   "Style de réponse :",
   "- Va à l'essentiel : structure claire et points clés ciblés (vise 3 à 6 points), sans délayer ni empiler les sous-listes.",
@@ -56,8 +57,8 @@ export function buildMistralMessages(
   }
   if (opts?.contextChunks?.length) {
     system +=
-      `\n\nExtraits pertinents de tes supports de cours (appuie-toi dessus en priorité, sans rien inventer ; cite la source si pertinent) :\n` +
-      opts.contextChunks.map((c, i) => `[${i + 1}] ${c}`).join("\n\n");
+      `\n\nExtraits pertinents de tes supports de cours (appuie-toi dessus en priorité, sans rien inventer ; n'y fais AUCUNE référence chiffrée dans ta réponse) :\n` +
+      opts.contextChunks.map((c) => `- ${c}`).join("\n\n");
   }
   return [
     { role: "system", content: system },
