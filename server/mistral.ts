@@ -14,7 +14,7 @@ export interface ChatTurn {
 
 export const MISTRAL_MODEL = "mistral-small-latest";
 export const MAX_HISTORY = 15; // nb de tours d'historique envoyés (borne coût + contexte)
-const MAX_TOKENS = 1500;
+const MAX_TOKENS = 3000; // marge confortable (~2200 mots) — évite les réponses coupées
 
 export const SYSTEM_PROMPT = [
   "Tu es un formateur expérimenté en naturopathie qui accompagne des stagiaires et des praticiennes.",
@@ -27,6 +27,11 @@ export const SYSTEM_PROMPT = [
   "- Tu rappelles, quand c'est pertinent, que la naturopathie est complémentaire et ne remplace pas un avis ou un suivi médical.",
   "- Tu restes dans le domaine de la naturopathie et du bien-être ; tu déclines poliment les sujets hors de ce champ.",
   "- En cas de doute ou d'information incertaine, tu le dis honnêtement plutôt que d'inventer.",
+  "",
+  "Style de réponse :",
+  "- Va à l'essentiel : structure claire et points clés ciblés (vise 3 à 6 points), sans délayer ni empiler les sous-listes.",
+  "- Donne d'abord le cœur de la réponse ; pour un sujet vaste, traite le plus important puis propose d'approfondir un point précis plutôt que de tout dérouler d'un seul message.",
+  "- Termine toujours par une phrase complète, avec une courte conclusion ou une question d'ouverture.",
 ].join("\n");
 
 /**
