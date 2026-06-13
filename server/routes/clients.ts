@@ -54,6 +54,7 @@ export function registerClientRoutes(app: Express): void {
     const id = Number(req.params.id);
     const c = await storage.getClient(id);
     if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    await storage.detachClientFromDiscussions(id); // les discussions deviennent « Non classé », les échanges restent
     await storage.deleteClient(id);
     res.json({ ok: true });
   });
