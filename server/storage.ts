@@ -20,7 +20,7 @@ import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
-  packages, aiChatMessages, aiChatUsage,
+  packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks,
 } from "@shared/schema-active";
 import type {
@@ -34,7 +34,8 @@ import type {
   Package, InsertPackage, AiChatMessage, AiChatUsage,
   AssistantSettings, KbDocument, KbChunk,
 } from "@shared/schema-active";
-import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
+import type { AiDiscussion } from "@shared/schema";
+import { eq, and, gte, lte, desc, like, or, sql, isNull } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
 
 // Compat dual ESM/CJS : tsx (dev) utilise import.meta.url ; esbuild bundle en CJS
@@ -504,6 +505,17 @@ async function runMysqlMigrations(): Promise<void> {
       "ALTER TABLE users ADD COLUMN theme_preference VARCHAR(16) NOT NULL DEFAULT 'light'",
       // Assistant IA — rangement des supports de cours par dossier source (arborescence Google Drive)
       "ALTER TABLE kb_documents ADD COLUMN folder VARCHAR(255) NULL",
+      // Assistant IA — discussions (fil par sujet)
+      `CREATE TABLE IF NOT EXISTS ai_discussions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        client_id INT NULL,
+        theme VARCHAR(120) NULL,
+        title VARCHAR(255) NOT NULL DEFAULT 'Nouvelle discussion',
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
+      )`,
+      "ALTER TABLE ai_chat_messages ADD COLUMN discussion_id INT NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -516,13 +528,33 @@ async function runMysqlMigrations(): Promise<void> {
     }
 }
 
+// Backfill : rattache les messages legacy (discussion_id NULL) à une discussion
+// « Discussion générale » par praticienne. Idempotent : ne fait rien si tout est rattaché.
+export async function backfillLegacyDiscussions(): Promise<void> {
+  try {
+    const orphans = await storage.listLegacyChatUserIds(); // userIds ayant des messages sans discussionId
+    for (const userId of orphans) {
+      const disc = await storage.createDiscussion({
+        userId, clientId: null, theme: null, title: "Discussion générale",
+      });
+      await storage.assignLegacyMessagesToDiscussion(userId, disc.id);
+    }
+    if (orphans.length) console.log(`[db][backfill] ${orphans.length} fil(s) legacy → « Discussion générale »`);
+  } catch (e: any) {
+    console.warn("[db][backfill] discussions legacy (best-effort) :", e?.message || e);
+  }
+}
+
 /**
  * Promesse résolue lorsque les migrations MySQL best-effort sont terminées.
  * En SQLite (dev), no-op résolu immédiatement. index.ts l'attend avant de seeder.
  * Ne rejette jamais : chaque DDL est gardé par son propre try/catch.
+ * Chaîne ensuite le backfill des discussions legacy (idempotent, best-effort).
  */
 export const migrationsReady: Promise<void> =
-  DB_DRIVER === "mysql" ? runMysqlMigrations() : Promise.resolve();
+  (DB_DRIVER === "mysql" ? runMysqlMigrations() : Promise.resolve()).then(() =>
+    backfillLegacyDiscussions(),
+  );
 
 // ── Dual-driver write helpers ─────────────────────────────────────────────────
 
@@ -719,10 +751,21 @@ export interface IStorage {
   updatePackage(id: number, patch: Partial<Package>): Promise<Package | undefined>;
   deletePackage(id: number): Promise<void>;
 
-  // Assistant IA
-  listAiChatMessages(userId: number, limit?: number): Promise<AiChatMessage[]>;
-  createAiChatMessage(data: { userId: number; role: string; content: string }): Promise<AiChatMessage>;
-  deleteAiChatMessages(userId: number): Promise<void>;
+  // Assistant IA — discussions
+  listDiscussions(userId: number): Promise<AiDiscussion[]>;
+  getDiscussion(id: number): Promise<AiDiscussion | undefined>;
+  createDiscussion(d: { userId: number; clientId: number | null; theme: string | null; title?: string }): Promise<AiDiscussion>;
+  updateDiscussion(id: number, patch: Partial<{ title: string; theme: string | null; clientId: number | null }>): Promise<AiDiscussion | undefined>;
+  touchDiscussion(id: number): Promise<void>;
+  deleteDiscussion(id: number): Promise<void>;
+  detachClientFromDiscussions(clientId: number): Promise<void>;
+  // Assistant IA — messages (scopés par discussion)
+  listDiscussionMessages(discussionId: number, limit?: number): Promise<AiChatMessage[]>;
+  createDiscussionMessage(d: { discussionId: number; userId: number; role: string; content: string }): Promise<AiChatMessage>;
+  // Backfill legacy
+  listLegacyChatUserIds(): Promise<number[]>;
+  assignLegacyMessagesToDiscussion(userId: number, discussionId: number): Promise<void>;
+  // Quota (inchangé)
   incrementAiChatUsage(userId: number, day: string): Promise<number>;
 
   // Assistant IA — instructions globales + base de connaissances (RAG)
@@ -1406,24 +1449,56 @@ export class DatabaseStorage implements IStorage {
     await db.delete(packages).where(eq(packages.id, id));
   }
 
-  // ── Assistant IA ───────────────────────────────────────────────────────────
-  async listAiChatMessages(userId: number, limit = 50): Promise<AiChatMessage[]> {
-    // On récupère les N plus récents (desc) puis on inverse → ordre chronologique.
-    const rows = await db
-      .select()
-      .from(aiChatMessages)
-      .where(eq(aiChatMessages.userId, userId))
+  // ── Assistant IA — discussions ───────────────────────────────────────────────
+  async listDiscussions(userId: number): Promise<AiDiscussion[]> {
+    return db.select().from(aiDiscussions)
+      .where(eq(aiDiscussions.userId, userId))
+      .orderBy(desc(aiDiscussions.updatedAt), desc(aiDiscussions.id));
+  }
+  async getDiscussion(id: number): Promise<AiDiscussion | undefined> {
+    return first(db.select().from(aiDiscussions).where(eq(aiDiscussions.id, id)));
+  }
+  async createDiscussion(d: { userId: number; clientId: number | null; theme: string | null; title?: string }): Promise<AiDiscussion> {
+    const now = Date.now();
+    return dbInsertReturning<AiDiscussion>(aiDiscussions, {
+      userId: d.userId, clientId: d.clientId, theme: d.theme,
+      title: d.title ?? "Nouvelle discussion", createdAt: now, updatedAt: now,
+    });
+  }
+  async updateDiscussion(id: number, patch: Partial<{ title: string; theme: string | null; clientId: number | null }>): Promise<AiDiscussion | undefined> {
+    await db.update(aiDiscussions).set({ ...patch, updatedAt: Date.now() }).where(eq(aiDiscussions.id, id));
+    return this.getDiscussion(id);
+  }
+  async touchDiscussion(id: number): Promise<void> {
+    await db.update(aiDiscussions).set({ updatedAt: Date.now() }).where(eq(aiDiscussions.id, id));
+  }
+  async deleteDiscussion(id: number): Promise<void> {
+    await db.delete(aiChatMessages).where(eq(aiChatMessages.discussionId, id));
+    await db.delete(aiDiscussions).where(eq(aiDiscussions.id, id));
+  }
+  async detachClientFromDiscussions(clientId: number): Promise<void> {
+    await db.update(aiDiscussions).set({ clientId: null }).where(eq(aiDiscussions.clientId, clientId));
+  }
+  // ── Assistant IA — messages ──────────────────────────────────────────────────
+  async listDiscussionMessages(discussionId: number, limit = 200): Promise<AiChatMessage[]> {
+    const rows = await db.select().from(aiChatMessages)
+      .where(eq(aiChatMessages.discussionId, discussionId))
       .orderBy(desc(aiChatMessages.createdAt), desc(aiChatMessages.id))
       .limit(limit);
     return rows.reverse();
   }
-
-  async createAiChatMessage(data: { userId: number; role: string; content: string }): Promise<AiChatMessage> {
-    return dbInsertReturning<AiChatMessage>(aiChatMessages, { ...data, createdAt: Date.now() });
+  async createDiscussionMessage(d: { discussionId: number; userId: number; role: string; content: string }): Promise<AiChatMessage> {
+    return dbInsertReturning<AiChatMessage>(aiChatMessages, { ...d, createdAt: Date.now() });
   }
-
-  async deleteAiChatMessages(userId: number): Promise<void> {
-    await db.delete(aiChatMessages).where(eq(aiChatMessages.userId, userId));
+  // ── Backfill legacy ──────────────────────────────────────────────────────────
+  async listLegacyChatUserIds(): Promise<number[]> {
+    const rows = await db.selectDistinct({ userId: aiChatMessages.userId })
+      .from(aiChatMessages).where(isNull(aiChatMessages.discussionId));
+    return rows.map((r: { userId: number }) => r.userId);
+  }
+  async assignLegacyMessagesToDiscussion(userId: number, discussionId: number): Promise<void> {
+    await db.update(aiChatMessages).set({ discussionId })
+      .where(and(eq(aiChatMessages.userId, userId), isNull(aiChatMessages.discussionId)));
   }
 
   async incrementAiChatUsage(userId: number, day: string): Promise<number> {
