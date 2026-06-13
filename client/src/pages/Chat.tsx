@@ -77,7 +77,6 @@ export default function Chat() {
   const [filter, setFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [titleDraft, setTitleDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: discussions = [] } = useQuery<AiDiscussion[]>({ queryKey: ["/api/discussions"] });
@@ -170,8 +169,13 @@ export default function Chat() {
             <div className="border-b border-border px-4 py-2.5 flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 {editing ? (
-                  <Input autoFocus defaultValue={selected.title} onBlur={(e) => renameMut.mutate(e.target.value.trim() || selected.title)}
-                    onKeyDown={(e) => { if (e.key === "Enter") renameMut.mutate((e.target as HTMLInputElement).value.trim() || selected.title); }}
+                  <Input autoFocus defaultValue={selected.title}
+                    onBlur={(e) => {
+                      const next = e.target.value.trim() || selected.title;
+                      if (next !== selected.title) renameMut.mutate(next);
+                      else setEditing(false);
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
                     className="h-8" data-testid="input-rename-discussion" />
                 ) : (
                   <p className="font-semibold text-heading truncate flex items-center gap-1.5">

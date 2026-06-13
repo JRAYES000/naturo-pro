@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "wouter";
-import { Plus, User, Tag, MessageSquare } from "lucide-react";
+import { Plus, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Client, AiDiscussion } from "@shared/schema";
 
