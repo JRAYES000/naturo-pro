@@ -307,6 +307,15 @@ export const naturalSolutions = mysqlTable("natural_solutions", {
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
 
+// Assistant IA (Mistral) — conversation continue unique par utilisatrice.
+export const aiChatMessages = mysqlTable("ai_chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  role: varchar("role", { length: 16 }).notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 // ─── Insert schemas (same names as schema.ts so imports are swappable) ────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -323,6 +332,7 @@ export const insertProgramSchema = createInsertSchema(programs).omit({ id: true,
 export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
 export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;
@@ -356,6 +366,8 @@ export type NaturalSolution = typeof naturalSolutions.$inferSelect;
 export type InsertNaturalSolution = z.infer<typeof insertNaturalSolutionSchema>;
 export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
+export type AiChatMessage = typeof aiChatMessages.$inferSelect;
+export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

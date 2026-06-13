@@ -291,6 +291,16 @@ export const naturalSolutions = sqliteTable("natural_solutions", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+// Assistant IA (Mistral) — conversation continue unique par utilisatrice.
+// Une ligne = un message ; "la conversation" = tous les messages d'un userId triés par createdAt.
+export const aiChatMessages = sqliteTable("ai_chat_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -306,6 +316,7 @@ export const insertProgramSchema = createInsertSchema(programs).omit({ id: true,
 export const insertClientDocumentSchema = createInsertSchema(clientDocuments).omit({ id: true, createdAt: true });
 export const insertNaturalSolutionSchema = createInsertSchema(naturalSolutions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPackageSchema = createInsertSchema(packages).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAiChatMessageSchema = createInsertSchema(aiChatMessages).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -337,6 +348,8 @@ export type NaturalSolution = typeof naturalSolutions.$inferSelect;
 export type InsertNaturalSolution = z.infer<typeof insertNaturalSolutionSchema>;
 export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
+export type AiChatMessage = typeof aiChatMessages.$inferSelect;
+export type InsertAiChatMessage = z.infer<typeof insertAiChatMessageSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

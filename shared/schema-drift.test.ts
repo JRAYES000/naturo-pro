@@ -27,6 +27,7 @@ const TABLE_PAIRS: Array<[string, any, any]> = [
   ["invoices",             sqlite.invoices,             mysql.invoices],
   ["invoiceItems",         sqlite.invoiceItems,         mysql.invoiceItems],
   ["emailTemplates",       sqlite.emailTemplates,       mysql.emailTemplates],
+  ["aiChatMessages",       sqlite.aiChatMessages,       mysql.aiChatMessages],
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
