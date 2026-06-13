@@ -114,22 +114,19 @@ export async function askNaturoAssistant(
   }
 }
 
+const MAX_SEGMENTS = 4; // 1 réponse + jusqu'à 3 reprises automatiques
+const CONTINUE_NUDGE =
+  "Poursuis ta réponse précédente exactement là où elle s'est arrêtée (même au milieu d'une phrase ou d'un tableau), sans rien répéter, sans te resaluer et sans réintroduire le sujet.";
+
 /**
- * Variante streaming : appelle Mistral en `stream:true` et émet les deltas de
- * texte au fur et à mesure. Lève une erreur avec `.status` (503 si clé absente,
- * 502 sinon). Le system prompt intègre instructions + contexte RAG via opts.
+ * Stream un seul appel Mistral à partir d'un tableau de messages prêt à l'emploi.
+ * Émet les deltas de texte et RETOURNE le `finish_reason` (`"stop"` | `"length"` …).
+ * Lève une erreur `.status` (502) si la requête échoue.
  */
-export async function* streamNaturoAssistant(
-  history: ChatTurn[],
-  userMessage: string,
-  opts?: { customInstructions?: string; contextChunks?: string[] },
-): AsyncGenerator<string, void, unknown> {
-  const apiKey = process.env.MISTRAL_API_KEY;
-  if (!apiKey) {
-    const e: any = new Error("MISTRAL_API_KEY manquante");
-    e.status = 503;
-    throw e;
-  }
+async function* streamMistralSegment(
+  messages: Array<{ role: string; content: string }>,
+  apiKey: string,
+): AsyncGenerator<string, string, unknown> {
   const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -139,7 +136,7 @@ export async function* streamNaturoAssistant(
     },
     body: JSON.stringify({
       model: MISTRAL_MODEL,
-      messages: buildMistralMessages(history, userMessage, opts),
+      messages,
       max_tokens: MAX_TOKENS,
       temperature: 0.3,
       stream: true,
@@ -153,6 +150,7 @@ export async function* streamNaturoAssistant(
   const reader = (res.body as ReadableStream<Uint8Array>).getReader();
   const decoder = new TextDecoder();
   let buf = "";
+  let finishReason = "stop";
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -163,14 +161,64 @@ export async function* streamNaturoAssistant(
       const t = line.trim();
       if (!t.startsWith("data:")) continue;
       const payload = t.slice(5).trim();
-      if (payload === "[DONE]") return;
+      if (payload === "[DONE]") return finishReason;
       try {
         const j = JSON.parse(payload);
+        const fr = j.choices?.[0]?.finish_reason;
+        if (fr) finishReason = fr;
         const d = j.choices?.[0]?.delta?.content;
         if (typeof d === "string" && d) yield d;
       } catch {
         /* keep-alive / ligne partielle */
       }
     }
+  }
+  return finishReason;
+}
+
+/**
+ * Variante streaming avec CONTINUATION AUTOMATIQUE : appelle Mistral en flux et,
+ * si la réponse est coupée par manque de place (`finish_reason: "length"`),
+ * relance automatiquement le modèle pour qu'il poursuive là où il s'est arrêté,
+ * jusqu'à MAX_SEGMENTS. La réponse rendue est ainsi toujours complète, quelle que
+ * soit la longueur, sans coupure visible côté utilisateur.
+ *
+ * Erreur `.status` (503 clé absente, 502 échec) propagée uniquement si le TOUT
+ * PREMIER segment échoue ; au-delà, on conserve le texte déjà produit. Le system
+ * prompt intègre instructions + contexte RAG via opts.
+ */
+export async function* streamNaturoAssistant(
+  history: ChatTurn[],
+  userMessage: string,
+  opts?: { customInstructions?: string; contextChunks?: string[] },
+): AsyncGenerator<string, void, unknown> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) {
+    const e: any = new Error("MISTRAL_API_KEY manquante");
+    e.status = 503;
+    throw e;
+  }
+  const messages = buildMistralMessages(history, userMessage, opts);
+  for (let seg = 0; seg < MAX_SEGMENTS; seg++) {
+    const gen = streamMistralSegment(messages, apiKey);
+    let segText = "";
+    let finishReason = "stop";
+    try {
+      let r = await gen.next();
+      while (!r.done) {
+        segText += r.value;
+        yield r.value;
+        r = await gen.next();
+      }
+      finishReason = r.value;
+    } catch (e) {
+      if (seg === 0) throw e; // aucun texte fiable → laisser la route gérer l'erreur
+      return; // une reprise a échoué → on s'arrête proprement avec le texte déjà produit
+    }
+    // Réponse terminée d'elle-même, ou plus de budget de reprise → on s'arrête.
+    if (finishReason !== "length" || seg >= MAX_SEGMENTS - 1) return;
+    // Coupée par la limite de tokens → on demande la suite et on enchaîne.
+    messages.push({ role: "assistant", content: segText });
+    messages.push({ role: "user", content: CONTINUE_NUDGE });
   }
 }
