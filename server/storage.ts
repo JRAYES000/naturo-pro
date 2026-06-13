@@ -20,7 +20,7 @@ import {
   users, appointmentCategories, availabilitySlots, clients, appointments,
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
-  packages,
+  packages, aiChatMessages,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -30,7 +30,7 @@ import type {
   AnamnesisTemplate, InsertAnamnesisTemplate, AnamnesisResponse, InsertAnamnesisResponse,
   Program, InsertProgram, ClientDocument, InsertClientDocument,
   NaturalSolution, InsertNaturalSolution,
-  Package, InsertPackage,
+  Package, InsertPackage, AiChatMessage,
 } from "@shared/schema-active";
 import { eq, and, gte, lte, desc, like, or, sql } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
@@ -714,6 +714,11 @@ export interface IStorage {
   createPackage(data: InsertPackage & { userId: number }): Promise<Package>;
   updatePackage(id: number, patch: Partial<Package>): Promise<Package | undefined>;
   deletePackage(id: number): Promise<void>;
+
+  // Assistant IA
+  listAiChatMessages(userId: number, limit?: number): Promise<AiChatMessage[]>;
+  createAiChatMessage(data: { userId: number; role: string; content: string }): Promise<AiChatMessage>;
+  deleteAiChatMessages(userId: number): Promise<void>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1385,6 +1390,26 @@ export class DatabaseStorage implements IStorage {
 
   async deletePackage(id: number): Promise<void> {
     await db.delete(packages).where(eq(packages.id, id));
+  }
+
+  // ── Assistant IA ───────────────────────────────────────────────────────────
+  async listAiChatMessages(userId: number, limit = 50): Promise<AiChatMessage[]> {
+    // On récupère les N plus récents (desc) puis on inverse → ordre chronologique.
+    const rows = await db
+      .select()
+      .from(aiChatMessages)
+      .where(eq(aiChatMessages.userId, userId))
+      .orderBy(desc(aiChatMessages.createdAt), desc(aiChatMessages.id))
+      .limit(limit);
+    return rows.reverse();
+  }
+
+  async createAiChatMessage(data: { userId: number; role: string; content: string }): Promise<AiChatMessage> {
+    return dbInsertReturning<AiChatMessage>(aiChatMessages, { ...data, createdAt: Date.now() });
+  }
+
+  async deleteAiChatMessages(userId: number): Promise<void> {
+    await db.delete(aiChatMessages).where(eq(aiChatMessages.userId, userId));
   }
 }
 
