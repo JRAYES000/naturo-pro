@@ -177,6 +177,29 @@ export default function ClientDetail() {
                 <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
               </Button>
             </div>
+
+            <div className="card-naturo mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-heading">Discussions avec l'assistant</h2>
+                <Button size="sm" onClick={() => askMut.mutate()} disabled={askMut.isPending} className="rounded-[12px]" data-testid="button-ask-assistant">
+                  <Sparkles className="h-4 w-4 mr-1" /> Demander à l'assistant
+                </Button>
+              </div>
+              {clientDiscussions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune discussion pour cette cliente.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {clientDiscussions.map((d) => (
+                    <li key={d.id}>
+                      <Link href={`/app/chat/${d.id}`} className="flex items-center justify-between py-2 hover:text-primary" data-testid={`client-discussion-${d.id}`}>
+                        <span className="text-sm font-medium truncate">{d.title}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{new Date(d.updatedAt).toLocaleDateString("fr-FR")}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="history">
@@ -201,29 +224,6 @@ export default function ClientDetail() {
                 ))}
               </div>
             )}
-
-            <div className="card-naturo mt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-bold text-heading">Discussions avec l'assistant</h2>
-                <Button size="sm" onClick={() => askMut.mutate()} disabled={askMut.isPending} className="rounded-[12px]" data-testid="button-ask-assistant">
-                  <Sparkles className="h-4 w-4 mr-1" /> Demander à l'assistant
-                </Button>
-              </div>
-              {clientDiscussions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucune discussion pour cette cliente.</p>
-              ) : (
-                <ul className="divide-y divide-border">
-                  {clientDiscussions.map((d) => (
-                    <li key={d.id}>
-                      <Link href={`/app/chat/${d.id}`} className="flex items-center justify-between py-2 hover:text-primary" data-testid={`client-discussion-${d.id}`}>
-                        <span className="text-sm font-medium truncate">{d.title}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">{new Date(d.updatedAt).toLocaleDateString("fr-FR")}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </TabsContent>
 
           <TabsContent value="appts">
