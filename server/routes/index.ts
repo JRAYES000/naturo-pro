@@ -38,6 +38,7 @@ import { registerStatsRoutes } from "./stats";
 import { registerSolutionRoutes } from "./solutions";
 import { registerPackageRoutes } from "./packages";
 import { registerDiscussionRoutes } from "./discussions";
+import { registerContentRoutes } from "./content";
 import { registerAssistantAdminRoutes } from "./assistant-admin";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -137,6 +138,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerSolutionRoutes(app);
   registerPackageRoutes(app);
   registerDiscussionRoutes(app);
+  registerContentRoutes(app);
   registerAssistantAdminRoutes(app);
 
   startCrons();
