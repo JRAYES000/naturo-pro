@@ -21,7 +21,7 @@ import {
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
-  assistantSettings, kbDocuments, kbChunks,
+  assistantSettings, kbDocuments, kbChunks, contentPosts,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -32,11 +32,12 @@ import type {
   Program, InsertProgram, ClientDocument, InsertClientDocument,
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage, AiChatMessage, AiChatUsage,
-  AssistantSettings, KbDocument, KbChunk,
+  AssistantSettings, KbDocument, KbChunk, ContentPost,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
+import { rankThemes } from "./social-content";
 
 // Compat dual ESM/CJS : tsx (dev) utilise import.meta.url ; esbuild bundle en CJS
 // où import.meta vaut {} → fallback sur __filename (natif CJS).
@@ -299,6 +300,19 @@ if (DB_DRIVER !== "mysql") {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS content_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      channel TEXT NOT NULL,
+      format TEXT NOT NULL,
+      theme TEXT,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'brouillon',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      published_at INTEGER
+    );
   `);
   // PHASE 3.5-B — Manage token : colonnes appointments (best-effort migration SQLite)
   const apptMigCols = [
@@ -389,6 +403,10 @@ if (DB_DRIVER !== "mysql") {
   }
   // Apparence — préférence de thème (light par défaut) (best-effort migration SQLite)
   try { raw.exec(`ALTER TABLE users ADD COLUMN theme_preference TEXT DEFAULT 'light'`); } catch { /* already exists */ }
+  // Studio contenu — voix de marque (ton + audience) sur users (best-effort migration SQLite)
+  for (const col of ["marketing_tone TEXT", "marketing_audience TEXT"]) {
+    try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* déjà présent */ }
+  }
   raw.close();
 }
 
@@ -516,6 +534,23 @@ async function runMysqlMigrations(): Promise<void> {
         updated_at BIGINT NOT NULL
       )`,
       "ALTER TABLE ai_chat_messages ADD COLUMN discussion_id INT NULL",
+      // Studio contenu — posts générés (brouillons, à publier, publiés)
+      `CREATE TABLE IF NOT EXISTS content_posts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        channel VARCHAR(32) NOT NULL,
+        format VARCHAR(32) NOT NULL,
+        theme VARCHAR(200) NULL,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        status VARCHAR(24) NOT NULL DEFAULT 'brouillon',
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        published_at BIGINT NULL
+      )`,
+      // Studio contenu — voix de marque (ton + audience) sur users
+      "ALTER TABLE users ADD COLUMN marketing_tone VARCHAR(64) NULL",
+      "ALTER TABLE users ADD COLUMN marketing_audience VARCHAR(255) NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -776,6 +811,15 @@ export interface IStorage {
   deleteKbDocument(id: number): Promise<void>;
   insertKbChunks(rows: { documentId: number; chunkIndex: number; content: string; embedding: string }[]): Promise<void>;
   listAllKbChunks(): Promise<KbChunk[]>;
+
+  // Studio contenu
+  createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string }): Promise<ContentPost>;
+  listContentPosts(userId: number, status?: string): Promise<ContentPost[]>;
+  getContentPost(id: number): Promise<ContentPost | undefined>;
+  updateContentPost(id: number, patch: { body?: string; status?: string }): Promise<ContentPost | undefined>;
+  deleteContentPost(id: number): Promise<void>;
+  getClientThemeStats(userId: number, sinceMs: number): Promise<Array<{ theme: string; count: number }>>;
+  updateUserMarketing(userId: number, patch: { marketingTone: string | null; marketingAudience: string | null }): Promise<void>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1479,6 +1523,56 @@ export class DatabaseStorage implements IStorage {
   async detachClientFromDiscussions(clientId: number): Promise<void> {
     await db.update(aiDiscussions).set({ clientId: null }).where(eq(aiDiscussions.clientId, clientId));
   }
+
+  // ── Studio contenu ───────────────────────────────────────────────────────────
+  async createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string }): Promise<ContentPost> {
+    const now = Date.now();
+    return dbInsertReturning<ContentPost>(contentPosts, {
+      userId: d.userId, channel: d.channel, format: d.format, theme: d.theme,
+      title: d.title, body: d.body, status: "brouillon",
+      createdAt: now, updatedAt: now, publishedAt: null,
+    });
+  }
+
+  async listContentPosts(userId: number, status?: string): Promise<ContentPost[]> {
+    const where = status
+      ? and(eq(contentPosts.userId, userId), eq(contentPosts.status, status))
+      : eq(contentPosts.userId, userId);
+    return db.select().from(contentPosts).where(where)
+      .orderBy(desc(contentPosts.updatedAt), desc(contentPosts.id));
+  }
+
+  async getContentPost(id: number): Promise<ContentPost | undefined> {
+    return first(db.select().from(contentPosts).where(eq(contentPosts.id, id)));
+  }
+
+  async updateContentPost(id: number, patch: { body?: string; status?: string }): Promise<ContentPost | undefined> {
+    const set: any = { updatedAt: Date.now() };
+    if (patch.body !== undefined) set.body = patch.body;
+    if (patch.status !== undefined) {
+      set.status = patch.status;
+      if (patch.status === "publie") set.publishedAt = Date.now();
+    }
+    return dbUpdateReturning<ContentPost>(contentPosts, id, set);
+  }
+
+  async deleteContentPost(id: number): Promise<void> {
+    await db.delete(contentPosts).where(eq(contentPosts.id, id));
+  }
+
+  async getClientThemeStats(userId: number, sinceMs: number): Promise<Array<{ theme: string; count: number }>> {
+    const rows = await db
+      .select({ theme: aiDiscussions.theme, count: sql<number>`count(*)` })
+      .from(aiDiscussions)
+      .where(and(eq(aiDiscussions.userId, userId), gte(aiDiscussions.createdAt, sinceMs)))
+      .groupBy(aiDiscussions.theme);
+    return rankThemes(rows as Array<{ theme: string | null; count: number }>);
+  }
+
+  async updateUserMarketing(userId: number, patch: { marketingTone: string | null; marketingAudience: string | null }): Promise<void> {
+    await db.update(users).set({ marketingTone: patch.marketingTone, marketingAudience: patch.marketingAudience }).where(eq(users.id, userId));
+  }
+
   // ── Assistant IA — messages ──────────────────────────────────────────────────
   async listDiscussionMessages(discussionId: number, limit = 200): Promise<AiChatMessage[]> {
     const rows = await db.select().from(aiChatMessages)
