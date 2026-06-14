@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Sparkles, Copy, Check, Save, Send, Loader2 } from "lucide-react";
+import { Sparkles, Copy, Check, Save, Send, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +20,8 @@ type ContentFormat = "carrousel" | "reel" | "story" | "post_groupe" | "legende";
 type TopicType = "client_theme" | "theme" | "libre";
 interface IdeaSources { clientThemes: { theme: string; count: number }[]; predefinedThemes: string[]; }
 interface Angle { title: string; hook: string; suggestedFormat: ContentFormat; }
+interface ContentPost { id: number; channel: string; format: string; theme: string | null; title: string; body: string; status: string; createdAt: number; updatedAt: number; publishedAt: number | null; }
+const STATUS_LABELS: Record<string, string> = { brouillon: "Brouillon", a_publier: "À publier", publie: "Publié" };
 
 const FORMAT_LABELS: Record<ContentFormat, string> = {
   carrousel: "Carrousel Instagram",
@@ -196,7 +200,7 @@ export default function StudioContenu() {
               {streamText ? (
                 <>
                   <div className="flex justify-end gap-2 mb-2">
-                    <Button variant="outline" size="sm" className="rounded-[12px]" onClick={copyOut} data-testid="button-copy-content">
+                    <Button variant="outline" size="sm" className="rounded-[12px]" aria-label="Copier le contenu" onClick={copyOut} data-testid="button-copy-content">
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                     <Button size="sm" className="rounded-[12px]" disabled={saveMut.isPending || genMut.isPending} onClick={() => saveMut.mutate()} data-testid="button-save-content">
@@ -215,9 +219,96 @@ export default function StudioContenu() {
         </TabsContent>
 
         <TabsContent value="bibliotheque">
-          <div className="card-naturo">Bientôt : ta bibliothèque de contenus.</div>
+          <ContentLibrary />
         </TabsContent>
       </Tabs>
     </AppLayout>
+  );
+}
+
+function ContentLibrary() {
+  const { toast } = useToast();
+  const confirm = useConfirm();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editBody, setEditBody] = useState("");
+
+  const { data: posts = [] } = useQuery<ContentPost[]>({ queryKey: ["/api/content/posts"] });
+  const filtered = statusFilter === "all" ? posts : posts.filter((p) => p.status === statusFilter);
+
+  const patchMut = useMutation({
+    mutationFn: async (v: { id: number; body?: string; status?: string }) => {
+      const res = await apiRequest("PATCH", `/api/content/posts/${v.id}`, { body: v.body, status: v.status });
+      return res.json();
+    },
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] }); },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec.", variant: "destructive" }),
+  });
+  const delMut = useMutation({
+    mutationFn: async (id: number) => apiRequest("DELETE", `/api/content/posts/${id}`),
+    onSuccess: async () => { setEditingId(null); await queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] }); },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec.", variant: "destructive" }),
+  });
+
+  async function remove(id: number) {
+    if (await confirm({ title: "Supprimer ce contenu ?", description: "Cette action est définitive.", destructive: true })) delMut.mutate(id);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        {["all", "brouillon", "a_publier", "publie"].map((s) => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-secondary text-primary"}`}
+            data-testid={`filter-${s}`}>
+            {s === "all" ? "Tous" : STATUS_LABELS[s]}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Aucun contenu pour ce filtre.</p>
+      ) : filtered.map((p) => (
+        <div key={p.id} className="card-naturo" data-testid={`content-post-${p.id}`}>
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div className="min-w-0">
+              <span className="font-bold">{p.title}</span>
+              <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-secondary text-primary">{STATUS_LABELS[p.status] || p.status}</span>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" className="rounded-[12px]" aria-label="Copier le contenu"
+                onClick={() => navigator.clipboard.writeText(p.body)
+                  .then(() => toast({ title: "Copié" }))
+                  .catch(() => toast({ title: "Erreur", description: "Copie impossible.", variant: "destructive" }))}
+                data-testid={`button-copy-${p.id}`}>
+                <Copy className="h-4 w-4" />
+              </Button>
+              {p.status !== "publie" && (
+                <Button size="sm" className="rounded-[12px]" onClick={() => patchMut.mutate({ id: p.id, status: "publie" })} data-testid={`button-publish-${p.id}`}>
+                  <Check className="h-4 w-4 mr-1" /> Publié
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="rounded-[12px]" onClick={() => { setEditingId(p.id); setEditBody(p.body); }} data-testid={`button-edit-${p.id}`}>
+                Éditer
+              </Button>
+              <Button variant="destructive" size="sm" className="rounded-[12px]" aria-label="Supprimer le contenu" onClick={() => remove(p.id)} data-testid={`button-delete-${p.id}`}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {editingId === p.id ? (
+            <div className="space-y-2">
+              <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={8} data-testid={`textarea-edit-${p.id}`} />
+              <div className="flex gap-2">
+                <Button size="sm" className="rounded-[12px]" onClick={() => { patchMut.mutate({ id: p.id, body: editBody }); setEditingId(null); }} data-testid={`button-save-edit-${p.id}`}>Enregistrer</Button>
+                <Button size="sm" variant="outline" className="rounded-[12px]" onClick={() => setEditingId(null)}>Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap">{p.body}</div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
