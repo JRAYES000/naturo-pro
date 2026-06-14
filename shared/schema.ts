@@ -31,6 +31,7 @@ export const users = sqliteTable("users", {
   websiteUrl: text("website_url"),
   marketingTone: text("marketing_tone"),
   marketingAudience: text("marketing_audience"),
+  studioIntroSeenAt: integer("studio_intro_seen_at"),
   // Phase 0.7 — Email rappels via Resend
   resendApiKey: text("resend_api_key"),                       // clé personnelle de la praticienne (chiffrée plus tard)
   emailFromAddress: text("email_from_address"),               // ex "noreply@ecole-naturo.fr"

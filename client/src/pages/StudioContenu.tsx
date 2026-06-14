@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { NaturobotTabs } from "@/components/assistant/NaturobotTabs";
+import { StudioIntroBanner } from "@/components/assistant/StudioIntroBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -110,6 +111,7 @@ export default function StudioContenu() {
         </TabsList>
 
         <TabsContent value="creer">
+          <StudioIntroBanner />
           <div className="grid gap-4 md:grid-cols-[340px_1fr]">
             {/* Réglages */}
             <div className="card-naturo space-y-4">

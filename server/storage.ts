@@ -404,7 +404,7 @@ if (DB_DRIVER !== "mysql") {
   // Apparence — préférence de thème (light par défaut) (best-effort migration SQLite)
   try { raw.exec(`ALTER TABLE users ADD COLUMN theme_preference TEXT DEFAULT 'light'`); } catch { /* already exists */ }
   // Studio contenu — voix de marque (ton + audience) sur users (best-effort migration SQLite)
-  for (const col of ["marketing_tone TEXT", "marketing_audience TEXT"]) {
+  for (const col of ["marketing_tone TEXT", "marketing_audience TEXT", "studio_intro_seen_at INTEGER"]) {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* déjà présent */ }
   }
   raw.close();
@@ -551,6 +551,7 @@ async function runMysqlMigrations(): Promise<void> {
       // Studio contenu — voix de marque (ton + audience) sur users
       "ALTER TABLE users ADD COLUMN marketing_tone VARCHAR(64) NULL",
       "ALTER TABLE users ADD COLUMN marketing_audience VARCHAR(255) NULL",
+      "ALTER TABLE users ADD COLUMN studio_intro_seen_at BIGINT NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -820,6 +821,7 @@ export interface IStorage {
   deleteContentPost(id: number): Promise<void>;
   getClientThemeStats(userId: number, sinceMs: number): Promise<Array<{ theme: string; count: number }>>;
   updateUserMarketing(userId: number, patch: { marketingTone: string | null; marketingAudience: string | null }): Promise<void>;
+  markStudioIntroSeen(userId: number): Promise<void>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1571,6 +1573,10 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserMarketing(userId: number, patch: { marketingTone: string | null; marketingAudience: string | null }): Promise<void> {
     await db.update(users).set({ marketingTone: patch.marketingTone, marketingAudience: patch.marketingAudience }).where(eq(users.id, userId));
+  }
+
+  async markStudioIntroSeen(userId: number): Promise<void> {
+    await db.update(users).set({ studioIntroSeenAt: Date.now() }).where(eq(users.id, userId));
   }
 
   // ── Assistant IA — messages ──────────────────────────────────────────────────

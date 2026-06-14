@@ -129,7 +129,7 @@ export function registerContentRoutes(app: Express): void {
   app.get("/api/content/profile", requireAuth, async (req: AuthedRequest, res) => {
     const user = await storage.getUserById(req.userId!);
     if (!user) return res.status(404).json({ message: "Compte introuvable" });
-    res.json({ marketingTone: user.marketingTone ?? null, marketingAudience: user.marketingAudience ?? null });
+    res.json({ marketingTone: user.marketingTone ?? null, marketingAudience: user.marketingAudience ?? null, introSeen: !!user.studioIntroSeenAt });
   });
   app.put("/api/content/profile", requireAuth, async (req: AuthedRequest, res) => {
     const p = profileSchema.safeParse(req.body);
@@ -138,6 +138,12 @@ export function registerContentRoutes(app: Express): void {
       marketingTone: p.data.marketingTone ?? null,
       marketingAudience: p.data.marketingAudience ?? null,
     });
+    res.json({ ok: true });
+  });
+
+  // Onboarding — marque le bandeau d'intro du Studio comme vu (1re fois).
+  app.post("/api/content/intro-seen", requireAuth, async (req: AuthedRequest, res) => {
+    await storage.markStudioIntroSeen(req.userId!);
     res.json({ ok: true });
   });
 }
