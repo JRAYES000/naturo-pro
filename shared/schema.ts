@@ -29,6 +29,8 @@ export const users = sqliteTable("users", {
   instagram: text("instagram"),
   facebook: text("facebook"),
   websiteUrl: text("website_url"),
+  marketingTone: text("marketing_tone"),
+  marketingAudience: text("marketing_audience"),
   // Phase 0.7 — Email rappels via Resend
   resendApiKey: text("resend_api_key"),                       // clé personnelle de la praticienne (chiffrée plus tard)
   emailFromAddress: text("email_from_address"),               // ex "noreply@ecole-naturo.fr"
@@ -313,6 +315,21 @@ export const aiDiscussions = sqliteTable("ai_discussions", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+// Studio Contenu — posts générés pour les réseaux sociaux.
+export const contentPosts = sqliteTable("content_posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  channel: text("channel").notNull(),       // 'instagram' | 'facebook'
+  format: text("format").notNull(),         // 'carrousel' | 'reel' | 'story' | 'post_groupe' | 'legende'
+  theme: text("theme"),                      // thème ou sujet libre
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("brouillon"), // 'brouillon' | 'a_publier' | 'publie'
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  publishedAt: integer("published_at"),
+});
+
 // Assistant IA — quota d'usage quotidien par utilisatrice.
 export const aiChatUsage = sqliteTable("ai_chat_usage", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -371,6 +388,7 @@ export const insertAiChatUsageSchema = createInsertSchema(aiChatUsage).omit({ id
 export const insertAssistantSettingsSchema = createInsertSchema(assistantSettings).omit({ id: true, updatedAt: true });
 export const insertKbDocumentSchema = createInsertSchema(kbDocuments).omit({ id: true, createdAt: true });
 export const insertKbChunkSchema = createInsertSchema(kbChunks).omit({ id: true, createdAt: true });
+export const insertContentPostSchema = createInsertSchema(contentPosts).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -413,6 +431,8 @@ export type KbDocument = typeof kbDocuments.$inferSelect;
 export type InsertKbDocument = z.infer<typeof insertKbDocumentSchema>;
 export type KbChunk = typeof kbChunks.$inferSelect;
 export type InsertKbChunk = z.infer<typeof insertKbChunkSchema>;
+export type ContentPost = typeof contentPosts.$inferSelect;
+export type InsertContentPost = z.infer<typeof insertContentPostSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

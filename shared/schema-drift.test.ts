@@ -33,6 +33,7 @@ const TABLE_PAIRS: Array<[string, any, any]> = [
   ["assistantSettings",    sqlite.assistantSettings,    mysql.assistantSettings],
   ["kbDocuments",          sqlite.kbDocuments,          mysql.kbDocuments],
   ["kbChunks",             sqlite.kbChunks,             mysql.kbChunks],
+  ["contentPosts",         sqlite.contentPosts,         mysql.contentPosts],
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
