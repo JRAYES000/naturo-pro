@@ -39,7 +39,7 @@ export default function Dashboard() {
 
         {user?.plan === "active" && (
           <div
-            className="mb-8 rounded-[15px] border border-primary/20 bg-secondary/40 p-4 sm:p-5"
+            className="mb-8 rounded-lg border border-primary/20 bg-secondary/40 p-4 sm:p-5"
             data-testid="banner-beta"
           >
             <div className="flex items-start gap-3">

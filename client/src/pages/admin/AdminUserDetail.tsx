@@ -172,15 +172,15 @@ export default function AdminUserDetail() {
         <div className="card-naturo space-y-3">
           <h2 className="font-bold text-lg text-heading">Statistiques</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="p-3 rounded-[15px] bg-secondary/50">
+            <div className="p-3 rounded-lg bg-secondary/50">
               <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.appointments}</div>
               <div className="text-xs text-muted-foreground">Rendez-vous</div>
             </div>
-            <div className="p-3 rounded-[15px] bg-secondary/50">
+            <div className="p-3 rounded-lg bg-secondary/50">
               <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.clients}</div>
               <div className="text-xs text-muted-foreground">Clients</div>
             </div>
-            <div className="p-3 rounded-[15px] bg-secondary/50">
+            <div className="p-3 rounded-lg bg-secondary/50">
               <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.invoices}</div>
               <div className="text-xs text-muted-foreground">Factures</div>
             </div>
@@ -226,7 +226,7 @@ export default function AdminUserDetail() {
           <Button
             onClick={save}
             disabled={patch.isPending}
-            className="rounded-[15px] py-6 font-bold w-full sm:w-auto"
+            className="rounded-lg py-6 font-bold w-full sm:w-auto"
             data-testid="button-save"
           >
             {patch.isPending ? "Enregistrement…" : "Enregistrer"}
@@ -238,7 +238,7 @@ export default function AdminUserDetail() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               disabled={extendTrial.isPending}
               onClick={() => extendTrial.mutate(7)}
               data-testid="button-extend-7"
@@ -247,7 +247,7 @@ export default function AdminUserDetail() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               disabled={extendTrial.isPending}
               onClick={() => extendTrial.mutate(30)}
               data-testid="button-extend-30"
@@ -256,7 +256,7 @@ export default function AdminUserDetail() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               disabled={extendTrial.isPending}
               onClick={() => extendTrial.mutate(90)}
               data-testid="button-extend-90"
@@ -265,7 +265,7 @@ export default function AdminUserDetail() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               disabled={patch.isPending}
               onClick={() => patch.mutate({ emailVerifiedAt: Date.now() })}
               data-testid="button-force-email-verified"
@@ -293,7 +293,7 @@ export default function AdminUserDetail() {
                 impersonate.mutate();
               }}
               disabled={impersonate.isPending}
-              className="rounded-[15px] py-6 font-bold"
+              className="rounded-lg py-6 font-bold"
               data-testid="button-impersonate"
             >
               <ExternalLink className="h-4 w-4 mr-2" />

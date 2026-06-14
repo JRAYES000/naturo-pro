@@ -47,7 +47,7 @@ export default function CategoriesPage() {
           icon={Tag}
           subtitle="Les types de séances que vous proposez."
           actions={
-            <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-category">
+            <Button onClick={() => setEditing("new")} className="rounded-lg font-bold" data-testid="button-new-category">
               <Plus className="h-4 w-4 mr-1" /> Nouvelle
             </Button>
           }
@@ -175,7 +175,7 @@ function CategoryDialog({ open, editing, onClose }: any) {
               <div><Label>Couleur</Label><Input type="color" value={data.color} onChange={e => setData({ ...data, color: e.target.value })} className="h-10 p-1" data-testid="input-color" /></div>
             </div>
             <div><Label>Description</Label><Textarea rows={2} value={data.description || ""} onChange={e => setData({ ...data, description: e.target.value })} data-testid="input-description" /></div>
-            <Button onClick={() => mut.mutate()} disabled={mut.isPending || !data.name} className="w-full rounded-[15px] py-5 font-bold" data-testid="button-save-category">
+            <Button onClick={() => mut.mutate()} disabled={mut.isPending || !data.name} className="w-full rounded-lg py-5 font-bold" data-testid="button-save-category">
               {mut.isPending ? "Enregistrement…" : "Enregistrer"}
             </Button>
           </div>

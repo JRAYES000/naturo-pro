@@ -60,7 +60,7 @@ export default function InvoicesPage() {
           icon={Receipt}
           actions={
             <Link href="/app/invoices/new">
-              <Button className="rounded-[15px] font-bold" data-testid="button-new-invoice">
+              <Button className="rounded-lg font-bold" data-testid="button-new-invoice">
                 <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
               </Button>
             </Link>
@@ -156,7 +156,7 @@ export default function InvoicesPage() {
             action={
               invoices.length === 0 ? (
                 <Link href="/app/invoices/new">
-                  <Button className="rounded-[15px] font-bold">
+                  <Button className="rounded-lg font-bold">
                     <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
                   </Button>
                 </Link>

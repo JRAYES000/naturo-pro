@@ -31,7 +31,7 @@ export function HelpNote({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <Card className="card-naturo rounded-[15px] mb-6 border-primary/20 bg-primary/[0.03]">
+    <Card className="card-naturo rounded-lg mb-6 border-primary/20 bg-primary/[0.03]">
       <CardHeader className="pb-3">
         <button
           type="button"

@@ -86,8 +86,8 @@ function ManageSkeleton() {
           <Skeleton className="h-4 w-1/2" />
         </div>
         <div className="flex gap-3">
-          <Skeleton className="h-11 flex-1 rounded-[15px]" />
-          <Skeleton className="h-11 flex-1 rounded-[15px]" />
+          <Skeleton className="h-11 flex-1 rounded-lg" />
+          <Skeleton className="h-11 flex-1 rounded-lg" />
         </div>
       </div>
     </div>
@@ -178,7 +178,7 @@ function ManageSlotPicker({
           size="sm"
           onClick={() => { setWeekOffset(w => w - 1); setSelectedDay(null); }}
           disabled={weekOffset === 0}
-          className="rounded-[12px]"
+          className="rounded-lg"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -191,7 +191,7 @@ function ManageSlotPicker({
           variant="outline"
           size="sm"
           onClick={() => { setWeekOffset(w => w + 1); setSelectedDay(null); }}
-          className="rounded-[12px]"
+          className="rounded-lg"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -264,7 +264,7 @@ function ManageSlotPicker({
                       key={iso}
                       data-testid={`slot-${ms}`}
                       onClick={() => onSelect(ms)}
-                      className="rounded-[12px] py-3 text-sm font-bold border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                      className="rounded-lg py-3 text-sm font-bold border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
                     >
                       {formatTime(iso)}
                     </button>
@@ -408,7 +408,7 @@ export default function BookingManage() {
             {appt.practitionerSlug && (
               <Button
                 variant="outline"
-                className="rounded-[15px] py-6 font-bold mt-2"
+                className="rounded-lg py-6 font-bold mt-2"
                 onClick={() => navigate(`/p/${appt.practitionerSlug}`)}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -441,7 +441,7 @@ export default function BookingManage() {
             </p>
             <div className="flex flex-col gap-2 w-full mt-2">
               <Button
-                className="rounded-[15px] py-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="rounded-lg py-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => navigate(`/manage/${newToken}`)}
               >
                 Gérer le nouveau RDV
@@ -449,7 +449,7 @@ export default function BookingManage() {
               {appt.practitionerSlug && (
                 <Button
                   variant="outline"
-                  className="rounded-[15px] py-6 font-bold"
+                  className="rounded-lg py-6 font-bold"
                   onClick={() => navigate(`/p/${appt.practitionerSlug}`)}
                 >
                   Retour à la page du cabinet
@@ -472,7 +472,7 @@ export default function BookingManage() {
               variant="ghost"
               size="sm"
               onClick={() => { setStep("main"); setSelectedSlotMs(null); setShowRescheduleConfirm(false); }}
-              className="rounded-[12px]"
+              className="rounded-lg"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Retour
@@ -510,7 +510,7 @@ export default function BookingManage() {
 
         {/* Reschedule confirmation dialog */}
         <Dialog open={showRescheduleConfirm} onOpenChange={setShowRescheduleConfirm}>
-          <DialogContent className="rounded-[15px]">
+          <DialogContent className="rounded-lg">
             <DialogHeader>
               <DialogTitle>Confirmer le report</DialogTitle>
               <DialogDescription>
@@ -536,7 +536,7 @@ export default function BookingManage() {
               <Button
                 variant="outline"
                 onClick={() => setShowRescheduleConfirm(false)}
-                className="rounded-[15px] py-6 font-bold"
+                className="rounded-lg py-6 font-bold"
               >
                 Changer de créneau
               </Button>
@@ -544,7 +544,7 @@ export default function BookingManage() {
                 data-testid="button-confirm-reschedule"
                 onClick={() => selectedSlotMs && rescheduleMutation.mutate(selectedSlotMs)}
                 disabled={rescheduleMutation.isPending}
-                className="rounded-[15px] py-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="rounded-lg py-6 font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {rescheduleMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -569,7 +569,7 @@ export default function BookingManage() {
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/p/${appt.practitionerSlug}`)}
-              className="rounded-[12px] text-muted-foreground"
+              className="rounded-lg text-muted-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Retour
@@ -637,7 +637,7 @@ export default function BookingManage() {
               <Button
                 data-testid="button-reschedule-rdv"
                 variant="outline"
-                className="flex-1 rounded-[15px] py-6 font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                className="flex-1 rounded-lg py-6 font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                 onClick={() => setStep("reschedule")}
               >
                 <Clock className="h-4 w-4 mr-2" />
@@ -648,7 +648,7 @@ export default function BookingManage() {
               <Button
                 data-testid="button-cancel-rdv"
                 variant="outline"
-                className="flex-1 rounded-[15px] py-6 font-bold border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="flex-1 rounded-lg py-6 font-bold border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 onClick={() => setShowCancelDialog(true)}
               >
                 <XCircle className="h-4 w-4 mr-2" />
@@ -667,7 +667,7 @@ export default function BookingManage() {
 
       {/* Cancel confirmation dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent className="rounded-[15px]">
+        <DialogContent className="rounded-lg">
           <DialogHeader>
             <DialogTitle>Annuler le rendez-vous ?</DialogTitle>
             <DialogDescription>
@@ -692,7 +692,7 @@ export default function BookingManage() {
             <Button
               variant="outline"
               onClick={() => setShowCancelDialog(false)}
-              className="rounded-[15px] py-6 font-bold"
+              className="rounded-lg py-6 font-bold"
             >
               Conserver le RDV
             </Button>
@@ -701,7 +701,7 @@ export default function BookingManage() {
               variant="destructive"
               onClick={() => cancelMutation.mutate()}
               disabled={cancelMutation.isPending}
-              className="rounded-[15px] py-6 font-bold"
+              className="rounded-lg py-6 font-bold"
             >
               {cancelMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />

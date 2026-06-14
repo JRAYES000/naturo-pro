@@ -22,7 +22,7 @@ export function StudioIntroBanner() {
 
   return (
     <div
-      className="rounded-[15px] px-4 py-4 mb-4"
+      className="rounded-lg px-4 py-4 mb-4"
       style={{ background: "rgba(23, 236, 155, 0.12)", border: "1px solid rgba(24, 103, 73, 0.25)" }}
       data-testid="studio-intro-banner"
     >
@@ -39,7 +39,7 @@ export function StudioIntroBanner() {
           </p>
           <Button
             size="sm"
-            className="rounded-[15px] font-bold mt-3"
+            className="rounded-lg font-bold mt-3"
             disabled={seenMut.isPending}
             onClick={() => { setDismissed(true); seenMut.mutate(); }}
             data-testid="button-studio-intro-dismiss"

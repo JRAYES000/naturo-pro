@@ -159,7 +159,7 @@ export default function Packages() {
           actions={
             <Button
               onClick={() => setEditing("new")}
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               data-testid="button-new-package"
             >
               <Plus className="h-4 w-4 mr-1" /> Nouveau forfait
@@ -219,7 +219,7 @@ export default function Packages() {
               return (
                 <div
                   key={pkg.id}
-                  className="card-naturo rounded-[15px] p-5 flex flex-col gap-3 border"
+                  className="card-naturo rounded-lg p-5 flex flex-col gap-3 border"
                   data-testid={`card-package-${pkg.id}`}
                 >
                   {/* En-tête carte */}

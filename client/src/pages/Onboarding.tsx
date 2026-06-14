@@ -117,7 +117,7 @@ export default function Onboarding() {
     <div className="min-h-screen leaf-bg px-4 py-10">
       <div className="w-full max-w-2xl mx-auto">
         <div
-          className="rounded-[15px] p-4 mb-6 flex items-center gap-3"
+          className="rounded-lg p-4 mb-6 flex items-center gap-3"
           style={{ background: "rgba(23, 236, 155, 0.12)", border: "1px solid rgba(24, 103, 73, 0.18)" }}
         >
           <Sparkles className="h-5 w-5 flex-shrink-0" style={{ color: "#186749" }} />
@@ -252,7 +252,7 @@ export default function Onboarding() {
                   type="button"
                   variant="outline"
                   onClick={addCustomSpecialty}
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-add-specialty"
                 >
                   Ajouter
@@ -310,7 +310,7 @@ export default function Onboarding() {
                     type="color"
                     value={data.serviceColor}
                     onChange={(e) => update("serviceColor", e.target.value)}
-                    className="h-10 w-16 rounded-[15px] border border-input cursor-pointer"
+                    className="h-10 w-16 rounded-lg border border-input cursor-pointer"
                     data-testid="input-service-color"
                   />
                   <Input
@@ -329,7 +329,7 @@ export default function Onboarding() {
               variant="outline"
               onClick={() => setStep((s) => Math.max(1, s - 1))}
               disabled={step === 1 || submitting}
-              className="rounded-[15px] py-6 font-bold"
+              className="rounded-lg py-6 font-bold"
               data-testid="button-prev"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -340,7 +340,7 @@ export default function Onboarding() {
                 type="button"
                 onClick={() => setStep((s) => Math.min(totalSteps, s + 1))}
                 disabled={submitting}
-                className="rounded-[15px] py-6 font-bold"
+                className="rounded-lg py-6 font-bold"
                 data-testid="button-next"
               >
                 Suivant
@@ -351,7 +351,7 @@ export default function Onboarding() {
                 type="button"
                 onClick={() => finish(false)}
                 disabled={submitting}
-                className="rounded-[15px] py-6 font-bold"
+                className="rounded-lg py-6 font-bold"
                 data-testid="button-finish"
               >
                 {submitting ? "Enregistrement…" : "Terminer 🌿"}

@@ -307,7 +307,7 @@ export default function EmailTemplates() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* ── Colonne gauche : éditeur ────────────────────────────────── */}
             <div className="space-y-4">
-              <Card className="card-naturo rounded-[15px]">
+              <Card className="card-naturo rounded-lg">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -462,7 +462,7 @@ export default function EmailTemplates() {
 
             {/* ── Colonne droite : aperçu ─────────────────────────────────── */}
             <div className="space-y-4">
-              <Card className="card-naturo rounded-[15px]">
+              <Card className="card-naturo rounded-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Eye className="h-4 w-4 text-primary" />

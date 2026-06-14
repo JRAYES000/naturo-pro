@@ -286,7 +286,7 @@ export default function InvoiceEditor() {
                 href={`/api/invoices/${numericId}/pdf`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-[15px] text-sm font-bold border border-input hover:bg-secondary"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold border border-input hover:bg-secondary"
                 data-testid="button-download-pdf"
               >
                 <Download className="h-4 w-4" /> PDF
@@ -295,7 +295,7 @@ export default function InvoiceEditor() {
                 variant="outline"
                 onClick={() => sendMut.mutate()}
                 disabled={sendMut.isPending || !clientEmail}
-                className="rounded-[15px] font-bold"
+                className="rounded-lg font-bold"
                 data-testid="button-send-email"
               >
                 <Mail className="h-4 w-4 mr-1" /> Envoyer
@@ -496,7 +496,7 @@ export default function InvoiceEditor() {
             )}
 
             <div className="space-y-2">
-              <Button onClick={saveAll} className="w-full rounded-[15px] font-bold" disabled={createMut.isPending || updateMut.isPending} data-testid="button-save">
+              <Button onClick={saveAll} className="w-full rounded-lg font-bold" disabled={createMut.isPending || updateMut.isPending} data-testid="button-save">
                 <Save className="h-4 w-4 mr-1" /> {isNew ? "Créer la facture" : "Enregistrer"}
               </Button>
               {!isNew && (
@@ -512,7 +512,7 @@ export default function InvoiceEditor() {
                     }))) return;
                     deleteMut.mutate();
                   }}
-                  className="w-full rounded-[15px] font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
+                  className="w-full rounded-lg font-bold text-destructive border-destructive/30 hover:bg-destructive/10"
                   data-testid="button-delete"
                 >
                   <Trash2 className="h-4 w-4 mr-1" /> Supprimer

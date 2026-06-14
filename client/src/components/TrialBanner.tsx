@@ -22,7 +22,7 @@ export function TrialBanner() {
     if (days === 0) {
       trialBanner = (
         <div
-          className="rounded-[15px] px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
+          className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
           style={{ background: "rgba(220, 38, 38, 0.10)", border: "1px solid rgba(220, 38, 38, 0.35)" }}
           data-testid="trial-banner-expired"
         >
@@ -31,7 +31,7 @@ export function TrialBanner() {
             Votre essai est terminé · Activez votre abonnement pour continuer.
           </p>
           <Link href="/app/settings">
-            <Button size="sm" className="rounded-[15px] font-bold" data-testid="button-activate-trial">
+            <Button size="sm" className="rounded-lg font-bold" data-testid="button-activate-trial">
               Activer maintenant
             </Button>
           </Link>
@@ -40,7 +40,7 @@ export function TrialBanner() {
     } else if (days <= 3) {
       trialBanner = (
         <div
-          className="rounded-[15px] px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
+          className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
           style={{ background: "rgba(234, 88, 12, 0.10)", border: "1px solid rgba(234, 88, 12, 0.35)" }}
           data-testid="trial-banner-warning"
         >
@@ -49,7 +49,7 @@ export function TrialBanner() {
             Plus que {days} jour{days > 1 ? "s" : ""} d'essai · Activez votre abonnement.
           </p>
           <Link href="/app/settings">
-            <Button size="sm" className="rounded-[15px] font-bold" data-testid="button-activate-trial">
+            <Button size="sm" className="rounded-lg font-bold" data-testid="button-activate-trial">
               Activer maintenant
             </Button>
           </Link>
@@ -58,7 +58,7 @@ export function TrialBanner() {
     } else {
       trialBanner = (
         <div
-          className="rounded-[15px] px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
+          className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
           style={{ background: "rgba(23, 236, 155, 0.12)", border: "1px solid rgba(24, 103, 73, 0.25)" }}
           data-testid="trial-banner-info"
         >
@@ -67,7 +67,7 @@ export function TrialBanner() {
             Vous êtes en essai gratuit · {days} jour{days > 1 ? "s" : ""} restant{days > 1 ? "s" : ""}
           </p>
           <Link href="/app/settings">
-            <Button size="sm" variant="outline" className="rounded-[15px] font-bold" data-testid="button-activate-trial">
+            <Button size="sm" variant="outline" className="rounded-lg font-bold" data-testid="button-activate-trial">
               Activer maintenant
             </Button>
           </Link>
@@ -94,7 +94,7 @@ export function TrialBanner() {
 
   const verifyBanner = !emailVerified ? (
     <div
-      className="rounded-[15px] px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
+      className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
       style={{ background: "rgba(250, 204, 21, 0.12)", border: "1px solid rgba(202, 138, 4, 0.35)" }}
       data-testid="email-verify-banner"
     >
@@ -107,7 +107,7 @@ export function TrialBanner() {
         variant="outline"
         onClick={resend}
         disabled={resending}
-        className="rounded-[15px] font-bold"
+        className="rounded-lg font-bold"
         data-testid="button-resend-verification-banner"
       >
         {resending ? "Envoi…" : "Renvoyer le lien"}

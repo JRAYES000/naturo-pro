@@ -78,7 +78,7 @@ export default function Solutions() {
           subtitle="Votre catalogue de solutions naturelles."
           icon={Leaf}
           actions={
-            <Button onClick={() => setEditing("new")} className="rounded-[15px] font-bold" data-testid="button-new-solution">
+            <Button onClick={() => setEditing("new")} className="rounded-lg font-bold" data-testid="button-new-solution">
               <Plus className="h-4 w-4 mr-1" /> Ajouter une solution
             </Button>
           }
@@ -204,7 +204,7 @@ function SolutionEditor({ editing, onClose }: { editing: NaturalSolution | "new"
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose} className="rounded-[12px]">Annuler</Button>
-          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-solution">
+          <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending} className="rounded-lg font-bold" data-testid="button-save-solution">
             {mut.isPending ? "Enregistrement…" : "Enregistrer"}
           </Button>
         </div>

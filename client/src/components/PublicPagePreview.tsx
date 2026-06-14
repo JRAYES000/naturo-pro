@@ -30,7 +30,7 @@ export function PublicPagePreview({
   const tags = specialties || [];
 
   return (
-    <div className="rounded-[15px] border border-input overflow-hidden bg-card" data-testid="public-page-preview">
+    <div className="rounded-lg border border-input overflow-hidden bg-card" data-testid="public-page-preview">
       {/* Header miniature */}
       <div
         className="flex items-center justify-between px-4 py-2.5"

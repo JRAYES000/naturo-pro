@@ -67,7 +67,7 @@ export default function ForgotPassword() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-[15px] py-6 font-bold"
+                  className="w-full rounded-lg py-6 font-bold"
                   data-testid="button-submit-forgot"
                 >
                   {loading ? "Envoi…" : "Envoyer le lien"}

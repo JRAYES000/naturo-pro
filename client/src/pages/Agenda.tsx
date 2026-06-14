@@ -127,14 +127,14 @@ export default function Agenda() {
                   variant="outline"
                   onClick={() => importGoogleMut.mutate()}
                   disabled={importGoogleMut.isPending}
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-sync-google-agenda"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${importGoogleMut.isPending ? "animate-spin" : ""}`} />
                   {importGoogleMut.isPending ? "Synchronisation…" : "Synchroniser Google"}
                 </Button>
               )}
-              <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-[15px] font-bold" data-testid="button-new-appointment">
+              <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-lg font-bold" data-testid="button-new-appointment">
                 <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
               </Button>
             </div>
@@ -458,7 +458,7 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
               </div>
             )}
           </div>
-          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending} className="w-full rounded-[15px] py-5 font-bold" data-testid="button-create-appointment">
+          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending} className="w-full rounded-lg py-5 font-bold" data-testid="button-create-appointment">
             {createMut.isPending ? "Création…" : recurrence !== "none" ? `Créer ${occurrences} rendez-vous` : "Créer le rendez-vous"}
           </Button>
         </div>

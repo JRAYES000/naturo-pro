@@ -141,7 +141,7 @@ export default function ClientDetail() {
           subtitle={client.dateOfBirth ? `Né(e) le ${new Date(client.dateOfBirth).toLocaleDateString("fr-FR")}` : undefined}
           backTo={{ href: "/app/clients", label: "Clients" }}
           actions={
-            <Button variant="outline" size="sm" className="rounded-[12px] text-destructive border-destructive/30 hover:bg-destructive/10"
+            <Button variant="outline" size="sm" className="rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={async () => {
                 if (!(await confirm({ title: "Supprimer cette fiche client ?", description: "Cette action est définitive et supprimera toutes les données associées à ce client.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
                 delMut.mutate();
@@ -152,7 +152,7 @@ export default function ClientDetail() {
         />
 
         <Tabs defaultValue="info">
-          <TabsList className="rounded-[12px]">
+          <TabsList className="rounded-lg">
             <TabsTrigger value="info" data-testid="tab-info">Informations</TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history">Historique ({notes.length})</TabsTrigger>
             <TabsTrigger value="appts" data-testid="tab-appts">Rendez-vous ({appts.length})</TabsTrigger>
@@ -173,7 +173,7 @@ export default function ClientDetail() {
               <div><Label>Antécédents</Label><Textarea rows={3} value={draft.antecedents || ""} onChange={e => setDraft({ ...draft, antecedents: e.target.value })} data-testid="input-antecedents" /></div>
               <div><Label>Hygiène de vie</Label><Textarea rows={3} value={draft.lifestyleNotes || ""} onChange={e => setDraft({ ...draft, lifestyleNotes: e.target.value })} data-testid="input-lifestyle" /></div>
               <div><Label>Pense-bête (privé)</Label><Textarea rows={2} value={draft.penseBete || ""} onChange={e => setDraft({ ...draft, penseBete: e.target.value })} data-testid="input-pensebete" /></div>
-              <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-client">
+              <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-lg font-bold" data-testid="button-save-client">
                 <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
               </Button>
             </div>
@@ -181,7 +181,7 @@ export default function ClientDetail() {
             <div className="card-naturo mt-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-bold text-heading">Discussions avec l'assistant</h2>
-                <Button size="sm" onClick={() => askMut.mutate()} disabled={askMut.isPending} className="rounded-[12px]" data-testid="button-ask-assistant">
+                <Button size="sm" onClick={() => askMut.mutate()} disabled={askMut.isPending} className="rounded-lg" data-testid="button-ask-assistant">
                   <Sparkles className="h-4 w-4 mr-1" /> Demander à l'assistant
                 </Button>
               </div>
@@ -279,7 +279,7 @@ export default function ClientDetail() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="rounded-[15px] font-bold"
+                    className="rounded-lg font-bold"
                     data-testid="button-upload-document"
                   >
                     <Upload className="h-4 w-4 mr-2" />

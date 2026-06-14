@@ -80,7 +80,7 @@ export default function VerifyEmail() {
               <p className="text-muted-foreground mb-6">Votre adresse est confirmée. Bienvenue sur Naturo Pro 🌿</p>
               <Button
                 onClick={() => navigate("/app")}
-                className="w-full rounded-[15px] py-6 font-bold"
+                className="w-full rounded-lg py-6 font-bold"
                 data-testid="button-goto-dashboard"
               >
                 Aller à mon tableau de bord
@@ -97,7 +97,7 @@ export default function VerifyEmail() {
               <Button
                 onClick={resend}
                 disabled={resending}
-                className="w-full rounded-[15px] py-6 font-bold"
+                className="w-full rounded-lg py-6 font-bold"
                 data-testid="button-resend-verification"
               >
                 {resending ? "Envoi…" : "Renvoyer l'email"}

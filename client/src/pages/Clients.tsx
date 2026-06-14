@@ -30,7 +30,7 @@ export default function Clients() {
           title="Clients"
           subtitle="Vos fiches clients : coordonnées, antécédents et historique de consultations."
           actions={
-            <Button onClick={() => setCreating(true)} className="rounded-[15px] font-bold" data-testid="button-new-client">
+            <Button onClick={() => setCreating(true)} className="rounded-lg font-bold" data-testid="button-new-client">
               <Plus className="h-4 w-4 mr-1" /> Nouveau client
             </Button>
           }
@@ -57,7 +57,7 @@ export default function Clients() {
             title={`Aucun client ${search ? "trouvé" : "pour le moment"}`}
             description={search ? "Essayez avec un autre mot-clé." : "Créez votre première fiche client pour commencer."}
             action={!search ? (
-              <Button onClick={() => setCreating(true)} className="rounded-[15px]" data-testid="button-empty-create">
+              <Button onClick={() => setCreating(true)} className="rounded-lg" data-testid="button-empty-create">
                 <Plus className="h-4 w-4 mr-1" /> Nouveau client
               </Button>
             ) : undefined}
@@ -122,7 +122,7 @@ function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void
           <Button
             onClick={() => createMut.mutate()}
             disabled={createMut.isPending || !data.firstName || !data.lastName}
-            className="w-full rounded-[15px] py-5 font-bold" data-testid="button-submit-client"
+            className="w-full rounded-lg py-5 font-bold" data-testid="button-submit-client"
           >{createMut.isPending ? "Création…" : "Créer"}</Button>
         </div>
       </DialogContent>

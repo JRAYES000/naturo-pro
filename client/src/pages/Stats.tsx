@@ -123,7 +123,7 @@ export default function Stats() {
               onClick={handleExportCsv}
               disabled={downloading}
               variant="outline"
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               data-testid="button-export-csv"
             >
               <Download className="h-4 w-4 mr-1" />

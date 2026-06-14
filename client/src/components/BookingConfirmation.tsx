@@ -141,7 +141,7 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref }: Book
 
       {/* Back button */}
       <Link href={backHref} data-testid="button-back-public">
-        <Button variant="outline" className="rounded-[15px] py-6 font-bold gap-2 border-primary/30 hover:bg-primary/5">
+        <Button variant="outline" className="rounded-lg py-6 font-bold gap-2 border-primary/30 hover:bg-primary/5">
           <ArrowLeft className="h-4 w-4" />
           Retour à la page de la praticienne
         </Button>

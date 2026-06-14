@@ -154,7 +154,7 @@ export default function PublicPageEditor() {
               type="button"
               variant="outline"
               onClick={copyPublicUrl}
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               data-testid="button-copy-public-url"
             >
               {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
@@ -164,7 +164,7 @@ export default function PublicPageEditor() {
               href={publicUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center px-3 rounded-[15px] border border-input bg-background hover:bg-secondary text-sm font-bold"
+              className="inline-flex items-center justify-center px-3 rounded-lg border border-input bg-background hover:bg-secondary text-sm font-bold"
               data-testid="link-open-public-url"
             >
               <ExternalLink className="h-4 w-4" />
@@ -256,7 +256,7 @@ export default function PublicPageEditor() {
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
-                  <label className="inline-flex items-center gap-2 px-3 py-2 rounded-[15px] border border-input bg-background hover:bg-secondary text-sm font-bold cursor-pointer w-fit" data-testid="label-upload-photo">
+                  <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background hover:bg-secondary text-sm font-bold cursor-pointer w-fit" data-testid="label-upload-photo">
                     <Upload className="h-4 w-4" />
                     {draft.photoUrl ? "Changer la photo" : "Importer une photo"}
                     <input
@@ -371,7 +371,7 @@ export default function PublicPageEditor() {
             <Button
               onClick={() => saveMut.mutate()}
               disabled={saveMut.isPending || !!slugErr}
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               data-testid="button-save-public-page"
             >
               <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}

@@ -73,7 +73,7 @@ export default function Login() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" disabled={loading} className="w-full rounded-[15px] py-6 font-bold" data-testid="button-submit-login">
+              <Button type="submit" disabled={loading} className="w-full rounded-lg py-6 font-bold" data-testid="button-submit-login">
                 {loading ? "Connexion…" : "Se connecter"}
               </Button>
             </form>

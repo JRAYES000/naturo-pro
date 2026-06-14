@@ -217,13 +217,13 @@ export default function BookingFlow() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
               onClick={() => window.location.reload()}
-              className="rounded-[15px] py-6 font-bold"
+              className="rounded-lg py-6 font-bold"
               data-testid="button-retry-load"
             >
               Réessayer
             </Button>
             <Link href={onSub ? "/" : `/p/${slug}`}>
-              <Button variant="outline" className="w-full rounded-[15px] py-6 font-bold" data-testid="button-back-error">
+              <Button variant="outline" className="w-full rounded-lg py-6 font-bold" data-testid="button-back-error">
                 <ArrowLeft className="h-4 w-4 mr-1" /> Retour
               </Button>
             </Link>
@@ -280,7 +280,7 @@ export default function BookingFlow() {
                   {data.naturo.name} n'a pas encore configuré ses prestations.
                 </p>
                 <Link href={backHref}>
-                  <Button variant="outline" className="rounded-[15px] font-bold" data-testid="button-back-no-services">
+                  <Button variant="outline" className="rounded-lg font-bold" data-testid="button-back-no-services">
                     <ArrowLeft className="h-4 w-4 mr-1" /> Retour à la page
                   </Button>
                 </Link>
@@ -348,7 +348,7 @@ export default function BookingFlow() {
                 <Button
                   onClick={() => refetchAvail()}
                   variant="outline"
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-retry-avail"
                 >
                   Réessayer
@@ -367,7 +367,7 @@ export default function BookingFlow() {
                 <Button
                   onClick={() => setStep(1)}
                   variant="outline"
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-back-no-slots"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" /> Changer de prestation
@@ -441,7 +441,7 @@ export default function BookingFlow() {
                 <Button
                   onClick={() => setStep(2)}
                   variant="outline"
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-back-no-time-slots"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" /> Choisir une autre date
@@ -583,7 +583,7 @@ export default function BookingFlow() {
               <Button
                 onClick={() => bookMut.mutate()}
                 disabled={bookMut.isPending || !form.firstName || !form.lastName || !form.email || !form.phone}
-                className="w-full rounded-[15px] py-6 font-bold min-h-[52px]"
+                className="w-full rounded-lg py-6 font-bold min-h-[52px]"
                 data-testid="button-confirm-booking"
               >
                 {bookMut.isPending ? (

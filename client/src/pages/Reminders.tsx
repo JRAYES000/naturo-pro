@@ -87,7 +87,7 @@ const STATUS_CONFIG: Record<
 
 function StatCardSkeleton() {
   return (
-    <Card className="card-naturo rounded-[15px]">
+    <Card className="card-naturo rounded-lg">
       <CardHeader className="pb-2">
         <Skeleton className="h-4 w-28" />
       </CardHeader>
@@ -120,7 +120,7 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, iconColor = "text-[#186749]", ...props }: StatCardProps) {
   return (
-    <Card className="card-naturo rounded-[15px]" {...props}>
+    <Card className="card-naturo rounded-lg" {...props}>
       <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm font-semibold text-muted-foreground">
           {title}
@@ -263,7 +263,7 @@ export default function Reminders() {
       </div>
 
       {/* ── Tableau ── */}
-      <Card className="card-naturo rounded-[15px]">
+      <Card className="card-naturo rounded-lg">
         <CardHeader className="border-b border-border pb-4">
           <CardTitle className="text-base font-bold">
             Derniers rappels (J-7 → J+30)

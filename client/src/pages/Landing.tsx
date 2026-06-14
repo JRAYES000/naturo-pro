@@ -105,10 +105,10 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
           <Logo />
           <nav className="flex items-center gap-1 sm:gap-2">
-            <button onClick={() => scrollToId("fonctionnalites")} className="hidden md:inline-flex text-sm font-bold px-3 py-2 rounded-[15px] text-foreground/70 hover:text-primary hover:bg-secondary transition" data-testid="nav-features">Fonctionnalités</button>
-            <button onClick={() => scrollToId("pourquoi")} className="hidden md:inline-flex text-sm font-bold px-3 py-2 rounded-[15px] text-foreground/70 hover:text-primary hover:bg-secondary transition" data-testid="nav-why">Pourquoi</button>
-            <button onClick={() => scrollToId("faq")} className="hidden md:inline-flex text-sm font-bold px-3 py-2 rounded-[15px] text-foreground/70 hover:text-primary hover:bg-secondary transition" data-testid="nav-faq">FAQ</button>
-            <Link href="/login" className="text-sm font-bold px-3 sm:px-4 py-2 rounded-[15px] hover:bg-secondary transition" data-testid="link-login">Connexion</Link>
+            <button onClick={() => scrollToId("fonctionnalites")} className="hidden md:inline-flex text-sm font-bold px-3 py-2 rounded-lg text-foreground/70 hover:text-primary hover:bg-secondary transition" data-testid="nav-features">Fonctionnalités</button>
+            <button onClick={() => scrollToId("pourquoi")} className="hidden md:inline-flex text-sm font-bold px-3 py-2 rounded-lg text-foreground/70 hover:text-primary hover:bg-secondary transition" data-testid="nav-why">Pourquoi</button>
+            <button onClick={() => scrollToId("faq")} className="hidden md:inline-flex text-sm font-bold px-3 py-2 rounded-lg text-foreground/70 hover:text-primary hover:bg-secondary transition" data-testid="nav-faq">FAQ</button>
+            <Link href="/login" className="text-sm font-bold px-3 sm:px-4 py-2 rounded-lg hover:bg-secondary transition" data-testid="link-login">Connexion</Link>
             <Link href="/register" className="btn-primary-naturo text-sm" data-testid="link-register">Créer un compte</Link>
           </nav>
         </div>
@@ -134,7 +134,7 @@ export default function Landing() {
             <Link href="/register" className="btn-primary-naturo" data-testid="cta-hero-register">
               Démarrer gratuitement <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/p/marie-dupont" className="inline-flex items-center justify-center gap-2 rounded-[15px] border border-primary/20 px-6 py-3 font-bold text-primary hover:bg-secondary transition" data-testid="cta-hero-demo">
+            <Link href="/p/marie-dupont" className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 px-6 py-3 font-bold text-primary hover:bg-secondary transition" data-testid="cta-hero-demo">
               Voir une page publique
             </Link>
           </div>
@@ -246,7 +246,7 @@ export default function Landing() {
               <p className="text-white/75 text-lg mt-5 mb-8 max-w-xl mx-auto leading-relaxed">
                 Rejoignez les naturopathes qui ont fait le choix de la simplicité.
               </p>
-              <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-[15px] bg-accent text-accent-foreground font-bold px-8 py-4 transition hover:opacity-90" data-testid="cta-bottom-register">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground font-bold px-8 py-4 transition hover:opacity-90" data-testid="cta-bottom-register">
                 Créer mon compte gratuitement <ArrowRight className="h-4 w-4" />
               </Link>
               <p className="text-white/60 text-sm mt-5">Sans carte bancaire · Sans engagement</p>

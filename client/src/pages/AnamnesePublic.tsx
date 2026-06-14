@@ -193,7 +193,7 @@ export default function AnamnesePublicPage() {
           <Button
             type="submit"
             disabled={submitMut.isPending}
-            className="w-full rounded-[15px] py-5 font-bold text-base"
+            className="w-full rounded-lg py-5 font-bold text-base"
             style={{ background: "#186749" }}
             data-testid="button-submit-anamnese"
           >

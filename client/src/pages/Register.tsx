@@ -73,7 +73,7 @@ export default function Register() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" disabled={loading} className="w-full rounded-[15px] py-6 font-bold" data-testid="button-submit-register">
+              <Button type="submit" disabled={loading} className="w-full rounded-lg py-6 font-bold" data-testid="button-submit-register">
                 {loading ? "Création…" : "Créer mon compte"}
               </Button>
             </form>

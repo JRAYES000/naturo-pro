@@ -146,7 +146,7 @@ export default function AnamnesePage() {
           actions={
             <Button
               onClick={() => setEditingTpl("new")}
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               data-testid="button-new-template"
             >
               <Plus className="h-4 w-4 mr-1" /> Nouveau modèle
@@ -448,7 +448,7 @@ function TemplateDialog({ open, editing, onClose }: {
           <Button
             onClick={() => mut.mutate()}
             disabled={mut.isPending || !name.trim()}
-            className="w-full rounded-[15px] py-5 font-bold"
+            className="w-full rounded-lg py-5 font-bold"
             data-testid="button-save-template"
           >
             {mut.isPending ? "Enregistrement…" : "Enregistrer le modèle"}
@@ -637,7 +637,7 @@ function ShareDialog({ open, templateId, onClose }: {
               <Button
                 onClick={() => genMut.mutate()}
                 disabled={genMut.isPending}
-                className="w-full rounded-[15px] py-5 font-bold"
+                className="w-full rounded-lg py-5 font-bold"
                 data-testid="button-generate-link"
               >
                 {genMut.isPending ? "Génération…" : "Générer le lien"}
@@ -663,7 +663,7 @@ function ShareDialog({ open, templateId, onClose }: {
               <Button
                 variant="outline"
                 onClick={() => { setLink(null); setGenerated(false); }}
-                className="w-full rounded-[15px] font-semibold"
+                className="w-full rounded-lg font-semibold"
               >
                 Générer un autre lien
               </Button>

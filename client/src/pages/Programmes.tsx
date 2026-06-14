@@ -329,7 +329,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
           type="button"
           onClick={() => saveMut.mutate()}
           disabled={!title.trim() || saveMut.isPending}
-          className="rounded-[15px] font-bold"
+          className="rounded-lg font-bold"
           data-testid="button-save-programme"
         >
           {saveMut.isPending ? "Enregistrement…" : isNew ? "Créer le programme" : "Enregistrer"}
@@ -441,7 +441,7 @@ export default function ProgrammesPage() {
           actions={
             <Button
               onClick={() => setEditing("new")}
-              className="rounded-[15px] font-bold"
+              className="rounded-lg font-bold"
               data-testid="button-new-programme"
             >
               <Plus className="h-4 w-4 mr-1" /> Nouveau programme
@@ -479,7 +479,7 @@ export default function ProgrammesPage() {
             action={
               <Button
                 onClick={() => setEditing("new")}
-                className="rounded-[15px] font-bold"
+                className="rounded-lg font-bold"
                 data-testid="button-new-programme-empty"
               >
                 <Plus className="h-4 w-4 mr-1" /> Créer un programme

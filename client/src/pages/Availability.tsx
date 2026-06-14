@@ -54,7 +54,7 @@ export default function Availability() {
           subtitle="Vos plages horaires d'ouverture, par jour de la semaine."
           icon={Clock}
           actions={
-            <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-availability">
+            <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-lg font-bold" data-testid="button-save-availability">
               {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
             </Button>
           }

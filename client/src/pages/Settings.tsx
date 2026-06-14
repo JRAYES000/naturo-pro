@@ -328,7 +328,7 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">
                 Connectez votre compte Google pour que chaque RDV créé soit automatiquement ajouté à votre agenda Google Calendar (et synchronisé en cas de modification ou d'annulation).
               </p>
-              <Button onClick={handleConnectGoogle} className="rounded-[15px] font-bold" data-testid="button-connect-google">
+              <Button onClick={handleConnectGoogle} className="rounded-lg font-bold" data-testid="button-connect-google">
                 <CalendarIcon className="h-4 w-4 mr-1" /> Connecter Google Calendar
               </Button>
             </>
@@ -349,7 +349,7 @@ export default function Settings() {
                 <Button
                   onClick={() => importGoogleMut.mutate()}
                   disabled={importGoogleMut.isPending}
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-import-google"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${importGoogleMut.isPending ? "animate-spin" : ""}`} />
@@ -359,7 +359,7 @@ export default function Settings() {
                   variant="outline"
                   onClick={() => disconnectGoogleMut.mutate()}
                   disabled={disconnectGoogleMut.isPending}
-                  className="rounded-[15px]"
+                  className="rounded-lg"
                   data-testid="button-disconnect-google"
                 >
                   <LogOut className="h-4 w-4 mr-1" /> Déconnecter
@@ -367,7 +367,7 @@ export default function Settings() {
                 <Button
                   variant="outline"
                   onClick={handleConnectGoogle}
-                  className="rounded-[15px]"
+                  className="rounded-lg"
                   data-testid="button-reconnect-google"
                 >
                   Reconnecter
@@ -627,7 +627,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-[15px] font-bold" data-testid="button-save-settings">
+        <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-lg font-bold" data-testid="button-save-settings">
           <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
         </Button>
 
@@ -723,7 +723,7 @@ function PrivacySection({ userEmail }: { userEmail?: string }) {
           onClick={handleExport}
           disabled={exporting}
           variant="outline"
-          className="rounded-[15px] font-bold"
+          className="rounded-lg font-bold"
           data-testid="button-export-data"
         >
           <Download className="h-4 w-4 mr-1" />
@@ -746,7 +746,7 @@ function PrivacySection({ userEmail }: { userEmail?: string }) {
         ) : (
           <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) { setPwd(""); setConfirmed(false); } }}>
             <DialogTrigger asChild>
-              <Button variant="destructive" className="rounded-[15px] font-bold" data-testid="button-delete-account">
+              <Button variant="destructive" className="rounded-lg font-bold" data-testid="button-delete-account">
                 <Trash2 className="h-4 w-4 mr-1" />
                 Supprimer définitivement mon compte
               </Button>
@@ -785,7 +785,7 @@ function PrivacySection({ userEmail }: { userEmail?: string }) {
                 <Button
                   variant="outline"
                   onClick={() => setDeleteOpen(false)}
-                  className="rounded-[15px]"
+                  className="rounded-lg"
                   data-testid="button-cancel-delete"
                 >
                   Annuler
@@ -794,7 +794,7 @@ function PrivacySection({ userEmail }: { userEmail?: string }) {
                   variant="destructive"
                   onClick={handleDelete}
                   disabled={deleting || !pwd || !confirmed}
-                  className="rounded-[15px] font-bold"
+                  className="rounded-lg font-bold"
                   data-testid="button-confirm-delete"
                 >
                   <Trash2 className="h-4 w-4 mr-1" />

@@ -23,7 +23,7 @@ function PublicPageSkeleton() {
       <header className="border-b border-border bg-background/80 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Skeleton className="h-8 w-28" />
-          <Skeleton className="h-10 w-36 rounded-[15px]" />
+          <Skeleton className="h-10 w-36 rounded-lg" />
         </div>
       </header>
       {/* Hero skeleton */}
@@ -42,7 +42,7 @@ function PublicPageSkeleton() {
               <Skeleton className="h-7 w-24 rounded-full" />
               <Skeleton className="h-7 w-16 rounded-full" />
             </div>
-            <Skeleton className="h-12 w-44 rounded-[15px]" />
+            <Skeleton className="h-12 w-44 rounded-lg" />
           </div>
         </div>
       </section>
@@ -63,7 +63,7 @@ function PublicPageSkeleton() {
                   <Skeleton className="h-7 w-20 rounded-md" />
                   <Skeleton className="h-7 w-16 rounded-md" />
                 </div>
-                <Skeleton className="h-11 w-full rounded-[15px]" />
+                <Skeleton className="h-11 w-full rounded-lg" />
               </div>
             ))}
           </div>

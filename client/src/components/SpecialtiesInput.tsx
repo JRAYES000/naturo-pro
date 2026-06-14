@@ -59,7 +59,7 @@ export function SpecialtiesInput({
   return (
     <div>
       <div
-        className="flex flex-wrap items-center gap-2 rounded-[15px] border border-input bg-background px-3 py-2 min-h-[44px] focus-within:ring-2 focus-within:ring-ring"
+        className="flex flex-wrap items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 min-h-[44px] focus-within:ring-2 focus-within:ring-ring"
         data-testid="chips-specialties"
       >
         {value.map((tag, idx) => (
