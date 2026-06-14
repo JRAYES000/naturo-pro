@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Sparkles, Copy, Check, Save, Send, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -41,6 +41,18 @@ export default function StudioContenu() {
   const [copied, setCopied] = useState(false);
 
   const { data: sources } = useQuery<IdeaSources>({ queryKey: ["/api/content/idea-sources"] });
+
+  const { data: voice } = useQuery<{ marketingTone: string | null; marketingAudience: string | null }>({ queryKey: ["/api/content/profile"] });
+  const [tone, setTone] = useState("");
+  const [audience, setAudience] = useState("");
+  useEffect(() => {
+    if (voice) { setTone(voice.marketingTone ?? ""); setAudience(voice.marketingAudience ?? ""); }
+  }, [voice]);
+  const voiceMut = useMutation({
+    mutationFn: async () => apiRequest("PUT", "/api/content/profile", { marketingTone: tone || null, marketingAudience: audience || null }),
+    onSuccess: async () => { toast({ title: "Voix enregistrée" }); await queryClient.invalidateQueries({ queryKey: ["/api/content/profile"] }); },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec.", variant: "destructive" }),
+  });
 
   const genMut = useMutation({
     mutationFn: async () => {
@@ -193,6 +205,17 @@ export default function StudioContenu() {
                 {genMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                 Générer
               </Button>
+
+              <details className="pt-2 border-t border-border">
+                <summary className="text-sm font-bold cursor-pointer">Ma voix (optionnel)</summary>
+                <div className="space-y-2 mt-2">
+                  <Input value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Ton (ex. chaleureux & complice)" data-testid="input-tone" />
+                  <Input value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Audience (ex. femmes 30-50, fatigue & stress)" data-testid="input-audience" />
+                  <Button variant="outline" size="sm" className="rounded-[12px]" disabled={voiceMut.isPending} onClick={() => voiceMut.mutate()} data-testid="button-save-voice">
+                    Enregistrer ma voix
+                  </Button>
+                </div>
+              </details>
             </div>
 
             {/* Résultat */}
