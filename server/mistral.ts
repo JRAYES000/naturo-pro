@@ -183,20 +183,13 @@ async function* streamMistralSegment(
 }
 
 /**
- * Variante streaming avec CONTINUATION AUTOMATIQUE : appelle Mistral en flux et,
- * si la réponse est coupée par manque de place (`finish_reason: "length"`),
- * relance automatiquement le modèle pour qu'il poursuive là où il s'est arrêté,
- * jusqu'à MAX_SEGMENTS. La réponse rendue est ainsi toujours complète, quelle que
- * soit la longueur, sans coupure visible côté utilisateur.
- *
- * Erreur `.status` (503 clé absente, 502 échec) propagée uniquement si le TOUT
- * PREMIER segment échoue ; au-delà, on conserve le texte déjà produit. Le system
- * prompt intègre instructions + contexte RAG via opts.
+ * Stream une complétion Mistral à partir de messages déjà construits, avec
+ * CONTINUATION AUTOMATIQUE si la réponse est coupée par la limite de tokens.
+ * Erreur `.status` (503 clé absente, 502 échec) propagée seulement si le tout
+ * premier segment échoue ; au-delà, on conserve le texte déjà produit.
  */
-export async function* streamNaturoAssistant(
-  history: ChatTurn[],
-  userMessage: string,
-  opts?: { customInstructions?: string; contextChunks?: string[]; clientContext?: string },
+export async function* streamCompletion(
+  messages: Array<{ role: string; content: string }>,
 ): AsyncGenerator<string, void, unknown> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) {
@@ -204,9 +197,9 @@ export async function* streamNaturoAssistant(
     e.status = 503;
     throw e;
   }
-  const messages = buildMistralMessages(history, userMessage, opts);
+  const msgs = [...messages];
   for (let seg = 0; seg < MAX_SEGMENTS; seg++) {
-    const gen = streamMistralSegment(messages, apiKey);
+    const gen = streamMistralSegment(msgs, apiKey);
     let segText = "";
     let finishReason = "stop";
     try {
@@ -224,9 +217,29 @@ export async function* streamNaturoAssistant(
     // Réponse terminée d'elle-même, ou plus de budget de reprise → on s'arrête.
     if (finishReason !== "length" || seg >= MAX_SEGMENTS - 1) return;
     // Coupée par la limite de tokens → on demande la suite et on enchaîne.
-    messages.push({ role: "assistant", content: segText });
-    messages.push({ role: "user", content: CONTINUE_NUDGE });
+    msgs.push({ role: "assistant", content: segText });
+    msgs.push({ role: "user", content: CONTINUE_NUDGE });
   }
+}
+
+/**
+ * Variante streaming avec CONTINUATION AUTOMATIQUE : appelle Mistral en flux et,
+ * si la réponse est coupée par manque de place (`finish_reason: "length"`),
+ * relance automatiquement le modèle pour qu'il poursuive là où il s'est arrêté,
+ * jusqu'à MAX_SEGMENTS. La réponse rendue est ainsi toujours complète, quelle que
+ * soit la longueur, sans coupure visible côté utilisateur.
+ *
+ * Erreur `.status` (503 clé absente, 502 échec) propagée uniquement si le TOUT
+ * PREMIER segment échoue ; au-delà, on conserve le texte déjà produit. Le system
+ * prompt intègre instructions + contexte RAG via opts.
+ */
+export async function* streamNaturoAssistant(
+  history: ChatTurn[],
+  userMessage: string,
+  opts?: { customInstructions?: string; contextChunks?: string[]; clientContext?: string },
+): AsyncGenerator<string, void, unknown> {
+  const messages = buildMistralMessages(history, userMessage, opts);
+  yield* streamCompletion(messages);
 }
 
 // Génère un titre court + une thématique (parmi ASSISTANT_THEMES) depuis la 1re question.
