@@ -36,6 +36,7 @@ import Solutions from "@/pages/Solutions";
 import Packages from "@/pages/Packages";
 import Stats from "@/pages/Stats";
 import Chat from "@/pages/Chat";
+import StudioContenu from "@/pages/StudioContenu";
 import BookingManage from "@/pages/BookingManage";
 // Phase 3 Lot 4 — admin
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -79,6 +80,7 @@ function AppRouter() {
       <Route path="/app/forfaits" component={() => <ProtectedRoute><Packages /></ProtectedRoute>} />
       <Route path="/app/stats" component={() => <ProtectedRoute><Stats /></ProtectedRoute>} />
       <Route path="/app/chat/:discussionId?" component={() => <ProtectedRoute><Chat /></ProtectedRoute>} />
+      <Route path="/app/studio-contenu" component={() => <ProtectedRoute><StudioContenu /></ProtectedRoute>} />
 
       {/* Phase 3 Lot 4 — admin (le 403 backend renvoie un message géré dans la page) */}
       <Route path="/admin/users" component={() => <ProtectedRoute><AdminUsers /></ProtectedRoute>} />

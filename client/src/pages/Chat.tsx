@@ -25,6 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { NewDiscussionDialog } from "@/components/assistant/NewDiscussionDialog";
 import { DiscussionSidebar } from "@/components/assistant/DiscussionSidebar";
+import { NaturobotTabs } from "@/components/assistant/NaturobotTabs";
 import type { AiChatMessage, AiDiscussion, Client } from "@shared/schema";
 
 // Portrait de Naturobot — fichier statique servi à la racine (client/public/naturobot.jpg).
@@ -235,6 +236,7 @@ export default function Chat() {
   return (
     <AppLayout>
       <PageHeader title="Naturobot" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
+      <NaturobotTabs />
 
       <div className="rounded-[15px] border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm flex gap-2 items-start mb-4" data-testid="text-disclaimer-sante">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
