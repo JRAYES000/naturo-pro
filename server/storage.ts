@@ -552,6 +552,9 @@ async function runMysqlMigrations(): Promise<void> {
       "ALTER TABLE users ADD COLUMN marketing_tone VARCHAR(64) NULL",
       "ALTER TABLE users ADD COLUMN marketing_audience VARCHAR(255) NULL",
       "ALTER TABLE users ADD COLUMN studio_intro_seen_at BIGINT NULL",
+      // Carrousels en images (migration 1.8) — visuels stockés sur content_posts
+      "ALTER TABLE content_posts ADD COLUMN slides_json TEXT NULL",
+      "ALTER TABLE content_posts ADD COLUMN background_image LONGTEXT NULL",
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
