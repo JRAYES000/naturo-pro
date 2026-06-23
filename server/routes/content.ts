@@ -4,7 +4,8 @@ import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { ASSISTANT_THEMES, THEME_OTHER } from "@shared/assistant-themes";
 import { retrieveRelevantChunks } from "../rag";
-import { streamContentStudio, suggestContentAngles, type Channel, type ContentFormat } from "../social-content";
+import { streamContentStudio, suggestContentAngles, structureCarouselSlides, buildBackgroundPrompt, type Channel, type ContentFormat } from "../social-content";
+import { generateBackgroundImage } from "../openrouter-image";
 
 const CHANNELS = ["instagram", "facebook"] as const;
 const FORMATS = ["carrousel", "reel", "story", "post_groupe", "legende"] as const;
@@ -17,12 +18,20 @@ const generateSchema = z.object({
   topic: z.string().trim().min(1).max(200),
 });
 const suggestSchema = z.object({ themes: z.array(z.string().min(1).max(120)).min(1).max(10) });
+const slidesSchema = z.object({
+  channel: z.enum(CHANNELS),
+  format: z.literal("carrousel"),
+  topic: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(20000),
+});
 const savePostSchema = z.object({
   channel: z.enum(CHANNELS),
   format: z.enum(FORMATS),
   theme: z.string().max(200).nullable().optional(),
   title: z.string().min(1).max(255),
   body: z.string().min(1),
+  slidesJson: z.string().max(64_000).nullable().optional(),       // JSON CarouselDeck (visuels carrousel)
+  backgroundImage: z.string().max(4_000_000).nullable().optional(), // data-URL base64 du fond
 });
 const patchPostSchema = z.object({
   body: z.string().min(1).optional(),
@@ -98,6 +107,27 @@ export function registerContentRoutes(app: Express): void {
       }
     }
     res.end();
+  });
+
+  // Carrousel en images : structure le texte en slides + génère 1 fond IA (hybride).
+  app.post("/api/content/slides", requireAuth, async (req: AuthedRequest, res) => {
+    const p = slidesSchema.safeParse(req.body);
+    if (!p.success) return res.status(400).json({ message: "Données invalides" });
+
+    const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 50);
+    const day = new Date().toISOString().slice(0, 10);
+    if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
+      return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} générations/jour). Réessaie demain.` });
+    }
+
+    const user = await storage.getUserById(req.userId!);
+    if (!user) return res.status(404).json({ message: "Compte introuvable" });
+
+    const [deck, background] = await Promise.all([
+      structureCarouselSlides(p.data.text),
+      generateBackgroundImage(buildBackgroundPrompt(p.data.topic, { specialties: user.specialties, marketingTone: user.marketingTone })),
+    ]);
+    res.json({ slides: deck.slides, caption: deck.caption, hashtags: deck.hashtags, background });
   });
 
   // Bibliothèque « Mes contenus ».

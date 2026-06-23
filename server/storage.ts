@@ -814,7 +814,7 @@ export interface IStorage {
   listAllKbChunks(): Promise<KbChunk[]>;
 
   // Studio contenu
-  createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string }): Promise<ContentPost>;
+  createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string; slidesJson?: string | null; backgroundImage?: string | null }): Promise<ContentPost>;
   listContentPosts(userId: number, status?: string): Promise<ContentPost[]>;
   getContentPost(id: number): Promise<ContentPost | undefined>;
   updateContentPost(id: number, patch: { body?: string; status?: string }): Promise<ContentPost | undefined>;
@@ -1527,11 +1527,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── Studio contenu ───────────────────────────────────────────────────────────
-  async createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string }): Promise<ContentPost> {
+  async createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string; slidesJson?: string | null; backgroundImage?: string | null }): Promise<ContentPost> {
     const now = Date.now();
     return dbInsertReturning<ContentPost>(contentPosts, {
       userId: d.userId, channel: d.channel, format: d.format, theme: d.theme,
       title: d.title, body: d.body, status: "brouillon",
+      slidesJson: d.slidesJson ?? null, backgroundImage: d.backgroundImage ?? null,
       createdAt: now, updatedAt: now, publishedAt: null,
     });
   }

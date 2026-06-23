@@ -341,6 +341,8 @@ export const contentPosts = mysqlTable("content_posts", {
   title: varchar("title", { length: 255 }).notNull(),
   body: text("body").notNull(),
   status: varchar("status", { length: 24 }).notNull().default("brouillon"),
+  slidesJson: text("slides_json"),                // carrousel en images : JSON CarouselDeck (slides/caption/hashtags)
+  backgroundImage: longtext("background_image"),  // carrousel en images : data-URL base64 de l'unique fond (peut dépasser 64 Ko)
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
   publishedAt: bigint("published_at", { mode: "number" }),

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Sparkles, Copy, Check, Save, Send, Loader2, Trash2 } from "lucide-react";
+import { Sparkles, Copy, Check, Save, Send, Loader2, Trash2, Image as ImageIcon, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
@@ -15,13 +15,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { renderCarouselSlides, buildCaptionFile, type CarouselDeck, type RenderedSlide } from "@/lib/slide-canvas";
+import { createZip, triggerDownload, type ZipEntry } from "@/lib/zip";
 
 type Channel = "instagram" | "facebook";
 type ContentFormat = "carrousel" | "reel" | "story" | "post_groupe" | "legende";
 type TopicType = "client_theme" | "theme" | "libre";
 interface IdeaSources { clientThemes: { theme: string; count: number }[]; predefinedThemes: string[]; }
 interface Angle { title: string; hook: string; suggestedFormat: ContentFormat; }
-interface ContentPost { id: number; channel: string; format: string; theme: string | null; title: string; body: string; status: string; createdAt: number; updatedAt: number; publishedAt: number | null; }
+interface ContentPost { id: number; channel: string; format: string; theme: string | null; title: string; body: string; status: string; createdAt: number; updatedAt: number; publishedAt: number | null; slidesJson?: string | null; backgroundImage?: string | null; }
 const STATUS_LABELS: Record<string, string> = { brouillon: "Brouillon", a_publier: "À publier", publie: "Publié" };
 
 const FORMAT_LABELS: Record<ContentFormat, string> = {
@@ -34,12 +37,22 @@ const FORMAT_LABELS: Record<ContentFormat, string> = {
 
 export default function StudioContenu() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [channel, setChannel] = useState<Channel>("instagram");
   const [format, setFormat] = useState<ContentFormat>("carrousel");
   const [topic, setTopic] = useState("");
   const [topicType, setTopicType] = useState<TopicType>("theme");
   const [streamText, setStreamText] = useState("");
   const [copied, setCopied] = useState(false);
+  const [deck, setDeck] = useState<CarouselDeck | null>(null);
+  const [background, setBackground] = useState<string | null>(null);
+  const [rendered, setRendered] = useState<RenderedSlide[]>([]);
+
+  function clearVisuals() {
+    setRendered((prev) => { prev.forEach((r) => URL.revokeObjectURL(r.url)); return []; });
+    setDeck(null);
+    setBackground(null);
+  }
 
   const { data: sources } = useQuery<IdeaSources>({ queryKey: ["/api/content/idea-sources"] });
 
@@ -58,6 +71,7 @@ export default function StudioContenu() {
   const genMut = useMutation({
     mutationFn: async () => {
       setStreamText("");
+      clearVisuals();
       const res = await apiRequest("POST", "/api/content/generate", { channel, format, topicType, topic });
       const reader = res.body!.getReader();
       const dec = new TextDecoder();
@@ -84,7 +98,12 @@ export default function StudioContenu() {
   const saveMut = useMutation({
     mutationFn: async () => {
       const title = topic ? `${FORMAT_LABELS[format]} · ${topic}` : FORMAT_LABELS[format];
-      const res = await apiRequest("POST", "/api/content/posts", { channel, format, theme: topic || null, title, body: streamText });
+      const payload: Record<string, unknown> = { channel, format, theme: topic || null, title, body: streamText };
+      if (format === "carrousel" && deck) {
+        payload.slidesJson = JSON.stringify(deck);
+        payload.backgroundImage = background ?? null;
+      }
+      const res = await apiRequest("POST", "/api/content/posts", payload);
       return res.json();
     },
     onSuccess: async () => {
@@ -93,6 +112,31 @@ export default function StudioContenu() {
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec de l'enregistrement.", variant: "destructive" }),
   });
+
+  const slidesMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/content/slides", { channel, format: "carrousel", topic, text: streamText });
+      return res.json() as Promise<{ slides: CarouselDeck["slides"]; caption: string; hashtags: string[]; background: string | null }>;
+    },
+    onSuccess: async (data) => {
+      const d: CarouselDeck = { slides: data.slides, caption: data.caption, hashtags: data.hashtags };
+      setDeck(d);
+      setBackground(data.background);
+      setRendered((prev) => { prev.forEach((r) => URL.revokeObjectURL(r.url)); return []; });
+      const r = await renderCarouselSlides(d, { background: data.background, practitionerName: user?.name || "" });
+      setRendered(r);
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec de la génération des visuels.", variant: "destructive" }),
+  });
+
+  async function downloadAllZip() {
+    if (!deck || !rendered.length) return;
+    const entries: ZipEntry[] = [];
+    for (const r of rendered) entries.push({ name: `slide-${r.index + 1}.png`, data: new Uint8Array(await r.blob.arrayBuffer()) });
+    entries.push({ name: "legende.txt", data: new TextEncoder().encode(buildCaptionFile(deck)) });
+    const slug = (topic || "carrousel").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "carrousel";
+    triggerDownload(createZip(entries), `carrousel-${slug}.zip`);
+  }
 
   function pickTheme(t: string, type: "client_theme" | "theme") { setTopic(t); setTopicType(type); }
   function pickAngle(a: Angle) { setTopic(a.title); setTopicType("client_theme"); setFormat(a.suggestedFormat); }
@@ -235,6 +279,43 @@ export default function StudioContenu() {
                   <div className="prose prose-sm max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamText}</ReactMarkdown>
                   </div>
+
+                  {format === "carrousel" ? (
+                    <div className="mt-4 pt-3 border-t border-border">
+                      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                        <p className="text-sm font-bold">Visuels du carrousel</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="rounded-[12px]" disabled={slidesMut.isPending}
+                            onClick={() => slidesMut.mutate()} data-testid="button-generate-visuals">
+                            {slidesMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ImageIcon className="h-4 w-4 mr-1" />}
+                            {rendered.length ? "Regénérer les visuels" : "Générer les visuels"}
+                          </Button>
+                          {rendered.length ? (
+                            <Button size="sm" className="rounded-[12px]" onClick={downloadAllZip} data-testid="button-download-zip">
+                              <Download className="h-4 w-4 mr-1" /> Tout télécharger (.zip)
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                      {rendered.length ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {rendered.map((r) => (
+                            <div key={r.index} className="space-y-1">
+                              <img src={r.url} alt={`Slide ${r.index + 1}`} className="rounded-[12px] border border-border w-full" data-testid={`img-slide-${r.index}`} />
+                              <Button variant="outline" size="sm" className="rounded-[10px] w-full" aria-label={`Télécharger la slide ${r.index + 1}`}
+                                onClick={() => triggerDownload(r.blob, `slide-${r.index + 1}.png`)} data-testid={`button-download-slide-${r.index}`}>
+                                <Download className="h-4 w-4 mr-1" /> Slide {r.index + 1}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Transforme ton carrousel en images prêtes à poster : texte net + fond généré. Téléchargeables une par une ou en .zip.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">Choisis une source d'idée, un canal et un format, puis clique sur « Générer ».</p>
@@ -253,6 +334,7 @@ export default function StudioContenu() {
 
 function ContentLibrary() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const confirm = useConfirm();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -299,6 +381,11 @@ function ContentLibrary() {
             <div className="min-w-0">
               <span className="font-bold">{p.title}</span>
               <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-secondary text-primary">{STATUS_LABELS[p.status] || p.status}</span>
+              {p.slidesJson ? (
+                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary inline-flex items-center gap-1" data-testid={`badge-visuals-${p.id}`}>
+                  <ImageIcon className="h-3 w-3" /> Visuels
+                </span>
+              ) : null}
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" className="rounded-[12px]" aria-label="Copier le contenu"
@@ -332,8 +419,65 @@ function ContentLibrary() {
           ) : (
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">{p.body}</div>
           )}
+          {p.slidesJson ? <PostVisuals post={p} practitionerName={user?.name || ""} /> : null}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Aperçu + téléchargement (.zip) des visuels d'un carrousel sauvegardé (rendu à la demande).
+function PostVisuals({ post, practitionerName }: { post: ContentPost; practitionerName: string }) {
+  const { toast } = useToast();
+  const [slides, setSlides] = useState<RenderedSlide[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  let deck: CarouselDeck | null = null;
+  try { deck = post.slidesJson ? (JSON.parse(post.slidesJson) as CarouselDeck) : null; } catch { deck = null; }
+  if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) return null;
+  const safeDeck = deck;
+
+  async function toggle() {
+    if (slides) { slides.forEach((s) => URL.revokeObjectURL(s.url)); setSlides(null); return; }
+    setBusy(true);
+    try {
+      setSlides(await renderCarouselSlides(safeDeck, { background: post.backgroundImage ?? null, practitionerName }));
+    } catch {
+      toast({ title: "Erreur", description: "Rendu des visuels impossible.", variant: "destructive" });
+    } finally { setBusy(false); }
+  }
+
+  async function zip() {
+    setBusy(true);
+    try {
+      const r = slides ?? await renderCarouselSlides(safeDeck, { background: post.backgroundImage ?? null, practitionerName });
+      const entries: ZipEntry[] = [];
+      for (const s of r) entries.push({ name: `slide-${s.index + 1}.png`, data: new Uint8Array(await s.blob.arrayBuffer()) });
+      entries.push({ name: "legende.txt", data: new TextEncoder().encode(buildCaptionFile(safeDeck)) });
+      triggerDownload(createZip(entries), `carrousel-${post.id}.zip`);
+      if (!slides) r.forEach((s) => URL.revokeObjectURL(s.url));
+    } catch {
+      toast({ title: "Erreur", description: "Téléchargement impossible.", variant: "destructive" });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="mt-2">
+      <div className="flex gap-2 flex-wrap">
+        <Button variant="outline" size="sm" className="rounded-[12px]" disabled={busy} onClick={toggle} data-testid={`button-visuals-toggle-${post.id}`}>
+          <ImageIcon className="h-4 w-4 mr-1" /> {slides ? "Masquer les visuels" : "Aperçu des visuels"}
+        </Button>
+        <Button size="sm" className="rounded-[12px]" disabled={busy} onClick={zip} data-testid={`button-visuals-zip-${post.id}`}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />} Télécharger (.zip)
+        </Button>
+      </div>
+      {slides ? (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2">
+          {slides.map((s) => (
+            <img key={s.index} src={s.url} alt={`Slide ${s.index + 1}`} className="rounded-[10px] border border-border w-full" />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

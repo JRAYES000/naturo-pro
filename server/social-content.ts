@@ -188,7 +188,7 @@ export async function suggestContentAngles(themes: string[], voice: { name: stri
   } catch { return fallback; }
 }
 
-/** Stream un contenu prêt à publier (réutilise la continuation automatique de Mistral). */
+/** Stream un contenu prêt à publier (réutilise la continuation automatique du LLM). */
 export async function* streamContentStudio(params: {
   channel: Channel;
   format: ContentFormat;
@@ -198,4 +198,114 @@ export async function* streamContentStudio(params: {
 }): AsyncGenerator<string, void, unknown> {
   const messages = buildContentMessages(params);
   yield* streamCompletion(messages);
+}
+
+// ── Carrousels en images : structuration du texte en slides + prompt de fond ────
+
+export interface CarouselSlide { kicker: string; title: string; body: string; }
+export interface CarouselDeck { slides: CarouselSlide[]; caption: string; hashtags: string[]; }
+
+/** Prompt (PUR) : demande de structurer un carrousel déjà rédigé en JSON, sans le réécrire. */
+export function buildSlideStructuringPrompt(text: string): string {
+  return (
+    "Voici le contenu d'un carrousel Instagram déjà rédigé pour une praticienne en naturopathie.\n" +
+    "Découpe-le en slides SANS le réécrire ni inventer : garde les mots tels quels, ne fais que ré-agencer la mise en forme.\n" +
+    "Pour chaque slide : un \"kicker\" très court (le thème, ≤ 5 mots, peut être vide), un \"title\" (l'accroche de la slide) et un \"body\" (le reste du texte de la slide, peut être vide).\n" +
+    "Isole aussi la légende dans \"caption\" et les hashtags dans \"hashtags\" (tableau, chacun avec le #).\n" +
+    "Réponds UNIQUEMENT en JSON valide compact, sans aucun texte autour :\n" +
+    "{\"slides\":[{\"kicker\":\"...\",\"title\":\"...\",\"body\":\"...\"}],\"caption\":\"...\",\"hashtags\":[\"#...\"]}\n\n" +
+    "Contenu :\n" + text.slice(0, 8000)
+  );
+}
+
+/** Prompt (PUR) pour générer le fond IA d'un carrousel — sobre, sombre, SANS texte. */
+export function buildBackgroundPrompt(topic: string, voice?: { specialties?: string | null; marketingTone?: string | null }): string {
+  const t = (topic || "bien-être et naturopathie").trim();
+  const tone = voice?.marketingTone?.trim();
+  return (
+    `Arrière-plan photographique doux et épuré pour une marque de naturopathie et de bien-être, en lien avec le thème : ${t}. ` +
+    "Ambiance botanique naturelle (feuillage, lumière douce, matières organiques), tons verts profonds et sourds, image plutôt sombre et désaturée, légèrement floue, avec beaucoup d'espace négatif et calme. " +
+    (tone ? `Atmosphère ${tone}. ` : "") +
+    "Cadrage vertical 4:5. " +
+    "IMPÉRATIF : AUCUN TEXTE, aucun mot, aucune lettre, aucun chiffre, aucun logo, aucune typographie dans l'image. " +
+    "C'est un fond destiné à recevoir du texte par-dessus : zones uniformes et reposantes, pas de sujet central distrayant, pas de visage."
+  );
+}
+
+/** Repli déterministe (PUR) : découpe un carrousel texte en slides via les marqueurs « Slide N ». */
+export function splitSlidesFromText(text: string): CarouselDeck {
+  const clean = (text || "").replace(/\r\n/g, "\n").trim();
+  const hashtags = Array.from(new Set((clean.match(/#[^\s#]+/g) || []).map((h) => h.trim()))).slice(0, 30);
+
+  let caption = "";
+  const capM = clean.match(/l[eé]gende\s*:?\s*/i);
+  const beforeCaption = capM && capM.index !== undefined ? clean.slice(0, capM.index) : clean;
+  if (capM && capM.index !== undefined) {
+    caption = clean.slice(capM.index + capM[0].length).replace(/#[^\s#]+/g, "").replace(/\n{2,}/g, "\n").trim();
+  }
+
+  const parts = beforeCaption
+    .split(/\n?\s*slide\s*\d+\s*[:\-–.]?\s*/i)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const slides: CarouselSlide[] = parts.map((p) => {
+    const lines = p.split("\n").map((l) => l.trim()).filter(Boolean);
+    return { kicker: "", title: (lines[0] || "").slice(0, 120), body: lines.slice(1).join(" ").slice(0, 300) };
+  });
+
+  const finalSlides = slides.length
+    ? slides
+    : [{ kicker: "", title: (clean.split("\n")[0] || "Carrousel").slice(0, 120), body: "" }];
+  return { slides: finalSlides.slice(0, 10), caption, hashtags };
+}
+
+/** Valide/normalise un JSON de deck renvoyé par le LLM ; repli sur splitSlidesFromText. */
+function normalizeDeck(parsed: any, fallbackText: string): CarouselDeck {
+  const rawSlides = Array.isArray(parsed?.slides) ? parsed.slides : [];
+  const slides: CarouselSlide[] = rawSlides
+    .filter((s: any) => s && (typeof s.title === "string" || typeof s.body === "string"))
+    .slice(0, 10)
+    .map((s: any) => ({
+      kicker: String(s.kicker || "").slice(0, 40),
+      title: String(s.title || "").slice(0, 120),
+      body: String(s.body || "").slice(0, 300),
+    }));
+  if (!slides.length) return splitSlidesFromText(fallbackText);
+  const caption = String(parsed?.caption || "").slice(0, 2200);
+  const hashtags = (Array.isArray(parsed?.hashtags) ? parsed.hashtags : [])
+    .map((h: any) => String(h).trim())
+    .filter(Boolean)
+    .map((h: string) => (h.startsWith("#") ? h : `#${h}`))
+    .slice(0, 30);
+  return { slides, caption, hashtags };
+}
+
+/** Structure un carrousel texte en deck via un appel LLM court (JSON) ; repli déterministe. */
+export async function structureCarouselSlides(text: string): Promise<CarouselDeck> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return splitSlidesFromText(text);
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.PUBLIC_URL || "https://app.ecole-naturo.fr",
+        "X-Title": "Naturo Pro",
+      },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        messages: [{ role: "user", content: buildSlideStructuringPrompt(text) }],
+        max_tokens: 2000, temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!res.ok) return splitSlidesFromText(text);
+    const data: any = await res.json();
+    const parsed = JSON.parse(data?.choices?.[0]?.message?.content || "{}");
+    return normalizeDeck(parsed, text);
+  } catch {
+    return splitSlidesFromText(text);
+  }
 }

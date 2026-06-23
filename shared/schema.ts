@@ -326,6 +326,8 @@ export const contentPosts = sqliteTable("content_posts", {
   title: text("title").notNull(),
   body: text("body").notNull(),
   status: text("status").notNull().default("brouillon"), // 'brouillon' | 'a_publier' | 'publie'
+  slidesJson: text("slides_json"),           // carrousel en images : JSON CarouselDeck (slides/caption/hashtags)
+  backgroundImage: text("background_image"), // carrousel en images : data-URL base64 de l'unique fond
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
   publishedAt: integer("published_at"),

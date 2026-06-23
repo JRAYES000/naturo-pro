@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   CONTENT_SYSTEM_PROMPT, FORMAT_TEMPLATES, buildBookingCta, buildContentMessages,
   rankThemes, buildAnglesPrompt, type ContentFormat,
+  buildSlideStructuringPrompt, buildBackgroundPrompt, splitSlidesFromText,
 } from "./social-content";
 
 test("FORMAT_TEMPLATES — les 5 formats sont définis et non vides", () => {
@@ -101,4 +102,45 @@ test("buildContentMessages — injecte le template du format choisi (les 5)", ()
     });
     assert.ok(msgs[0].content.includes(FORMAT_TEMPLATES[f]), `template manquant pour le format ${f}`);
   }
+});
+
+// ── Carrousels en images ────────────────────────────────────────────────────
+
+test("buildSlideStructuringPrompt — exige du JSON et inclut le texte source", () => {
+  const p = buildSlideStructuringPrompt("Slide 1\nMon accroche");
+  assert.ok(/json/i.test(p));
+  assert.ok(p.includes("\"slides\""));
+  assert.ok(p.includes("Mon accroche"));
+});
+
+test("buildBackgroundPrompt — interdit tout texte et reprend le thème", () => {
+  const p = buildBackgroundPrompt("Sommeil & insomnie", { marketingTone: "apaisant", specialties: null });
+  assert.ok(p.includes("Sommeil & insomnie"));
+  assert.ok(/AUCUN TEXTE/.test(p));
+  assert.ok(/4:5/.test(p));
+});
+
+test("splitSlidesFromText — découpe les « Slide N » et isole légende + hashtags", () => {
+  const text = [
+    "Slide 1 : Ton sommeil te joue des tours ?",
+    "Slide 2 : Le soir, on ralentit.",
+    "Respiration lente recommandée.",
+    "LÉGENDE : Et si on dormait mieux ? À toi de jouer.",
+    "#Sommeil #Naturopathie #BienÊtre",
+  ].join("\n");
+  const deck = splitSlidesFromText(text);
+  assert.equal(deck.slides.length, 2);
+  assert.equal(deck.slides[0].title, "Ton sommeil te joue des tours ?");
+  assert.equal(deck.slides[1].title, "Le soir, on ralentit.");
+  assert.ok(deck.slides[1].body.includes("Respiration lente"));
+  assert.ok(deck.caption.includes("dormait mieux"));
+  assert.ok(!/#/.test(deck.caption)); // hashtags retirés de la légende
+  assert.deepEqual(deck.hashtags, ["#Sommeil", "#Naturopathie", "#BienÊtre"]);
+});
+
+test("splitSlidesFromText — repli sur une slide unique si aucun marqueur", () => {
+  const deck = splitSlidesFromText("Juste une ligne de contenu.");
+  assert.equal(deck.slides.length, 1);
+  assert.equal(deck.slides[0].title, "Juste une ligne de contenu.");
+  assert.deepEqual(deck.hashtags, []);
 });
