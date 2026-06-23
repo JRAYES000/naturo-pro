@@ -4,7 +4,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { wrapLines, buildCaptionFile } from "./slide-canvas";
+import { wrapLines, buildCaptionFile, stripMarkdown } from "./slide-canvas";
 
 // Mesure factice : 10 px par caractère (espaces compris).
 const measure = (s: string) => s.length * 10;
@@ -36,4 +36,16 @@ test("buildCaptionFile — sans hashtags, ne met que la légende", () => {
   const txt = buildCaptionFile({ slides: [], caption: "Juste une légende", hashtags: [] });
   assert.ok(txt.includes("Juste une légende"));
   assert.ok(!txt.includes("#"));
+});
+
+test("stripMarkdown — retire le gras ** et les autres marqueurs", () => {
+  assert.equal(stripMarkdown("**Des ballonnements après les repas ?**"), "Des ballonnements après les repas ?");
+  assert.equal(stripMarkdown("Le microbiote, ton **allié** silencieux"), "Le microbiote, ton allié silencieux");
+  assert.equal(stripMarkdown("__gras__ et *italique* et `code`"), "gras et italique et code");
+  assert.equal(stripMarkdown("## Titre"), "Titre");
+});
+
+test("stripMarkdown — n'altère pas un texte sans marqueur ni les underscores internes", () => {
+  assert.equal(stripMarkdown("Ton ventre a des choses à te dire."), "Ton ventre a des choses à te dire.");
+  assert.equal(stripMarkdown("marie_dupont"), "marie_dupont");
 });

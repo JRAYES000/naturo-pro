@@ -21,6 +21,20 @@ const ACCENT = "#17EC9B";
 const DARK = "#16382b";
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
+/** Retire les marqueurs Markdown (gras/italique/code…) pour un rendu Canvas en texte brut. PURE. */
+export function stripMarkdown(s: string): string {
+  return (s || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")     // **gras**
+    .replace(/__(.*?)__/g, "$1")          // __gras__
+    .replace(/~~(.*?)~~/g, "$1")          // ~~barré~~
+    .replace(/`([^`]*)`/g, "$1")          // `code`
+    .replace(/\*(.*?)\*/g, "$1")          // *italique*
+    .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2") // _italique_ (pas les snake_case)
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")   // # titres
+    .replace(/[*_`]{2,}/g, "")            // résidus de marqueurs non appariés
+    .trim();
+}
+
 /** Découpe `text` en lignes tenant dans `maxWidth` selon la fonction de mesure. PURE. */
 export function wrapLines(measure: (s: string) => number, text: string, maxWidth: number): string[] {
   const words = (text || "").split(/\s+/).filter(Boolean);
@@ -83,6 +97,9 @@ function drawSlide(
   practitionerName: string,
 ): void {
   drawScrim(ctx);
+  const kicker = stripMarkdown(slide.kicker);
+  const title = stripMarkdown(slide.title);
+  const body = stripMarkdown(slide.body);
   const measure = (s: string) => ctx.measureText(s).width;
   const maxTextW = W - PAD * 2;
 
@@ -99,11 +116,11 @@ function drawSlide(
 
   // Pré-calcul des lignes.
   ctx.font = `700 64px ${FONT}`;
-  const titleLines = wrapLines(measure, slide.title, maxTextW).slice(0, 4);
+  const titleLines = wrapLines(measure, title, maxTextW).slice(0, 4);
   ctx.font = `400 34px ${FONT}`;
-  const bodyLines = wrapLines(measure, slide.body, maxTextW).slice(0, 5);
+  const bodyLines = wrapLines(measure, body, maxTextW).slice(0, 5);
 
-  const kickerH = slide.kicker ? 30 + 22 : 0;
+  const kickerH = kicker ? 30 + 22 : 0;
   const titleH = titleLines.length * 76;
   const bodyH = bodyLines.length ? 26 + bodyLines.length * 46 : 0;
   const blockH = kickerH + titleH + bodyH;
@@ -113,10 +130,10 @@ function drawSlide(
   if (y < 380) y = 380;
 
   // Kicker (accent).
-  if (slide.kicker) {
+  if (kicker) {
     ctx.font = `600 30px ${FONT}`;
     ctx.fillStyle = ACCENT;
-    ctx.fillText(slide.kicker, PAD, y + 26);
+    ctx.fillText(kicker, PAD, y + 26);
     y += kickerH;
   }
   // Titre (blanc, gras).
