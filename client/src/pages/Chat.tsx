@@ -1,7 +1,7 @@
 /**
  * client/src/pages/Chat.tsx — Naturobot (assistant IA naturopathie)
  *
- * Conversation continue avec le « formateur virtuel » (API Mistral côté serveur),
+ * Conversation continue avec le « formateur virtuel » (LLM via OpenRouter côté serveur),
  * organisée en discussions (par cliente ou par thématique). Sélection via l'URL
  * (`/app/chat/:discussionId?`), historique persisté par discussion via
  * /api/discussions/:id/messages. Les réponses de l'assistant sont rendues en Markdown.

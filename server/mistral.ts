@@ -1,9 +1,12 @@
 /**
- * server/mistral.ts — Client mince de l'API Mistral pour l'assistant naturopathie.
+ * server/mistral.ts — Client mince de l'API LLM (OpenRouter) pour l'assistant naturopathie.
  *
  * Seule responsabilité : construire les messages (system prompt + historique tronqué)
- * et appeler l'API REST de Mistral via fetch natif. Aucune dépendance à Express/DB.
- * La clé est lue dans process.env.MISTRAL_API_KEY (jamais exposée au client).
+ * et appeler l'API OpenRouter (compatible OpenAI) via fetch natif. Aucune dépendance
+ * à Express/DB. La clé est lue dans process.env.OPENROUTER_API_KEY (jamais exposée au client).
+ *
+ * NB : le fichier garde son nom historique « mistral.ts » et ses symboles pour limiter
+ * l'empreinte du changement ; le fournisseur réel est désormais OpenRouter.
  */
 
 import { ASSISTANT_THEMES, THEME_OTHER } from "@shared/assistant-themes";
@@ -14,9 +17,21 @@ export interface ChatTurn {
   content: string;
 }
 
-export const MISTRAL_MODEL = "mistral-small-latest";
+export const LLM_MODEL = "deepseek/deepseek-v4-flash";
 export const MAX_HISTORY = 15; // nb de tours d'historique envoyés (borne coût + contexte)
 const MAX_TOKENS = 4096; // marge confortable (~3000 mots) — évite les réponses coupées
+const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+/** En-têtes communs OpenRouter. `stream` choisit l'Accept (SSE vs JSON). */
+function openrouterHeaders(apiKey: string, stream = false): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    Accept: stream ? "text/event-stream" : "application/json",
+    Authorization: `Bearer ${apiKey}`,
+    "HTTP-Referer": process.env.PUBLIC_URL || "https://app.ecole-naturo.fr",
+    "X-Title": "Naturo Pro",
+  };
+}
 
 export const SYSTEM_PROMPT = [
   "Tu es un formateur expérimenté en naturopathie qui accompagne des stagiaires et des praticiennes.",
@@ -38,7 +53,7 @@ export const SYSTEM_PROMPT = [
 ].join("\n");
 
 /**
- * Construit le tableau de messages envoyé à Mistral : system prompt en tête,
+ * Construit le tableau de messages envoyé au LLM : system prompt en tête,
  * historique tronqué aux MAX_HISTORY derniers tours, message utilisateur en fin.
  * Fonction PURE (testée unitairement).
  */
@@ -72,7 +87,7 @@ export type AssistantResult =
   | { ok: false; status: number; error: string };
 
 /**
- * Appelle l'API Mistral et renvoie la réponse de l'assistant.
+ * Appelle l'API OpenRouter et renvoie la réponse de l'assistant.
  * Dégradation propre :
  *   - clé absente  → { ok:false, status:503 }
  *   - erreur réseau / réponse non-2xx / vide → { ok:false, status:502 }
@@ -81,23 +96,19 @@ export async function askNaturoAssistant(
   history: ChatTurn[],
   userMessage: string,
 ): Promise<AssistantResult> {
-  const apiKey = process.env.MISTRAL_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    return { ok: false, status: 503, error: "MISTRAL_API_KEY manquante" };
+    return { ok: false, status: 503, error: "OPENROUTER_API_KEY manquante" };
   }
 
   const messages = buildMistralMessages(history, userMessage);
 
   try {
-    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const res = await fetch(OPENROUTER_CHAT_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: openrouterHeaders(apiKey),
       body: JSON.stringify({
-        model: MISTRAL_MODEL,
+        model: LLM_MODEL,
         messages,
         max_tokens: MAX_TOKENS,
         temperature: 0.3,
@@ -106,13 +117,13 @@ export async function askNaturoAssistant(
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      return { ok: false, status: 502, error: `Mistral ${res.status}: ${body.slice(0, 300)}` };
+      return { ok: false, status: 502, error: `OpenRouter ${res.status}: ${body.slice(0, 300)}` };
     }
 
     const data: any = await res.json();
     const reply = data?.choices?.[0]?.message?.content;
     if (!reply || typeof reply !== "string") {
-      return { ok: false, status: 502, error: "Réponse Mistral vide" };
+      return { ok: false, status: 502, error: "Réponse OpenRouter vide" };
     }
     return { ok: true, reply: reply.trim() };
   } catch (e: any) {
@@ -125,7 +136,7 @@ const CONTINUE_NUDGE =
   "Poursuis ta réponse précédente exactement là où elle s'est arrêtée (même au milieu d'une phrase ou d'un tableau), sans rien répéter, sans te resaluer et sans réintroduire le sujet.";
 
 /**
- * Stream un seul appel Mistral à partir d'un tableau de messages prêt à l'emploi.
+ * Stream un seul appel OpenRouter à partir d'un tableau de messages prêt à l'emploi.
  * Émet les deltas de texte et RETOURNE le `finish_reason` (`"stop"` | `"length"` …).
  * Lève une erreur `.status` (502) si la requête échoue.
  */
@@ -133,15 +144,11 @@ async function* streamMistralSegment(
   messages: Array<{ role: string; content: string }>,
   apiKey: string,
 ): AsyncGenerator<string, string, unknown> {
-  const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+  const res = await fetch(OPENROUTER_CHAT_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: openrouterHeaders(apiKey, true),
     body: JSON.stringify({
-      model: MISTRAL_MODEL,
+      model: LLM_MODEL,
       messages,
       max_tokens: MAX_TOKENS,
       temperature: 0.3,
@@ -149,7 +156,7 @@ async function* streamMistralSegment(
     }),
   });
   if (!res.ok || !res.body) {
-    const e: any = new Error(`Mistral ${res.status}`);
+    const e: any = new Error(`OpenRouter ${res.status}`);
     e.status = 502;
     throw e;
   }
@@ -165,7 +172,7 @@ async function* streamMistralSegment(
     buf = lines.pop() || "";
     for (const line of lines) {
       const t = line.trim();
-      if (!t.startsWith("data:")) continue;
+      if (!t.startsWith("data:")) continue; // ignore les keep-alives OpenRouter (lignes « : … »)
       const payload = t.slice(5).trim();
       if (payload === "[DONE]") return finishReason;
       try {
@@ -183,7 +190,7 @@ async function* streamMistralSegment(
 }
 
 /**
- * Stream une complétion Mistral à partir de messages déjà construits, avec
+ * Stream une complétion OpenRouter à partir de messages déjà construits, avec
  * CONTINUATION AUTOMATIQUE si la réponse est coupée par la limite de tokens.
  * Erreur `.status` (503 clé absente, 502 échec) propagée seulement si le tout
  * premier segment échoue ; au-delà, on conserve le texte déjà produit.
@@ -191,9 +198,9 @@ async function* streamMistralSegment(
 export async function* streamCompletion(
   messages: Array<{ role: string; content: string }>,
 ): AsyncGenerator<string, void, unknown> {
-  const apiKey = process.env.MISTRAL_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    const e: any = new Error("MISTRAL_API_KEY manquante");
+    const e: any = new Error("OPENROUTER_API_KEY manquante");
     e.status = 503;
     throw e;
   }
@@ -223,7 +230,7 @@ export async function* streamCompletion(
 }
 
 /**
- * Variante streaming avec CONTINUATION AUTOMATIQUE : appelle Mistral en flux et,
+ * Variante streaming avec CONTINUATION AUTOMATIQUE : appelle le LLM en flux et,
  * si la réponse est coupée par manque de place (`finish_reason: "length"`),
  * relance automatiquement le modèle pour qu'il poursuive là où il s'est arrêté,
  * jusqu'à MAX_SEGMENTS. La réponse rendue est ainsi toujours complète, quelle que
@@ -249,7 +256,7 @@ export async function generateDiscussionMeta(firstQuestion: string): Promise<{ t
     title: firstQuestion.trim().replace(/\s+/g, " ").slice(0, 50) || "Nouvelle discussion",
     theme: THEME_OTHER,
   };
-  const apiKey = process.env.MISTRAL_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return fallback;
   const prompt =
     `Question d'une praticienne en naturopathie : « ${firstQuestion.slice(0, 500)} »\n` +
@@ -257,11 +264,11 @@ export async function generateDiscussionMeta(firstQuestion: string): Promise<{ t
     `choisie STRICTEMENT dans cette liste : ${ASSISTANT_THEMES.join(" | ")}.\n` +
     `Réponds uniquement en JSON compact : {"title":"...","theme":"..."}`;
   try {
-    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const res = await fetch(OPENROUTER_CHAT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: openrouterHeaders(apiKey),
       body: JSON.stringify({
-        model: MISTRAL_MODEL,
+        model: LLM_MODEL,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 80, temperature: 0.2,
         response_format: { type: "json_object" },

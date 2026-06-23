@@ -6,7 +6,7 @@
  * Fonctions PURES testées : buildContentMessages, buildBookingCta, rankThemes,
  * buildAnglesPrompt, FORMAT_TEMPLATES.
  */
-import { streamCompletion, MISTRAL_MODEL } from "./mistral";
+import { streamCompletion, LLM_MODEL } from "./mistral";
 
 export type Channel = "instagram" | "facebook";
 export type ContentFormat = "carrousel" | "reel" | "story" | "post_groupe" | "legende";
@@ -85,7 +85,7 @@ export function buildBookingCta(user: { slug?: string | null; publicPageEnabled?
   return "Invite chaleureusement à réserver une séance découverte (n'invente PAS de lien : la praticienne doit activer sa page publique de réservation pour insérer son lien automatiquement).";
 }
 
-/** Construit les messages Mistral pour la génération de contenu. Fonction PURE. */
+/** Construit les messages LLM pour la génération de contenu. Fonction PURE. */
 export function buildContentMessages(params: {
   channel: Channel;
   format: ContentFormat;
@@ -148,21 +148,26 @@ export function buildAnglesPrompt(themes: string[], voice: { name: string }): st
 export interface Angle { title: string; hook: string; suggestedFormat: ContentFormat; }
 const FORMATS: ContentFormat[] = ["carrousel", "reel", "story", "post_groupe", "legende"];
 
-/** Génère 5 angles via un appel Mistral court (non-stream). Repli déterministe si indispo. */
+/** Génère 5 angles via un appel LLM court (non-stream). Repli déterministe si indispo. */
 export async function suggestContentAngles(themes: string[], voice: { name: string }): Promise<Angle[]> {
   const fallback: Angle[] = themes.slice(0, 5).map((t) => ({
     title: `Idée de post : ${t}`,
     hook: `Et si on parlait de ${t.toLowerCase()} ?`,
     suggestedFormat: "carrousel",
   }));
-  const apiKey = process.env.MISTRAL_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey || themes.length === 0) return fallback;
   try {
-    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.PUBLIC_URL || "https://app.ecole-naturo.fr",
+        "X-Title": "Naturo Pro",
+      },
       body: JSON.stringify({
-        model: MISTRAL_MODEL,
+        model: LLM_MODEL,
         messages: [{ role: "user", content: buildAnglesPrompt(themes, voice) }],
         max_tokens: 500, temperature: 0.5,
         response_format: { type: "json_object" },

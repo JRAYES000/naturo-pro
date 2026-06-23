@@ -2,8 +2,8 @@ import { storage } from "./storage";
 
 export const CHUNK_SIZE = 900;
 const CHUNK_OVERLAP = 120;
-const EMBED_MODEL = "mistral-embed";
-const EMBED_BATCH = 64; // chunks par requête embeddings (gros PDF → évite la limite Mistral par requête)
+const EMBED_MODEL = "mistralai/mistral-embed-2312"; // même modèle/espace vectoriel que l'historique « mistral-embed » (1024 dim), routé via OpenRouter
+const EMBED_BATCH = 64; // chunks par requête embeddings (≤ 96, limite OpenRouter par requête)
 
 export function chunkText(text: string): string[] {
   const clean = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -32,17 +32,22 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-  const apiKey = process.env.MISTRAL_API_KEY;
-  if (!apiKey) throw new Error("MISTRAL_API_KEY manquante");
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY manquante");
   const out: number[][] = [];
   for (let i = 0; i < texts.length; i += EMBED_BATCH) {
     const batch = texts.slice(i, i + EMBED_BATCH);
-    const res = await fetch("https://api.mistral.ai/v1/embeddings", {
+    const res = await fetch("https://openrouter.ai/api/v1/embeddings", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.PUBLIC_URL || "https://app.ecole-naturo.fr",
+        "X-Title": "Naturo Pro",
+      },
       body: JSON.stringify({ model: EMBED_MODEL, input: batch }),
     });
-    if (!res.ok) throw new Error(`Embeddings Mistral ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    if (!res.ok) throw new Error(`Embeddings OpenRouter ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data: any = await res.json();
     const vecs = [...data.data].sort((x: any, y: any) => x.index - y.index).map((d: any) => d.embedding as number[]);
     out.push(...vecs);

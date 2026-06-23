@@ -70,8 +70,8 @@ test("buildAnglesPrompt — mentionne les thèmes et demande du JSON", () => {
 });
 
 test("suggestContentAngles — repli déterministe sans clé API", async () => {
-  const prev = process.env.MISTRAL_API_KEY;
-  delete process.env.MISTRAL_API_KEY;
+  const prev = process.env.OPENROUTER_API_KEY;
+  delete process.env.OPENROUTER_API_KEY;
   try {
     const { suggestContentAngles } = await import("./social-content");
     const angles = await suggestContentAngles(["Sommeil", "Digestion"], { name: "Marie" });
@@ -79,7 +79,7 @@ test("suggestContentAngles — repli déterministe sans clé API", async () => {
     assert.equal(angles[0].suggestedFormat, "carrousel");
     assert.ok(angles[0].title.includes("Sommeil"));
   } finally {
-    if (prev !== undefined) process.env.MISTRAL_API_KEY = prev;
+    if (prev !== undefined) process.env.OPENROUTER_API_KEY = prev;
   }
 });
 
