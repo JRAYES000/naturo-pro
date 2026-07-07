@@ -1,0 +1,546 @@
+<!-- Polices Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"><style>.ecole-brochure *,.ecole-brochure *::before,.ecole-brochure *::after {
+ box-sizing: border-box;
+ margin: 0;
+ padding: 0;
+}.ecole-brochure {
+ --eb-sage: #4a7c59;
+ --eb-sage-dark: #2f5940;
+ --eb-cream: #f9f5ef;
+ --eb-terra: #c8693a;
+ --eb-gold: #f4c07a;
+ --eb-text: #2b2720;
+ --eb-muted: #6b5f55;
+ --eb-border: rgba(74,124,89,0.2);
+ --eb-radius: 14px;
+font-family: 'DM Sans', sans-serif;
+ width: 100%;
+ max-width: 960px;
+ margin-inline: auto;
+ background: #fff;
+ border-radius: 24px;
+ box-shadow: 0 2px 8px rgba(43,39,32,.06), 0 16px 48px rgba(43,39,32,.12);
+ overflow: hidden;
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+}
+/* ── LEFT ── */.ecole-brochure__left {
+ background: linear-gradient(145deg, #1e4030 0%, var(--eb-sage-dark) 55%, #3a6b4e 100%);
+ padding: 3rem 2.5rem;
+ display: flex;
+ flex-direction: column;
+ gap: 1.6rem;
+ position: relative;
+ overflow: hidden;
+}.ecole-brochure__left::before {
+ content: '';
+ position: absolute; top: -70px; right: -70px;
+ width: 260px; height: 260px;
+ border-radius: 50%;
+ background: rgba(255,255,255,.06);
+ pointer-events: none;
+}.ecole-brochure__left::after {
+ content: '';
+ position: absolute; bottom: -50px; left: -50px;
+ width: 200px; height: 200px;
+ border-radius: 50%;
+ background: rgba(255,255,255,.04);
+ pointer-events: none;
+}
+/* Ligne décorative dorée en haut */.ecole-brochure__left-accent {
+ position: absolute;
+ top: 0; left: 0; right: 0;
+ height: 3px;
+ background: linear-gradient(90deg, var(--eb-gold), rgba(244,192,122,0));
+ pointer-events: none;
+}.ecole-brochure__badge {
+ display: inline-flex;
+ align-items: center;
+ gap:.45rem;
+ background: rgba(255,255,255,.13);
+ color: rgba(255,255,255,.9);
+ font-size:.82rem;
+ font-weight: 500;
+ letter-spacing:.07em;
+ text-transform: uppercase;
+ padding:.45rem.9rem;
+ border-radius: 999px;
+ width: fit-content;
+ line-height: 1;
+ border: 1px solid rgba(255,255,255,.12);
+}
+/* ── TITRE: plus grand ── */.ecole-brochure__title {
+ font-family: 'Cormorant Garamond', Georgia, serif;
+ font-size: clamp(2.4rem, 3.8vw, 3.4rem);
+ font-weight: 600;
+ line-height: 1.12;
+ color: #fff;
+}.ecole-brochure__title em {
+ font-style: italic;
+ color: rgba(255,255,255,.78);
+}
+/* "gratuitement" en couleur dorée */.ecole-brochure__title .eb-free {
+ color: var(--eb-gold);
+ font-style: normal;
+}
+/* Séparateur décoratif */.ecole-brochure__divider {
+ width: 48px;
+ height: 2px;
+ background: linear-gradient(90deg, var(--eb-gold), rgba(244,192,122,.2));
+ border-radius: 2px;
+ flex-shrink: 0;
+}.ecole-brochure__desc {
+ font-size:.97rem;
+ line-height: 1.7;
+ color: rgba(255,255,255,.68);
+}.ecole-brochure__desc strong {
+ color: rgba(255,255,255,.92);
+ font-weight: 500;
+ letter-spacing:.01em;
+}.ecole-brochure__features {
+ list-style: none;
+ display: flex;
+ flex-direction: column;
+ gap:.85rem;
+}.ecole-brochure__features li {
+ display: flex;
+ align-items: flex-start;
+ gap:.7rem;
+ font-size:.96rem;
+ color: rgba(255,255,255,.85);
+ line-height: 1.5;
+}.ecole-brochure__features li svg {
+ flex-shrink: 0;
+ margin-top: 3px;
+ color: #8ecfa0;
+}.ecole-brochure__lock {
+ margin-top: auto;
+ font-size:.83rem;
+ color: rgba(255,255,255,.4);
+ display: flex;
+ align-items: center;
+ gap:.4rem;
+ line-height: 1;
+}
+/* ── RIGHT ── */.ecole-brochure__right {
+ padding: 3rem 2.5rem;
+ display: flex;
+ flex-direction: column;
+ gap: 1.5rem;
+ background: #fff;
+ border-left: 1px solid rgba(74,124,89,.08);
+}.ecole-brochure__form-title {
+ font-family: 'Cormorant Garamond', serif;
+ font-size: 1.55rem;
+ font-weight: 600;
+ color: var(--eb-text);
+ line-height: 1.3;
+}.ecole-brochure__form-title span { color: var(--eb-sage); }.ecole-brochure__fields {
+ display: flex;
+ flex-direction: column;
+ gap: 1.1rem;
+}.ecole-brochure__group {
+ display: flex;
+ flex-direction: column;
+ gap:.45rem;
+}.ecole-brochure__group label {
+ font-size:.92rem;
+ font-weight: 500;
+ color: var(--eb-muted);
+ letter-spacing:.02em;
+ display: block;
+ margin-bottom: 0;
+}.ecole-brochure__group label .eb-req {
+ color: var(--eb-terra);
+ margin-left: 2px;
+}.ecole-brochure__icon-wrap { position: relative; }.ecole-brochure__icon-wrap svg {
+ position: absolute;
+ left:.9rem; top: 50%;
+ transform: translateY(-50%);
+ color: #b8b0a7;
+ pointer-events: none;
+ transition: color.18s;
+}.ecole-brochure__icon-wrap:focus-within svg { color: var(--eb-sage); }.ecole-brochure__group input[type="text"],.ecole-brochure__group input[type="email"],.ecole-brochure__group input[type="tel"] {
+ width: 100%;
+ padding:.85rem 1rem.85rem 2.7rem!important;
+ border: 1.5px solid var(--eb-border)!important;
+ border-radius: var(--eb-radius)!important;
+ background: var(--eb-cream)!important;
+ font-family: 'DM Sans', sans-serif!important;
+ font-size: 1rem!important;
+ color: var(--eb-text)!important;
+ outline: none!important;
+ box-shadow: none!important;
+ transition: border-color.18s, box-shadow.18s, background.18s;
+ height: auto!important;
+ line-height: 1.5!important;
+}.ecole-brochure__group input::placeholder {
+ color: #b8b0a7!important;
+ font-size: 1rem!important;
+}.ecole-brochure__group input:focus {
+ border-color: var(--eb-sage)!important;
+ background: #fff!important;
+ box-shadow: 0 0 0 3px rgba(74,124,89,.12)!important;
+}.ecole-brochure__btn {
+ width: 100%;
+ padding: 1rem 1.5rem;
+ background: var(--eb-sage-dark);
+ color: #fff!important;
+ font-family: 'DM Sans', sans-serif;
+ font-size: 1.02rem;
+ font-weight: 500;
+ border: none!important;
+ border-radius: var(--eb-radius);
+ cursor: pointer;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ gap:.5rem;
+ transition: background.18s, transform.12s, box-shadow.18s, opacity.18s;
+ box-shadow: 0 4px 14px rgba(47,89,64,.25);
+ text-decoration: none;
+ line-height: 1;
+}.ecole-brochure__btn:hover:not(:disabled) {
+ background: var(--eb-sage)!important;
+ box-shadow: 0 6px 20px rgba(47,89,64,.3);
+ transform: translateY(-1px);
+ color: #fff!important;
+}.ecole-brochure__btn:active:not(:disabled) { transform: translateY(0); }.ecole-brochure__btn:disabled { opacity:.65; cursor: not-allowed; }.ecole-brochure__spinner {
+ width: 16px; height: 16px;
+ border: 2px solid rgba(255,255,255,.35);
+ border-top-color: #fff;
+ border-radius: 50%;
+ animation: eb-spin.7s linear infinite;
+ display: none;
+ flex-shrink: 0;
+}
+@keyframes eb-spin { to { transform: rotate(360deg); } }.ecole-brochure__btn.eb-loading .ecole-brochure__spinner { display: block; }.ecole-brochure__btn.eb-loading .eb-btn-icon,.ecole-brochure__btn.eb-loading .eb-btn-label { display: none; }.ecole-brochure__error {
+ display: none;
+ align-items: flex-start;
+ gap:.5rem;
+ background: rgba(200,105,58,.08);
+ border: 1px solid rgba(200,105,58,.25);
+ border-radius: 10px;
+ padding:.85rem 1rem;
+ font-size:.95rem;
+ color: var(--eb-terra);
+ line-height: 1.5;
+}.ecole-brochure__error svg { flex-shrink: 0; margin-top: 1px; }.ecole-brochure__success {
+ display: none;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ text-align: center;
+ gap: 1rem;
+ padding: 1.5rem 0;
+}
+@keyframes eb-fadein { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }.ecole-brochure__success.eb-visible {
+ display: flex;
+ animation: eb-fadein.4s ease;
+}.ecole-brochure__success-icon {
+ width: 60px; height: 60px;
+ background: rgba(74,124,89,.1);
+ border-radius: 50%;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ color: var(--eb-sage);
+}.ecole-brochure__success h3 {
+ font-family: 'Cormorant Garamond', serif;
+ font-size: 1.6rem;
+ font-weight: 600;
+ color: var(--eb-text);
+}.ecole-brochure__success p {
+ font-size:.97rem;
+ line-height: 1.6;
+ color: var(--eb-muted);
+ max-width: 30ch;
+}.ecole-brochure__privacy {
+ font-size:.82rem;
+ color: #b8b0a7;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ gap:.35rem;
+ text-align: center;
+ line-height: 1.4;
+}
+@media (max-width: 680px) {
+.ecole-brochure { grid-template-columns: 1fr; border-radius: 18px; }
+.ecole-brochure__left { padding: 2.25rem 1.4rem; gap: 1.25rem; }
+.ecole-brochure__right { padding: 1.9rem 1.4rem; border-left: none; }
+.ecole-brochure__title { font-size: clamp(1.9rem, 8.5vw, 2.5rem); }
+.ecole-brochure__form-title { font-size: 1.4rem; }
+}
+</style>
+
+<div class="ecole-brochure" role="region" aria-label="Télécharger notre brochure">
+
+ <div class="ecole-brochure__left">
+ <div class="ecole-brochure__left-accent"></div>
+
+ <span class="ecole-brochure__badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+ Brochure gratuite</span>
+
+ <h1 class="ecole-brochure__title">Téléchargez <span class="eb-free">gratuitement</span><br>
+ <em>notre brochure et<br>programme de formation</em></h1>
+
+ <div class="ecole-brochure__divider"></div>
+
+ <p class="ecole-brochure__desc">Découvrez tout ce que l'<strong>ÉCOLE DE NATUROPATHIE ET SOPHROLOGIE</strong> vous propose dans un document clair et complet.</p>
+
+ <ul class="ecole-brochure__features">
+ <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ Programme complet de la formation</li>
+ <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ Présentation des 2 formules de formation</li>
+ <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ Comment bénéficier du financement France Travail</li>
+ <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ Modalités d'inscription et de suivi</li>
+ <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ Informations pratiques &amp; FAQ</li>
+ </ul>
+
+ <p class="ecole-brochure__lock"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+ Accès immédiat après envoi</p>
+ </div>
+
+ <div class="ecole-brochure__right">
+ <p class="ecole-brochure__form-title" id="eb-form-title">Renseignez vos informations<br>
+ <span>pour recevoir la brochure</span></p>
+
+ <div class="ecole-brochure__error" id="eb-error" role="alert">
+ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+ <span id="eb-error-msg">Une erreur est survenue. Veuillez réessayer.</span>
+ </div>
+
+ <form class="ecole-brochure__fields" id="eb-form" novalidate>
+
+ <!-- ═══ CHAMP CACHÉ GCLID — NE PAS SUPPRIMER ═══ -->
+ <input type="hidden" id="eb-gclid" name="gclid" value="">
+ <!-- ════════════════════════════════════════════ -->
+
+ <div class="ecole-brochure__group">
+ <label for="eb-nom">Nom &amp; Prénom <span class="eb-req">*</span></label>
+ <div class="ecole-brochure__icon-wrap">
+ <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+ <input type="text" id="eb-nom" name="nom" placeholder="Marie Dupont" required autocomplete="name">
+ </div>
+ </div>
+
+ <div class="ecole-brochure__group">
+ <label for="eb-email">Email <span class="eb-req">*</span></label>
+ <div class="ecole-brochure__icon-wrap">
+ <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+ <input type="email" id="eb-email" name="email" placeholder="marie@exemple.fr" required autocomplete="email">
+ </div>
+ </div>
+
+ <div class="ecole-brochure__group">
+ <label for="eb-tel">Téléphone</label>
+ <div class="ecole-brochure__icon-wrap">
+ <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.18L6.52 2a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.55 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+ <input type="tel" id="eb-tel" name="telephone" placeholder="+33 6 00 00 00 00" autocomplete="tel">
+ </div>
+ </div>
+
+ <button type="submit" class="ecole-brochure__btn" id="eb-submit">
+ <svg class="eb-btn-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+ <span class="eb-btn-label">Télécharger ma brochure</span>
+ <div class="ecole-brochure__spinner"></div>
+ </button>
+
+ </form>
+
+ <div class="ecole-brochure__success" id="eb-success" role="status" aria-live="polite">
+ <div class="ecole-brochure__success-icon">
+ <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ </div>
+ <h3>Merci, c'est envoyé!</h3>
+ <p>Vous allez recevoir la brochure très prochainement.<br>Vérifiez aussi vos spams.</p>
+ </div>
+
+ <p class="ecole-brochure__privacy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+ Vos données sont confidentielles et ne seront jamais partagées.</p>
+ </div>
+</div>
+
+<script>(function() { var ENDPOINT = 'https://hook.eu1.make.com/k6vguh9btbhene9jswa1cpeplxh20j49'; (function() { try { var params = new URLSearchParams(window.location.search); var gclidFromUrl = params.get('gclid'); if (gclidFromUrl) { localStorage.setItem('eb_gclid', gclidFromUrl); } var storedGclid = localStorage.getItem('eb_gclid') || ''; var gclidInput = document.getElementById('eb-gclid'); if (gclidInput) gclidInput.value = storedGclid; } catch(e) {} })(); var form = document.getElementById('eb-form'); var btn = document.getElementById('eb-submit'); var errorDiv = document.getElementById('eb-error'); var errorMsg = document.getElementById('eb-error-msg'); var successDiv= document.getElementById('eb-success'); var formTitle = document.getElementById('eb-form-title'); if (!form) return; form.addEventListener('submit', function(e) { e.preventDefault(); e.stopPropagation(); errorDiv.style.display = 'none'; var nom = form.querySelector('#eb-nom').value.trim(); var email = form.querySelector('#eb-email').value.trim(); var tel = form.querySelector('#eb-tel').value.trim(); var gclid = form.querySelector('#eb-gclid').value.trim(); if (!nom ||!email) { showError('Veuillez renseigner votre nom et votre adresse email.'); return; } if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError("L'adresse email semble incorrecte. Veuillez la vérifier."); return; } btn.disabled = true; btn.classList.add('eb-loading'); fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: nom, email: email, telephone: tel || 'Non renseigné', gclid: gclid || '' }) }).then(function(r) { if (r.ok) { try { localStorage.removeItem('eb_gclid'); } catch(e) {} form.style.display = 'none'; if (formTitle) formTitle.style.display = 'none'; successDiv.classList.add('eb-visible'); } else { showError('Erreur lors de l\'envoi. Vérifiez que le scénario Make est bien activé.'); btn.disabled = false; btn.classList.remove('eb-loading'); } }).catch(function() { showError('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.'); btn.disabled = false; btn.classList.remove('eb-loading'); }); }); function showError(msg) { errorMsg.textContent = msg; errorDiv.style.display = 'flex'; } })();</script>
+
+<!-- Redirection vers /brochure-merci/ apres envoi du formulaire (ajoute via Cowork le 2026-06-08) -->
+<script>(function(){ var TARGET='https://ecole-naturo.fr/brochure-merci/'; function start(){ var s=document.getElementById('eb-success'); if(!s){return;} var done=false; function go(){ if(done){return;} done=true; window.location.href=TARGET; } function visible(){ var c=window.getComputedStyle(s); return c.display!=='none' && c.visibility!=='hidden' && s.offsetParent!==null; } if(visible()){ go(); return; } var obs=new MutationObserver(function(){ if(visible()){ go(); } }); obs.observe(s,{attributes:true,attributeFilter:['style','class','hidden']}); } if(document.readyState!=='loading'){ start(); } else { document.addEventListener('DOMContentLoaded',start); } })();</script>
+<hr style="border:none;border-top:1px solid rgba(124,155,132,.3);max-width:1100px;margin:34px auto 6px">
+
+[trustindex no-registration=google]
+
+<style>
+.ena-carousel{max-width:1200px;margin:18px auto 8px;padding:0 12px;overflow:hidden;position:relative}
+.ena-carousel::before,.ena-carousel::after{content:"";position:absolute;top:0;bottom:0;width:60px;z-index:2;pointer-events:none}
+.ena-carousel::before{left:0;background:linear-gradient(90deg,#faf8f4,rgba(250,248,244,0))}
+.ena-carousel::after{right:0;background:linear-gradient(270deg,#faf8f4,rgba(250,248,244,0))}
+.ena-car-track{display:flex;gap:16px;width:max-content;animation:ena-scroll 40s linear infinite}
+.ena-carousel:hover .ena-car-track{animation-play-state:paused}
+.ena-car-slide{flex:0 0 auto}
+.ena-car-slide img{height:150px;width:auto;border-radius:14px;display:block;object-fit:cover;box-shadow:0 6px 16px rgba(61,88,71,.12)}
+@keyframes ena-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(max-width:768px){.ena-car-slide img{height:110px}}
+</style>
+<div class="ena-carousel" aria-label="Galerie École Naturo">
+<div class="ena-car-track">
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/5.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/6.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/1.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/2.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/4.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/bjp13C7lZmQ.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/mm2QIfyH5TY.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/7Naq-ltb_6c.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2026/04/2026-04-07-22_28_48.png" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/3.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/5.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/6.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/1.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/2.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/4.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/bjp13C7lZmQ.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/mm2QIfyH5TY.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/7Naq-ltb_6c.jpg" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2026/04/2026-04-07-22_28_48.png" alt="École Naturo en images" loading="lazy"></div>
+<div class="ena-car-slide"><img src="https://ecole-naturo.fr/wp-content/uploads/2025/10/3.jpg" alt="École Naturo en images" loading="lazy"></div>
+</div>
+</div>
+<style>.ensn-admission-contact{--eg:#7c9b84;--egd:#5f7b66;--ec:#f8f5ef;--et:#2f3a33;--em:#66756c;max-width:1100px;margin:28px auto;padding:0 20px;font-family:"Helvetica Neue",Arial,sans-serif;color:var(--et)}.ensn-admission-box{background:linear-gradient(135deg,#f8f5ef 0%,#eef4ef 100%);border-radius:22px;padding:26px 24px;box-shadow:0 10px 28px rgba(61,88,71,.10);overflow:hidden;position:relative}.ensn-admission-box::before{content:"";position:absolute;top:-60px;right:-60px;width:160px;height:160px;background:rgba(124,155,132,.10);border-radius:50%}.ensn-admission-header{text-align:center;margin-bottom:20px;position:relative;z-index:1}.ensn-admission-title{font-size:30px;line-height:1.2;margin:0 0 10px;color:var(--egd)}.ensn-admission-text{max-width:760px;margin:0 auto;font-size:17px;line-height:1.6;color:var(--et)}.ensn-admission-text strong{color:var(--egd)}.ensn-social-proof{display:inline-flex;align-items:center;gap:.5rem;background:#fff;border:1px solid rgba(124,155,132,.25);border-radius:999px;padding:.45rem 1rem;font-size:14px;font-weight:600;color:var(--egd);box-shadow:0 3px 10px rgba(61,88,71,.08);margin-top:14px}.ensn-social-proof span{color:var(--em);font-weight:400}.ensn-hours{margin-top:10px;display:inline-block;background:#fff;border:1px solid rgba(124,155,132,.20);border-radius:12px;padding:10px 16px;font-size:14px;color:var(--em);box-shadow:0 5px 14px rgba(61,88,71,.05)}.ensn-team{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:18px;margin-top:24px;position:relative;z-index:1}.ensn-card{background:rgba(255,255,255,.92);border-radius:18px;padding:18px 16px;text-align:center;box-shadow:0 8px 20px rgba(61,88,71,.08);border:1px solid rgba(124,155,132,.10);transition:transform.25s,box-shadow.25s}.ensn-card:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(61,88,71,.12)}.ensn-card-img-wrap{position:relative;width:108px;margin:0 auto 12px}.ensn-card img{width:108px;height:108px;object-fit:cover;border-radius:50%;display:block;border:4px solid #fff;box-shadow:0 5px 14px rgba(61,88,71,.12)}.ensn-badge-dispo{position:absolute;bottom:4px;right:0;background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:.2rem.55rem;border-radius:999px;border:2px solid #fff;white-space:nowrap;display:flex;align-items:center;gap:.3rem}.ensn-badge-dispo::before{content:"";width:7px;height:7px;background:#fff;border-radius:50%;display:inline-block;animation:pulse-dot 1.5s ease-in-out infinite}
+ @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}.ensn-card h3{margin:0 0 2px;font-size:21px;color:var(--egd)}.ensn-card .ensn-role{margin:0 0 2px;font-size:13px;color:var(--em);font-weight:600;text-transform:uppercase;letter-spacing:.04em}.ensn-divider-line{border:none;border-top:1px solid rgba(124,155,132,.2);margin:26px 0 0}.ensn-divider{text-align:center;margin:22px 0 0;position:relative;z-index:1}.ensn-btn-wrap{position:relative;display:inline-block;margin-top:22px}.ensn-btn-wrap::before,.ensn-btn-wrap::after{content:"";position:absolute;inset:-6px;border-radius:999px;border:2px solid rgba(26,122,69,.4);animation:halo 2s ease-out infinite;pointer-events:none}.ensn-btn-wrap::after{inset:-12px;border-color:rgba(26,122,69,.2);animation-delay:.6s;pointer-events:none}
+ @keyframes halo{0%{transform:scale(1);opacity:1}100%{transform:scale(1.12);opacity:0}}.ensn-divider-btn{background:#1a7a45;color:#fff;border:none;padding:1.1rem 2.8rem;font-size:1.3rem;font-weight:700;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;box-shadow:0 8px 24px rgba(26,122,69,.35),0 2px 6px rgba(26,122,69,.25);transition:background.2s,transform.2s,box-shadow.2s;letter-spacing:.01em;position:relative;z-index:1;white-space:nowrap}.ensn-divider-btn:hover{background:#145e34;transform:translateY(-3px);box-shadow:0 14px 32px rgba(26,122,69,.45),0 4px 10px rgba(26,122,69,.3)}.ensn-divider-btn:active{transform:translateY(-1px)}.ensn-divider-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.ensn-cta-sub{margin-top:10px;font-size:13px;color:var(--em);text-align:center}.ensn-next-slot{display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1px solid rgba(26,122,69,.2);border-radius:10px;padding:.45rem 1rem;font-size:13px;color:var(--egd);font-weight:600;box-shadow:0 3px 10px rgba(61,88,71,.07);margin-top:10px}.ensn-next-slot::before{content:"";width:8px;height:8px;background:#22c55e;border-radius:50%;flex-shrink:0;animation:pulse-dot 1.5s ease-in-out infinite}.ensn-guarantee{display:inline-flex;align-items:center;gap:.4rem;font-size:12px;color:var(--em);margin-top:8px}.ensn-guarantee svg{width:14px;height:14px;stroke:var(--egd);fill:none;stroke-width:2;flex-shrink:0}.ensn-loader{display:none;align-items:center;justify-content:center;flex-direction:column;gap:.8rem;padding:2.5rem;background:#fff;border-radius:0 0 22px 22px}.ensn-loader.on{display:flex}.ensn-loader p{font-size:.85rem;color:#556070;margin:0;font-family:"Helvetica Neue",Arial,sans-serif}.sp{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1a7a45;border-radius:50%;animation:sp.8s linear infinite}
+ @keyframes sp{to{transform:rotate(360deg)}}.ensn-calendly-widget{display:none;width:100%;min-height:750px}
+@media(max-width:768px){.ensn-admission-box{padding:22px 16px}.ensn-admission-title{font-size:25px}.ensn-admission-text{font-size:16px}.ensn-team{grid-template-columns:1fr;gap:14px}.ensn-card img{width:96px;height:96px}.ensn-btn-wrap{width:100%;display:block}.ensn-btn-wrap::before,.ensn-btn-wrap::after{display:none}.ensn-divider-btn{
+ font-size:.95rem;
+ padding:.9rem 1.4rem;
+ white-space:normal;
+ text-align:center;
+ justify-content:center;
+ line-height:1.4;
+ width:100%;
+ box-sizing:border-box;
+ }
+ }
+</style>
+
+<section class="ensn-admission-contact">
+ <div class="ensn-admission-box">
+
+ <div class="ensn-admission-header">
+ <h2 class="ensn-admission-title">Prenez rendez-vous gratuitement avec un conseiller pédagogique</h2>
+ <p class="ensn-admission-text"><strong>Alex et Aline</strong> sont à votre écoute pour répondre à toutes vos questions
+ et vous accompagner dans la constitution de votre <strong>dossier de financement</strong>.</p>
+ <div style="margin-top:12px">
+ <div class="ensn-social-proof">🎓 <strong>+1 200 apprenants</strong> <span>accompagnés depuis 2021</span></div>
+ </div>
+ <div class="ensn-hours">Du lundi au samedi &bull; de 11h à 20h</div>
+ </div>
+
+ <!-- Alex Ostwald à gauche, Aline Garcia à droite -->
+ <div class="ensn-team">
+ <div class="ensn-card">
+ <div class="ensn-card-img-wrap">
+ <img src="https://ecole-naturo.fr/wp-content/uploads/2026/06/alex-ostwald-responsable-pedagogique.jpg" alt="Portrait d'Alex Ostwald" loading="lazy" width="108" height="108">
+ <div class="ensn-badge-dispo">🟢 Disponible</div>
+ </div>
+ <h3>Alex Ostwald</h3>
+ <p class="ensn-role">Responsable pédagogique</p>
+ </div>
+ <div class="ensn-card">
+ <div class="ensn-card-img-wrap">
+ <img src="https://ecole-naturo.fr/wp-content/uploads/2026/04/aline2.jpg" alt="Portrait d'Aline Garcia" loading="lazy" width="108" height="108">
+ </div>
+ <h3>Aline Garcia</h3>
+ <p class="ensn-role">Conseillère pédagogique</p>
+ </div>
+ </div>
+
+ <hr class="ensn-divider-line">
+
+ <div class="ensn-divider" id="ensn-cta-zone">
+ <div class="ensn-btn-wrap">
+ <button class="ensn-divider-btn" onclick="ensnLoadCalendly()">
+ <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+ Rendez-vous téléphonique gratuit et sans engagement
+ </button>
+ </div>
+ <p class="ensn-cta-sub">⏱ Durée: 30 min &nbsp;•&nbsp; Annulation possible à tout moment</p>
+ <div><div class="ensn-next-slot">Prochain créneau disponible: demain à 13h30</div></div>
+ <div><span class="ensn-guarantee"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Vos données restent confidentielles</span></div>
+ </div>
+
+ <div class="ensn-loader" id="ensn-loader" aria-live="polite">
+ <div class="sp"></div>
+ <p>Chargement du calendrier…</p>
+ </div>
+
+ <div
+ class="calendly-inline-widget ensn-calendly-widget"
+ id="ensn-calendly-widget"
+ data-url="https://calendly.com/d/cykn-tbd-nqh/appel-decouverte-30-min?hide_gdpr_banner=1"
+ style="min-width:320px;height:750px;display:none;">
+ </div>
+
+ </div>
+</section>
+
+<script>(function() { try { var params = new URLSearchParams(window.location.search); var gclidFromUrl = params.get('gclid'); if (gclidFromUrl) { localStorage.setItem('eb_gclid', gclidFromUrl); } } catch(e) {} })(); function ensnLoadCalendly() { var ctaZone = document.getElementById('ensn-cta-zone'); var loader = document.getElementById('ensn-loader'); var widget = document.getElementById('ensn-calendly-widget'); var baseUrl = 'https://calendly.com/d/cykn-tbd-nqh/appel-decouverte-30-min?hide_gdpr_banner=1'; try { var gclid = localStorage.getItem('eb_gclid') || ''; if (gclid) { baseUrl += '&utm_content=' + encodeURIComponent(gclid); } } catch(e) {} widget.setAttribute('data-url', baseUrl); ctaZone.style.display = 'none'; loader.className = 'ensn-loader on'; if (!document.getElementById('ensn-cjs')) { var s = document.createElement('script'); s.id = 'ensn-cjs'; s.async = true; s.src = 'https://assets.calendly.com/assets/external/widget.js'; s.onload = function() { setTimeout(function() { loader.className = 'ensn-loader'; widget.style.display = 'block'; }, 800); }; s.onerror = function() { loader.className = 'ensn-loader'; ctaZone.style.display = 'block'; alert('Impossible de charger le calendrier. Vérifiez votre connexion ou désactivez votre bloqueur de publicités.'); }; document.head.appendChild(s); } else { setTimeout(function() { loader.className = 'ensn-loader'; widget.style.display = 'block'; }, 400); } }</script>
+
+<style>
+.ena-form-section{--egd:#5f7b66;--et:#2f3a33;--em:#66756c;max-width:1100px;margin:30px auto 28px;padding:0 20px;font-family:"Helvetica Neue",Arial,sans-serif;color:var(--et)}
+.ena-form-section .ena-form-title{text-align:center;font-size:26px;color:var(--egd);margin:0 0 6px}
+.ena-form-section .ena-form-sub{text-align:center;font-size:16px;color:var(--em);max-width:680px;margin:0 auto 28px}
+.ena-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.ena-form-card{background:linear-gradient(135deg,#f8f5ef 0%,#eef4ef 100%);border-radius:18px;padding:22px 18px;text-align:center;box-shadow:0 8px 20px rgba(61,88,71,.08);border:1px solid rgba(124,155,132,.12)}
+.ena-form-card img{width:130px;height:130px;object-fit:cover;border-radius:50%;border:4px solid #fff;box-shadow:0 5px 14px rgba(61,88,71,.12);display:block;margin:0 auto 14px}
+.ena-form-card h3{font-size:19px;color:var(--egd);margin:0 0 4px}
+.ena-form-card .ena-form-role{font-size:13px;color:var(--em);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:0 0 12px}
+.ena-form-card p{font-size:14.5px;line-height:1.6;color:var(--et);margin:0 0 12px}
+.ena-form-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.ena-form-links a{font-size:13px;font-weight:600;color:#1a7a45;text-decoration:none;background:#fff;border:1px solid rgba(124,155,132,.25);border-radius:999px;padding:.3rem .8rem}
+.ena-form-links a:hover{background:#1a7a45;color:#fff}
+@media(max-width:768px){.ena-form-grid{grid-template-columns:1fr;gap:16px}}
+</style>
+<section class="ena-form-section">
+<h2 class="ena-form-title">Vos formatrices</h2>
+<p class="ena-form-sub">Des praticiennes dipl&ocirc;m&eacute;es et exp&eacute;riment&eacute;es qui vous accompagnent tout au long de votre parcours.</p>
+<div class="ena-form-grid">
+<div class="ena-form-card">
+<img src="https://ecole-naturo.fr/wp-content/uploads/2026/03/Eva-Mischler-.png" alt="Eva Mischler, naturopathe" width="130" height="130" loading="lazy">
+<h3>Eva Mischler</h3>
+<p class="ena-form-role">Naturopathe</p>
+<p>Naturopathe et professeure de yoga depuis 2017, Eva est passionn&eacute;e par la transmission et l'accompagnement des apprenants dans leur reconversion. Elle a accompagn&eacute; plus de 600 personnes en consultation, en ateliers et en conf&eacute;rences. Ses sujets de pr&eacute;dilection&nbsp;: naturopathie, phyto-aromatologie, biohacking et entrepreneuriat.</p>
+<div class="ena-form-links">
+<a href="https://www.instagram.com/instinctnaturo/" target="_blank" rel="noopener">Instagram</a>
+<a href="https://www.linkedin.com/in/instinctnaturo/" target="_blank" rel="noopener">LinkedIn</a>
+<a href="https://www.instinctnaturo.com/" target="_blank" rel="noopener">Site web</a>
+</div>
+</div>
+<div class="ena-form-card">
+<a href="https://www.sabrina-dussart.com/" target="_blank" rel="noopener"><img src="https://ecole-naturo.fr/wp-content/uploads/2026/03/Monica_2026-03-21_21-48-37-scaled.png" alt="Sabrina Dussart, naturopathe CENATHO-FENA" width="130" height="130" loading="lazy"></a>
+<h3>Sabrina Dussart</h3>
+<p class="ena-form-role">Naturopathe CENATHO-FENA</p>
+<p>Naturopathe (CENATHO-FENA), form&eacute;e en psychologie et aux techniques psycho-corporelles (sophrologie, aromath&eacute;rapie, fleurs de Bach, psychog&eacute;n&eacute;alogie), Sabrina vous accompagne de mani&egrave;re globale et personnalis&eacute;e. Une vision du bien-&ecirc;tre transmise &agrave; travers ses nombreux livres publi&eacute;s aux &eacute;ditions Jouvence.</p>
+<div class="ena-form-links">
+<a href="https://www.instagram.com/sabrina.dussart/" target="_blank" rel="noopener">Instagram</a>
+<a href="https://www.linkedin.com/in/sabrina-dussart-79b180152/" target="_blank" rel="noopener">LinkedIn</a>
+<a href="https://www.sabrina-dussart.com/" target="_blank" rel="noopener">Site web</a>
+</div>
+</div>
+<div class="ena-form-card">
+<a href="https://www.linkedin.com/in/sol%C3%A8ne-geoffroy-8525b5156/" target="_blank" rel="noopener"><img src="https://ecole-naturo.fr/wp-content/uploads/2026/03/Monica_2026-03-21_21-46-07-scaled.png" alt="Sol&egrave;ne Geoffroy, di&eacute;t&eacute;ticienne-nutritionniste" width="130" height="130" loading="lazy"></a>
+<h3>Sol&egrave;ne Geoffroy</h3>
+<p class="ena-form-role">Di&eacute;t&eacute;ticienne-Nutritionniste</p>
+<p>Di&eacute;t&eacute;ticienne et formatrice exp&eacute;riment&eacute;e en BTS Di&eacute;t&eacute;tique, Sol&egrave;ne vous guide vers une alimentation &eacute;quilibr&eacute;e et savoureuse. Sp&eacute;cialis&eacute;e en alimentation intuitive, intol&eacute;rances alimentaires et troubles du comportement alimentaire, elle accompagne chaque apprenant avec bienveillance.</p>
+<div class="ena-form-links">
+<a href="https://www.instagram.com/sgeoffroy.diet/" target="_blank" rel="noopener">Instagram</a>
+<a href="https://www.linkedin.com/in/sol%C3%A8ne-geoffroy-8525b5156/" target="_blank" rel="noopener">LinkedIn</a>
+<a href="https://www.madietenligne.fr/annuaire/solene-geoffroy" target="_blank" rel="noopener">Site web</a>
+</div>
+</div>
+</div>
+</section>
