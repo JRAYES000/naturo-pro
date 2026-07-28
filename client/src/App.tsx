@@ -53,7 +53,7 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={onTenant ? PublicPage : Landing} />
-      {onTenant && <Route path="/book" component={BookingFlow} />}
+      {onTenant && <Route path="/book/:catId?" component={BookingFlow} />}
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/verify-email/:token" component={VerifyEmail} />
@@ -88,7 +88,7 @@ function AppRouter() {
       <Route path="/admin/assistant" component={() => <ProtectedRoute><AssistantAdmin /></ProtectedRoute>} />
 
       <Route path="/p/:slug" component={PublicPage} />
-      <Route path="/p/:slug/book" component={BookingFlow} />
+      <Route path="/p/:slug/book/:catId?" component={BookingFlow} />
       <Route path="/manage/:token" component={BookingManage} />
       <Route path="/anamnese/:token" component={AnamnesePublic} />
 

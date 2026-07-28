@@ -242,7 +242,7 @@ export default function PublicPage() {
                   </div>
                   <div className="mt-auto">
                     <Link
-                      href={`${bookHref}?cat=${c.id}`}
+                      href={`${bookHref}/${c.id}`}
                       className="w-full btn-primary-naturo justify-center"
                       data-testid={`button-book-${c.id}`}
                     >

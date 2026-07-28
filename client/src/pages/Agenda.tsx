@@ -49,7 +49,12 @@ export default function Agenda() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const [, navigate] = useLocation();
-  const [selected, setSelected] = useState<Appointment | null>(null);
+  // On mémorise l'IDENTIFIANT, pas une copie du rendez-vous : la fiche ouverte doit
+  // refléter les données fraîches après chaque mutation. Auparavant `selected` était un
+  // instantané figé — après « Envoyer le rappel », la liste se rafraîchissait mais la
+  // fiche affichait toujours l'état d'avant : pas de badge « Envoyé », et un second clic
+  // renvoyait un email sans passer par la demande de confirmation.
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [resendDialog, setResendDialog] = useState(false);
   const [creating, setCreating] = useState<{ start: Date; end: Date } | null>(null);
 
@@ -57,6 +62,9 @@ export default function Agenda() {
   const { data: cats = [] } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
   const { data: googleStatus } = useQuery<{ configured: boolean; connected: boolean; email: string | null }>({ queryKey: ["/api/google/status"] });
+
+  // Dérivé des données fraîches (cf. commentaire sur selectedId ci-dessus).
+  const selected = selectedId != null ? (appts.find((a) => a.id === selectedId) ?? null) : null;
 
   // Synchronisation Google Calendar déclenchable directement depuis l'agenda
   // (même endpoint que Paramètres → Google Calendar).
@@ -95,7 +103,7 @@ export default function Agenda() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
       toast({ title: "Rendez-vous supprimé", variant: "success" });
-      setSelected(null);
+      setSelectedId(null);
     },
   });
 
@@ -158,7 +166,7 @@ export default function Agenda() {
             step={30}
             timeslots={2}
             style={{ height: "70vh" }}
-            onSelectEvent={(e: any) => setSelected(e.resource)}
+            onSelectEvent={(e: any) => setSelectedId(e.resource?.id ?? null)}
             selectable
             onSelectSlot={({ start, end }: any) => setCreating({ start, end })}
             eventPropGetter={(event: any) => {
@@ -185,7 +193,7 @@ export default function Agenda() {
         </div>
       </div>
 
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+      <Dialog open={!!selected} onOpenChange={() => setSelectedId(null)}>
         <DialogContent>
           {selected && (() => {
             const cat = cats.find(c => c.id === selected.categoryId);

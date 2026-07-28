@@ -33,7 +33,14 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { formatDate, formatTime, formatDay, durationLabel } from "@/lib/format";
+// Page vue par la CLIENTE : heures au fuseau du cabinet (Europe/Paris), pas au sien.
+// Les alias gardent les appels existants inchangés.
+import {
+  formatHeureCabinet as formatTime,
+  formatJourCabinet as formatDay,
+  fuseauDifferentDuCabinet,
+  durationLabel,
+} from "@/lib/format";
 import { brandThemeVars } from "@/lib/brand-theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -256,6 +263,11 @@ function ManageSlotPicker({
                   month: "long",
                 })}
               </p>
+              {fuseauDifferentDuCabinet() && (
+                <p className="text-xs text-muted-foreground" data-testid="text-timezone-notice-manage">
+                  🕑 Horaires en <strong>heure française</strong> (fuseau du cabinet).
+                </p>
+              )}
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {slots.map((iso) => {
                   const ms = new Date(iso).getTime();

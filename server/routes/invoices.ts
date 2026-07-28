@@ -49,7 +49,11 @@ export function registerInvoiceRoutes(app: Express): void {
   // POST /api/invoices  (création manuelle libre)
   const invoiceItemSchema = z.object({
     description: z.string().min(1),
-    quantity: z.number().min(0).default(1),
+    // Entier : la colonne invoice_items.quantity est un INT. Le schéma acceptait un
+    // décimal, que computeItemTotal tronquait ensuite en silence — saisir « 1,5 »
+    // facturait 1 et « 0,5 » facturait 0,00 €, sans le moindre avertissement.
+    // On refuse explicitement plutôt que d'arrondir dans le dos de la praticienne.
+    quantity: z.number().int().min(1).default(1),
     unitPriceCents: z.number().int().nonnegative().default(0),
   });
   const invoiceCreateSchema = z.object({

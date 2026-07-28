@@ -379,7 +379,7 @@ export default function InvoiceEditor() {
                       type="number"
                       min={0}
                       value={it.quantity}
-                      onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))}
+                      onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) } : x))}
                       data-testid={`input-item-qty-${i}`}
                     />
                     <Input

@@ -352,6 +352,23 @@ export function renderClientCancellationEmail(opts: {
   return { subject, html, text };
 }
 
+/**
+ * Nettoie une valeur destinée à un OBJET d'email.
+ *
+ * Un objet est un en-tête, pas du HTML : l'échapper affichait les entités telles
+ * quelles au destinataire. Seuls les caractères de contrôle (retours à la ligne, qui
+ * permettraient d'injecter un en-tête) sont retirés.
+ */
+function sujetSur(v: string): string {
+  // Filtrage par code de caractere : on retire les caracteres de controle
+  // (dont CR/LF, seul vrai risque sur un en-tete) sans toucher aux apostrophes,
+  // esperluettes et accents, qui doivent arriver tels quels dans la boite de reception.
+  return Array.from(String(v ?? ""))
+    .filter((c) => { const n = c.charCodeAt(0); return n >= 32 && n !== 127; })
+    .join("")
+    .trim();
+}
+
 // ─── Template : Demande d'avis Google ────────────────────────────────────────
 export interface ReviewRequestTemplateData {
   clientFirstName: string;
@@ -360,7 +377,10 @@ export interface ReviewRequestTemplateData {
 }
 
 export function renderReviewRequestEmail(d: ReviewRequestTemplateData): { subject: string; html: string; text: string } {
-  const subject = `Votre avis compte beaucoup pour ${escapeHtml(d.practitionerName)}`;
+  // L'objet n'est PAS du HTML : escapeHtml y transformait « L'Atelier » en
+  // « L&#39;Atelier » dans la boîte de réception. On neutralise seulement les retours
+  // à la ligne, qui sont le vrai risque sur un en-tête d'email.
+  const subject = `Votre avis compte beaucoup pour ${sujetSur(d.practitionerName)}`;
   const body = `
     <h1>Bonjour ${escapeHtml(d.clientFirstName)},</h1>
     <p>Merci d'avoir pris le temps de me consulter. J'espère que notre séance vous a été utile et bénéfique.</p>

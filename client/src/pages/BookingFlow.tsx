@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { formatPrice, durationLabel } from "@/lib/format";
+import { formatPrice, durationLabel, formatHeureCabinet, formatDateHeureCabinet, fuseauDifferentDuCabinet } from "@/lib/format";
 import { brandThemeVars } from "@/lib/brand-theme";
 import { BookingStepIndicator } from "@/components/BookingStepIndicator";
 import { BookingConfirmation } from "@/components/BookingConfirmation";
@@ -105,7 +105,7 @@ function NaturoSkeleton() {
 /* Main component                                                      */
 /* ------------------------------------------------------------------ */
 export default function BookingFlow() {
-  const params = useParams<{ slug?: string }>();
+  const params = useParams<{ slug?: string; catId?: string }>();
   // Phase 3 Lot 2 — sur un sous-domaine, le slug n'est pas dans l'URL ; on lit
   // le tenant courant et on appelle /api/public/_self pour la résolution serveur.
   const tenantFromHost = getCurrentTenant();
@@ -114,11 +114,14 @@ export default function BookingFlow() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  // Read ?cat= from hash query
-  const initialCat = (() => {
-    const m = window.location.hash.match(/[?&]cat=(\d+)/);
-    return m ? Number(m[1]) : null;
-  })();
+  // Prestation présélectionnée, lue dans le CHEMIN (/p/:slug/book/:catId).
+  //
+  // Elle transitait avant par `?cat=`. En hash routing c'était perdant des deux côtés :
+  // au clic gauche wouter déplaçait la query HORS du hash (/?cat=3#/p/slug/book), donc
+  // la lecture dans window.location.hash ne trouvait jamais rien ; et sur un ctrl+clic
+  // ou un lien copié-collé, la query restait DANS le hash, où elle empêchait la route
+  // de matcher → « 404 Page introuvable » sur le lien que la praticienne partage.
+  const initialCat = params.catId && /^\d+$/.test(params.catId) ? Number(params.catId) : null;
 
   const [step, setStep] = useState(initialCat ? 2 : 1);
   const [categoryId, setCategoryId] = useState<number | null>(initialCat);
@@ -427,11 +430,20 @@ export default function BookingFlow() {
             >
               Choisissez un créneau
             </h1>
-            <p className="text-muted-foreground mb-6 text-sm sm:text-base capitalize">
+            <p className="text-muted-foreground mb-2 text-sm sm:text-base capitalize">
               Le {new Date(selectedDay + "T12:00:00").toLocaleDateString("fr-FR", {
                 weekday: "long", day: "numeric", month: "long",
               })}.
             </p>
+            {/* Les créneaux sont affichés en heure de Paris (celle du cabinet). On ne
+                le précise qu'aux visiteuses dont le navigateur est sur un autre fuseau :
+                pour elles, l'heure lue ici ne correspond pas à l'heure de leur téléphone. */}
+            {fuseauDifferentDuCabinet() && (
+              <p className="text-xs text-muted-foreground mb-6" data-testid="text-timezone-notice">
+                🕑 Horaires affichés en <strong>heure française</strong> (fuseau du cabinet).
+              </p>
+            )}
+            <div className="mb-4" />
 
             {avail.slotsByDay[selectedDay]?.length === 0 ? (
               <div className="card-naturo text-center py-10" data-testid="text-no-time-slots">
@@ -456,7 +468,7 @@ export default function BookingFlow() {
                     className="rounded-[12px] border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary py-3 font-bold transition text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
                     data-testid={`button-slot-${iso}`}
                   >
-                    {new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                    {formatHeureCabinet(iso)}
                   </button>
                 ))}
               </div>
@@ -493,7 +505,7 @@ export default function BookingFlow() {
                 <div className="min-w-0">
                   <p className="font-extrabold">{cat.name}</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    {new Date(selectedSlot).toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" })}
+                    {formatDateHeureCabinet(selectedSlot)}
                     {" "}• {durationLabel(cat.durationMinutes)}
                     {cat.priceCents > 0 && ` • ${formatPrice(cat.priceCents)}`}
                   </p>

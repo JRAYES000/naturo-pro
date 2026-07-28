@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Check, Calendar, Clock, MapPin, User, Euro, ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatPrice, durationLabel } from "@/lib/format";
+import { formatPrice, durationLabel, formatJourCabinet, formatHeureCabinet } from "@/lib/format";
 
 interface ConfirmationData {
   when: Date;
@@ -29,18 +29,10 @@ interface BookingConfirmationProps {
   backHref: string;
 }
 
-function formatDayFr(date: Date): string {
-  return date.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatTimeFr(date: Date): string {
-  return date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
+// Heure du CABINET (Europe/Paris), pas celle du navigateur de la visiteuse :
+// la confirmation à l'écran doit dire la même chose que l'email qu'elle va recevoir.
+const formatDayFr = (date: Date): string => formatJourCabinet(date);
+const formatTimeFr = (date: Date): string => formatHeureCabinet(date);
 
 export function BookingConfirmation({ confirmed, naturo, email, backHref }: BookingConfirmationProps) {
   const { when, cat } = confirmed;
