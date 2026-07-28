@@ -79,3 +79,6 @@ TODO.local.md
 # Worktrees temporaires des agents
 .claude/worktrees/
 .claude/launch.json
+
+# Artefacts Playwright MCP
+.playwright-mcp/
