@@ -302,6 +302,58 @@ if (DB_DRIVER !== "mysql") {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+    -- Assistant IA (Naturobot) et base de connaissances.
+    -- Ces six tables manquaient au bloc SQLite : sur une base vierge (clone du dépôt,
+    -- intégration continue), le Naturobot était entièrement cassé et deleteUserCascade
+    -- levait « no such table: ai_chat_messages » — donc la suppression de compte RGPD
+    -- échouait. Invisible en production, où elles existent via les migrations MySQL.
+    CREATE TABLE IF NOT EXISTS ai_discussions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      client_id INTEGER,
+      theme TEXT,
+      title TEXT NOT NULL DEFAULT 'Nouvelle discussion',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS ai_chat_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      discussion_id INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS ai_chat_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      day TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS assistant_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      custom_instructions TEXT NOT NULL DEFAULT '',
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS kb_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      filename TEXT,
+      mime_type TEXT,
+      char_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'ready',
+      error TEXT,
+      folder TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS kb_chunks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      document_id INTEGER NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      embedding TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS content_posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

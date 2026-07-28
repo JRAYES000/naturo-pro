@@ -119,3 +119,28 @@ test("cascade RGPD — toute table avec user_id est couverte par deleteUserCasca
       `→ leurs lignes survivraient à la suppression du compte.`,
   );
 });
+
+// ─── Test 4 : le DDL SQLite crée bien TOUTES les tables du schéma ─────────────
+// Six tables (assistant IA + base de connaissances) manquaient au bloc
+// `CREATE TABLE IF NOT EXISTS` de server/storage.ts. Sur une base vierge — clone du
+// dépôt, intégration continue — le Naturobot était entièrement cassé et
+// deleteUserCascade levait « no such table », donc la suppression de compte RGPD
+// échouait. Invisible en production, où les tables existent via les migrations MySQL.
+test("DDL SQLite — aucune table du schéma ne manque à la création", async () => {
+  const { db } = await import("../server/db");
+  const NAME = Symbol.for("drizzle:Name");
+  const manquantes: string[] = [];
+  for (const t of Object.values(sqlite as Record<string, any>)) {
+    if (!t || typeof t !== "object" || !(NAME in t)) continue;
+    try {
+      await (db as any).all(`SELECT 1 FROM ${t[NAME]} LIMIT 1`);
+    } catch {
+      manquantes.push(t[NAME]);
+    }
+  }
+  assert.deepEqual(
+    manquantes, [],
+    `Tables déclarées dans shared/schema.ts mais jamais créées par le DDL SQLite de `
+      + `server/storage.ts :\n  ${manquantes.join("\n  ")}`,
+  );
+});
