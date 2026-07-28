@@ -6,6 +6,7 @@
  */
 
 import { storage } from "../../storage";
+import { APP_TZ } from "../../timezone";
 import {
   isGoogleConfigured,
   pushEventToCalendar, updateEventInCalendar, deleteEventFromCalendar,
@@ -79,7 +80,7 @@ export async function syncApptToGoogle(
     startAt: appt.startAt,
     endAt: appt.endAt,
     attendeeEmail: client?.email || appt.clientEmail || null,
-    timeZone: "Europe/Paris",
+    timeZone: APP_TZ,
   };
 
   // Visio → on demande à Google un lien Meet, sauf si le RDV en a déjà un.

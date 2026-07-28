@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url || __filename);
 
 let google: any = null;
 try { google = require("googleapis").google; } catch {}
+import { APP_TZ } from "./timezone";
 
 /**
  * Secret HMAC de signature du `state` OAuth. Le state porte le userId à travers le
@@ -160,11 +161,11 @@ export type CalendarEventInput = {
   startAt: number; // ms epoch
   endAt: number;   // ms epoch
   attendeeEmail?: string | null;
-  timeZone?: string; // default Europe/Paris
+  timeZone?: string; // défaut : APP_TZ
 };
 
 function buildEventBody(ev: CalendarEventInput, addMeet = false) {
-  const tz = ev.timeZone || "Europe/Paris";
+  const tz = ev.timeZone || APP_TZ;
   // Make sure every Naturo-created event carries the marker (idempotent)
   let description = ev.description || "";
   if (!description.includes(NATURO_DESC_MARKER)) description += NATURO_DESC_MARKER;

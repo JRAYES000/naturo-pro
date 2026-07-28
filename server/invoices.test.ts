@@ -57,11 +57,16 @@ test("buildInvoiceNumber — padding 4 chiffres, pas de troncature au-delà", ()
   assert.equal(buildInvoiceNumber(2026, 12345), "FACT-2026-12345");
 });
 
-test("getYearFromMs — bascule d'année en TZ Europe/Bucharest (UTC+2 hiver)", () => {
-  // 31 déc 2025 23:00 UTC → 01:00 le 1er janv 2026 à Bucarest → année 2026
-  assert.equal(getYearFromMs(Date.UTC(2025, 11, 31, 23, 0, 0)), 2026);
-  // 31 déc 2025 21:00 UTC → 23:00 le 31 déc à Bucarest → année 2025
-  assert.equal(getYearFromMs(Date.UTC(2025, 11, 31, 21, 0, 0)), 2025);
+test("getYearFromMs — bascule d'année en heure de Paris (UTC+1 en hiver)", () => {
+  // Le millésime du numéro de facture doit suivre l'heure du praticien, pas l'UTC
+  // ni le fuseau du serveur : une facture émise le 31 décembre au soir appartient
+  // à l'exercice qui s'achève.
+  // 31 déc 2025 23:30 UTC → 00:30 le 1er janv 2026 à Paris → année 2026
+  assert.equal(getYearFromMs(Date.UTC(2025, 11, 31, 23, 30, 0)), 2026);
+  // 31 déc 2025 22:30 UTC → 23:30 le 31 déc à Paris → année 2025
+  assert.equal(getYearFromMs(Date.UTC(2025, 11, 31, 22, 30, 0)), 2025);
+  // Ce second cas est exactement celui que l'ancien fuseau (Bucharest, UTC+2)
+  // se trompait : il y voyait 00:30 le 1er janvier, donc 2026.
 });
 
 test("formatPriceCents — virgule décimale + symbole €", () => {

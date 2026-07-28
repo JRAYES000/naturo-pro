@@ -34,6 +34,7 @@ const TABLE_PAIRS: Array<[string, any, any]> = [
   ["kbDocuments",          sqlite.kbDocuments,          mysql.kbDocuments],
   ["kbChunks",             sqlite.kbChunks,             mysql.kbChunks],
   ["contentPosts",         sqlite.contentPosts,         mysql.contentPosts],
+  ["stripeProcessedSessions", sqlite.stripeProcessedSessions, mysql.stripeProcessedSessions],
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,5 +87,35 @@ test("drift — noms de tables exportés identiques SQLite↔MySQL", () => {
     missingInMysql,
     [],
     `Tables manquantes dans schema-mysql.ts (MySQL) : ${missingInMysql.join(", ")}`,
+  );
+});
+
+// ─── Test 3 : exhaustivité du cascade RGPD ───────────────────────────────────
+// Toute table portant un `user_id` DOIT figurer dans USER_SCOPED_TABLES, sinon la
+// suppression de compte (RGPD art. 17) laisse des données orphelines derrière elle.
+// C'est exactement ce qui était arrivé : 7 tables couvertes sur 18, dont les
+// documents de santé des clients.
+test("cascade RGPD — toute table avec user_id est couverte par deleteUserCascade", async () => {
+  const { USER_SCOPED_TABLES } = await import("../server/storage");
+
+  const couvertes = new Set(
+    (USER_SCOPED_TABLES as readonly any[]).map((t) => Object.values(getTableColumns(t))[0].table[Symbol.for("drizzle:Name")]),
+  );
+
+  const manquantes: string[] = [];
+  for (const [exportName, t] of Object.entries(sqlite as Record<string, any>)) {
+    if (!t || typeof t !== "object" || !(Symbol.for("drizzle:Name") in t)) continue;
+    const nomTable = t[Symbol.for("drizzle:Name")];
+    if (nomTable === "users") continue; // supprimée à part, en dernier
+    const aUserId = Object.values(getTableColumns(t) as Record<string, { name: string }>)
+      .some((c) => c.name === "user_id");
+    if (aUserId && !couvertes.has(nomTable)) manquantes.push(`${exportName} ("${nomTable}")`);
+  }
+
+  assert.deepEqual(
+    manquantes,
+    [],
+    `Tables avec user_id absentes de USER_SCOPED_TABLES (server/storage.ts) :\n  ${manquantes.join("\n  ")}\n` +
+      `→ leurs lignes survivraient à la suppression du compte.`,
   );
 });

@@ -6,6 +6,7 @@ import {
   int,
   boolean,
   bigint,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -116,6 +117,33 @@ export const invoices = mysqlTable("invoices", {
   practitionerSnapshot: text("practitioner_snapshot"), // JSON: nom, SIRET, adresse, IBAN, etc.
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  // Unicité du numéro de facture par praticien : la numérotation séquentielle
+  // sans doublon est une obligation légale (art. 242 nonies A du CGI). C'est cette
+  // contrainte — et non le compteur — qui garantit l'unicité en cas de création
+  // concurrente ; storage.createInvoiceNumbered retente sur rejet.
+  uniqInvoiceUserNumber: uniqueIndex("uniq_invoice_user_number").on(t.userId, t.number),
+}));
+
+/**
+ * Sessions Stripe déjà traitées — marqueur DURABLE, indépendant du rendez-vous.
+ *
+ * L'idempotence du rattrapage reposait sur `appointments.stripe_session_id`. Or la
+ * suppression d'un rendez-vous est PHYSIQUE : si la praticienne supprimait un RDV
+ * réglé par acompte (doublon, no-show, client remboursé), la ligne disparaissait, le
+ * rattrapage ne « voyait » plus la session comme traitée et recréait le rendez-vous
+ * — avec un nouvel événement Google Agenda et un second email de confirmation, toutes
+ * les 30 minutes pendant 48 h. Un remboursement Stripe ne repasse pas
+ * `payment_status` à autre chose que « paid », donc rien ne l'arrêtait.
+ *
+ * Cette table n'est jamais purgée avec le rendez-vous : une session traitée le reste.
+ */
+export const stripeProcessedSessions = mysqlTable("stripe_processed_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  sessionId: varchar("session_id", { length: 255 }).notNull().unique(),
+  appointmentId: int("appointment_id"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
 export const invoiceItems = mysqlTable("invoice_items", {

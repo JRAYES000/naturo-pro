@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -101,6 +101,33 @@ export const invoices = sqliteTable("invoices", {
   practitionerSnapshot: text("practitioner_snapshot"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
+}, (t) => ({
+  // Unicité du numéro de facture par praticien : la numérotation séquentielle
+  // sans doublon est une obligation légale (art. 242 nonies A du CGI). C'est cette
+  // contrainte — et non le compteur — qui garantit l'unicité en cas de création
+  // concurrente ; storage.createInvoiceNumbered retente sur rejet.
+  uniqInvoiceUserNumber: uniqueIndex("uniq_invoice_user_number").on(t.userId, t.number),
+}));
+
+/**
+ * Sessions Stripe déjà traitées — marqueur DURABLE, indépendant du rendez-vous.
+ *
+ * L'idempotence du rattrapage reposait sur `appointments.stripe_session_id`. Or la
+ * suppression d'un rendez-vous est PHYSIQUE : si la praticienne supprimait un RDV
+ * réglé par acompte (doublon, no-show, client remboursé), la ligne disparaissait, le
+ * rattrapage ne « voyait » plus la session comme traitée et recréait le rendez-vous
+ * — avec un nouvel événement Google Agenda et un second email de confirmation, toutes
+ * les 30 minutes pendant 48 h. Un remboursement Stripe ne repasse pas
+ * `payment_status` à autre chose que « paid », donc rien ne l'arrêtait.
+ *
+ * Cette table n'est jamais purgée avec le rendez-vous : une session traitée le reste.
+ */
+export const stripeProcessedSessions = sqliteTable("stripe_processed_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  sessionId: text("session_id").notNull().unique(),
+  appointmentId: integer("appointment_id"),
+  createdAt: integer("created_at").notNull(),
 });
 
 export const invoiceItems = sqliteTable("invoice_items", {

@@ -10,6 +10,7 @@
 import { storage } from "../storage";
 import { isGoogleConfigured } from "../google";
 import { importFromGoogleForUser } from "./helpers/google-sync";
+import { reconcilierPaiementsStripe } from "./helpers/stripe-booking";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   getLocalHour, getLocalDayKey, TZ,
@@ -57,6 +58,27 @@ export function startCrons(): void {
       } catch (e) { console.error("[google-poll]", e); }
     }, POLL_MS);
     console.log(`[google-poll] enabled, every ${POLL_MS / 60000} min`);
+  }
+
+  // ─── Rattrapage des acomptes Stripe payés sans rendez-vous créé ────────────
+  // Le RDV est normalement créé au retour sur success_url ; si le client ferme son
+  // onglet juste après avoir payé, l'argent est encaissé et rien n'est réservé.
+  // Ce passage repêche ces sessions. Idempotent (stripe_session_id), best-effort.
+  const RECONCILE_MS = 30 * 60 * 1000;
+  if (isProd || process.env.ENABLE_STRIPE_RECONCILE === "1") {
+    const passe = async () => {
+      try {
+        const bilan = await reconcilierPaiementsStripe();
+        if (bilan.crees || bilan.conflits) {
+          console.log(`[stripe-reconcile] examinées=${bilan.examines} créées=${bilan.crees} conflits=${bilan.conflits}`);
+        }
+      } catch (e: any) {
+        console.error("[stripe-reconcile]", e?.message || e);
+      }
+    };
+    setInterval(passe, RECONCILE_MS);
+    void passe(); // un premier passage au démarrage rattrape ce qui traînait
+    console.log(`[stripe-reconcile] enabled, every ${RECONCILE_MS / 60000} min`);
   }
 
   // ─── Cron interne horaire : déclenche reminders/recap aux heures locales ────

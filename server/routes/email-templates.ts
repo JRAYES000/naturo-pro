@@ -18,6 +18,7 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { formatRdvTime } from "../email";
 import { getDefaultTemplate } from "../email-templates/defaults";
 import { renderTemplate } from "../email-templates/render";
+import { APP_TZ } from "../timezone";
 
 const VALID_KINDS = ["confirmation", "reminder_d1", "cancellation"] as const;
 type ValidKind = typeof VALID_KINDS[number];
@@ -155,7 +156,7 @@ export function registerEmailTemplateRoutes(app: Express): void {
           const cat = appt.categoryId ? await storage.getCategory(appt.categoryId) : null;
           const client = appt.clientId ? await storage.getClient(appt.clientId) : null;
           const dateText = new Intl.DateTimeFormat("fr-FR", {
-            timeZone: "Europe/Paris",
+            timeZone: APP_TZ,
             weekday: "long", day: "numeric", month: "long", year: "numeric",
           }).format(new Date(appt.startAt));
           const timeText = formatRdvTime(appt.startAt);

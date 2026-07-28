@@ -11,7 +11,7 @@
 import { storage } from "../../storage";
 import {
   computeInvoiceTotals, computeItemTotal, buildPractitionerSnapshot,
-  buildInvoiceNumber, getYearFromMs,
+  getYearFromMs,
   type InvoiceItemDraft,
 } from "../../invoices";
 import type { Invoice } from "@shared/schema-active";
@@ -61,13 +61,12 @@ export async function createInvoiceFromAppointment(
   const totals = computeInvoiceTotals(items, vatEnabled, vatRate);
   const issueDate = Date.now();
   const year = getYearFromMs(issueDate);
-  const counter = await storage.nextInvoiceCounter(userId, year);
-  const number = buildInvoiceNumber(year, counter);
   const snapshot = buildPractitionerSnapshot(user);
 
-  const inv = await storage.createInvoice({
+  // Numérotation + insertion dans le même appel : la contrainte UNIQUE(user_id,
+  // number) garantit l'unicité et createInvoiceNumbered retente sur collision.
+  const inv = await storage.createInvoiceNumbered(year, {
     userId,
-    number,
     status: "draft",
     issueDate,
     dueDate: null,

@@ -32,7 +32,9 @@ import { renderUserTemplate } from "../email-templates/render-user";
 import type { TemplateVars } from "../email-templates/render";
 import { syncApptToGoogle } from "./helpers/google-sync";
 import { getEmailConfigForUser, sendBookingConfirmationEmail } from "./helpers/email-sending";
+import { creerRdvDepuisSessionPayee } from "./helpers/stripe-booking";
 import { escapeHtmlMin, htmlFeedbackPage } from "./helpers/html";
+import { zonedCivilDays, zonedDateKey, zonedTimeToUtc, zonedTimeKey } from "../timezone";
 import type { RouteContext } from "./_context";
 
 // Fenêtre maximale interrogeable en une requête de créneaux. Sans borne,
@@ -60,7 +62,53 @@ export function clampSlotWindow(rawFrom: number, rawTo: number, defaultSpanMs: n
   const usable = (n: number) => Number.isFinite(n) && Math.abs(n) <= MAX_TIMESTAMP_MS;
   const from = usable(rawFrom) ? rawFrom : Date.now();
   const end = usable(rawTo) ? rawTo : from + defaultSpanMs;
-  return { from, to: Math.min(Math.max(end, from), from + MAX_SLOT_WINDOW_MS) };
+  // Le `to` calculé doit lui aussi rester dans la plage Date : avec from = 8.64e15,
+  // from + 21 jours la dépasse, et `new Date(to)` devient Invalid Date → zonedParts
+  // lève RangeError → 500 sur une route publique.
+  const to = Math.min(Math.max(end, from), from + MAX_SLOT_WINDOW_MS, MAX_TIMESTAMP_MS);
+  return { from: Math.min(from, to), to };
+}
+
+/**
+ * Créneaux libres d'un praticien sur une fenêtre, groupés par jour LOCAL.
+ *
+ * Source unique : /availability et /manage/:token/slots en avaient chacun une copie
+ * mot pour mot. Les deux calculaient les heures d'ouverture dans le fuseau du
+ * *process* (setHours) et rangeaient les créneaux sous leur date *UTC* — en
+ * production (serveur en UTC), une plage saisie « 09:00–17:00 » était servie
+ * décalée, et un créneau après minuit heure de Paris atterrissait la veille.
+ *
+ * `busy` : intervalles [début, fin] déjà occupés (RDV non annulés).
+ */
+function computeSlotsByDay(opts: {
+  avail: Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
+  busy: Array<[number, number]>;
+  from: number;
+  to: number;
+  durationMin: number;
+  stepMin?: number;
+}): Record<string, string[]> {
+  const { avail, busy, from, to, durationMin, stepMin = 30 } = opts;
+  const slotsByDay: Record<string, string[]> = {};
+  const minBookHorizon = Date.now() + 2 * 3600 * 1000;
+
+  for (const jour of zonedCivilDays(from, to)) {
+    for (const a of avail) {
+      if (a.dayOfWeek !== jour.weekday) continue;
+      const [sh, sm] = a.startTime.split(":").map(Number);
+      const [eh, em] = a.endTime.split(":").map(Number);
+      const start = zonedTimeToUtc(jour.year, jour.month, jour.day, sh, sm);
+      const end = zonedTimeToUtc(jour.year, jour.month, jour.day, eh, em);
+      for (let cur = start; cur + durationMin * 60000 <= end; cur += stepMin * 60000) {
+        if (cur < minBookHorizon) continue;
+        const slotEnd = cur + durationMin * 60000;
+        if (busy.some(([s, e]) => cur < e && slotEnd > s)) continue;
+        const key = zonedDateKey(cur);
+        (slotsByDay[key] ||= []).push(new Date(cur).toISOString());
+      }
+    }
+  }
+  return slotsByDay;
 }
 
 export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
@@ -117,36 +165,12 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       21 * 86400000,
     );
     const durationMin = Math.max(15, Number(req.query.duration || 60));
-    const stepMin = 30;
 
     const avail = await storage.listAvailability(u.id);
     const appts = await storage.listAppointments(u.id, from, to);
-    const apptRanges = appts.filter(a => a.status !== "cancelled").map(a => [a.startAt, a.endAt] as [number, number]);
+    const busy = appts.filter(a => a.status !== "cancelled").map(a => [a.startAt, a.endAt] as [number, number]);
 
-    const slotsByDay: Record<string, string[]> = {};
-    const minBookHorizon = Date.now() + 2 * 3600 * 1000;
-
-    for (let t = from; t <= to; t += 86400000) {
-      const d = new Date(t); d.setHours(0, 0, 0, 0);
-      const dow = d.getDay();
-      const todays = avail.filter(a => a.dayOfWeek === dow);
-      for (const a of todays) {
-        const [sh, sm] = a.startTime.split(":").map(Number);
-        const [eh, em] = a.endTime.split(":").map(Number);
-        const start = new Date(d); start.setHours(sh, sm, 0, 0);
-        const end = new Date(d); end.setHours(eh, em, 0, 0);
-        for (let cur = start.getTime(); cur + durationMin * 60000 <= end.getTime(); cur += stepMin * 60000) {
-          if (cur < minBookHorizon) continue;
-          const slotEnd = cur + durationMin * 60000;
-          const overlaps = apptRanges.some(([s, e]) => cur < e && slotEnd > s);
-          if (overlaps) continue;
-          const key = new Date(cur).toISOString().slice(0, 10);
-          if (!slotsByDay[key]) slotsByDay[key] = [];
-          slotsByDay[key].push(new Date(cur).toISOString());
-        }
-      }
-    }
-    res.json({ slotsByDay });
+    res.json({ slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin }) });
   });
 
   app.post("/api/public/:slug/book", ctx.bookingLimiter, async (req, res) => {
@@ -257,39 +281,14 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         "Votre paiement n'a pas été confirmé. Votre rendez-vous n'a pas été réservé."));
     }
 
-    const m = session.metadata || {};
-    const categoryId = Number(m.categoryId);
-    const startAt = Number(m.startAt);
-    const cat = categoryId ? await storage.getCategory(categoryId) : null;
-    if (!cat || cat.userId !== u.id || !startAt) return fail("Données de réservation invalides.");
-    const endAt = startAt + cat.durationMinutes * 60000;
-
-    // Re-vérifie l'absence de conflit (best-effort : le créneau a pu être pris entre-temps).
-    const sameDay = await storage.listAppointments(u.id, startAt - 86400000, endAt + 86400000);
-    if (sameDay.some((a) => a.status !== "cancelled" && startAt < a.endAt && endAt > a.startAt)) {
+    // Création déléguée au helper partagé : le rattrapage périodique
+    // (reconcilierPaiementsStripe) emprunte exactement le même chemin, ce qui évite
+    // qu'un acompte payé reste sans rendez-vous si le client ferme son onglet ici.
+    const r = await creerRdvDepuisSessionPayee(u, session);
+    if (r.statut === "donnees_invalides") return fail("Données de réservation invalides.");
+    if (r.statut === "creneau_pris") {
       return res.type("html").send(htmlFeedbackPage("warning", "Créneau indisponible",
         "Ce créneau vient d'être réservé entre-temps. Votre acompte vous sera remboursé — contactez votre praticien."));
-    }
-
-    const depositCents = Number(m.depositCents) || Number(session.amount_total) || 0;
-    let appt = await storage.createAppointment({
-      userId: u.id, clientId: null, categoryId,
-      startAt, endAt, status: "confirmed",
-      clientFirstName: m.firstName || "", clientLastName: m.lastName || "",
-      clientEmail: m.email || null, clientPhone: m.phone || null,
-      notesBefore: m.notes || null,
-      location: cat.location, googleEventId: null, reminderSent: false,
-      paymentStatus: "paid", paymentAmountCents: depositCents,
-      stripeSessionId: sessionId, depositAmountCents: depositCents,
-    } as any);
-
-    const eventId = await syncApptToGoogle("create", u.id, appt);
-    if (eventId) {
-      const refreshed = await storage.updateAppointment(appt.id, { googleEventId: eventId } as any);
-      if (refreshed) appt = refreshed;
-    }
-    if (m.email) {
-      void sendBookingConfirmationEmail(u, appt, cat).catch((e) => console.error("[pay-confirm]", e));
     }
     return res.type("html").send(htmlFeedbackPage("success", "Rendez-vous confirmé",
       "Votre acompte a été reçu et votre rendez-vous est confirmé. Vous allez recevoir un email de confirmation. À très vite !"));
@@ -470,9 +469,8 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         }
         const rdvDateText = formatRdvDate(appt.startAt);
         const cat = appt.categoryId ? await storage.getCategory(appt.categoryId) : null;
-        const startDate = new Date(appt.startAt);
-        const hh = String(startDate.getHours()).padStart(2, "0");
-        const mm = String(startDate.getMinutes()).padStart(2, "0");
+        // Heure LOCALE au fuseau applicatif, et non celle du process (UTC en prod).
+        const heureRdv = zonedTimeKey(appt.startAt);
 
         // 1) Confirmation d'annulation au CLIENT (template éditable "cancellation").
         if (clientEmailAddr) {
@@ -480,7 +478,7 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
             "client.name": clientName || "(client inconnu)",
             "client.email": clientEmailAddr,
             "appointment.date": rdvDateText,
-            "appointment.time": `${hh}:${mm}`,
+            "appointment.time": heureRdv,
             "appointment.duration": cat?.durationMinutes ? `${cat.durationMinutes} min` : "",
             "appointment.category": cat?.name || "",
             "appointment.address": appt.location || cat?.location || "",
@@ -537,40 +535,17 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       req.query.to ? new Date(String(req.query.to)).getTime() : NaN,
       7 * 86400000,
     );
-    const stepMin = 30;
-
     const avail = await storage.listAvailability(u.id);
     const existing = await storage.listAppointments(u.id, from, to);
     // Exclure le RDV courant de la liste des conflits (il sera remplacé)
-    const apptRanges = existing
+    const busy = existing
       .filter(a => a.status !== "cancelled" && a.id !== appt.id)
       .map(a => [a.startAt, (a as any).endAt] as [number, number]);
 
-    const slotsByDay: Record<string, string[]> = {};
-    const minBookHorizon = Date.now() + 2 * 3600 * 1000;
-
-    for (let t = from; t <= to; t += 86400000) {
-      const d = new Date(t); d.setHours(0, 0, 0, 0);
-      const dow = d.getDay();
-      const todays = avail.filter(a => a.dayOfWeek === dow);
-      for (const a of todays) {
-        const [sh, sm] = a.startTime.split(":").map(Number);
-        const [eh, em] = a.endTime.split(":").map(Number);
-        const start = new Date(d); start.setHours(sh, sm, 0, 0);
-        const end = new Date(d); end.setHours(eh, em, 0, 0);
-        for (let cur = start.getTime(); cur + durationMin * 60000 <= end.getTime(); cur += stepMin * 60000) {
-          if (cur < minBookHorizon) continue;
-          const slotEnd = cur + durationMin * 60000;
-          const overlaps = apptRanges.some(([s, e]) => cur < e && slotEnd > s);
-          if (overlaps) continue;
-          const key = new Date(cur).toISOString().slice(0, 10);
-          if (!slotsByDay[key]) slotsByDay[key] = [];
-          slotsByDay[key].push(new Date(cur).toISOString());
-        }
-      }
-    }
-
-    res.json({ slotsByDay, durationMinutes: durationMin });
+    res.json({
+      slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin }),
+      durationMinutes: durationMin,
+    });
   });
 
   /**

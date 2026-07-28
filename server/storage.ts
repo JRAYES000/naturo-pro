@@ -21,7 +21,7 @@ import {
   consultationNotes, sessions, invoices, invoiceItems, emailTemplates,
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
-  assistantSettings, kbDocuments, kbChunks, contentPosts,
+  assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -38,6 +38,8 @@ import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
 import { rankThemes } from "./social-content";
+// Fonction pure (formatage du numéro) — pas de cycle : invoices.ts n'importe pas storage.
+import { buildInvoiceNumber, invoiceNumberPrefix } from "./invoices";
 
 // Compat dual ESM/CJS : tsx (dev) utilise import.meta.url ; esbuild bundle en CJS
 // où import.meta vaut {} → fallback sur __filename (natif CJS).
@@ -393,6 +395,18 @@ if (DB_DRIVER !== "mysql") {
     try { raw.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch { /* already exists */ }
   }
   try { raw.exec(`ALTER TABLE appointments ADD COLUMN review_email_sent_at INTEGER`); } catch { /* already exists */ }
+  // Unicité du numéro de facture par praticien (obligation légale, art. 242 nonies A CGI).
+  try { raw.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_invoice_user_number ON invoices (user_id, number)`); } catch { /* déjà présent */ }
+  // Marqueur durable des sessions Stripe traitées (cf. shared/schema.ts).
+  try {
+    raw.exec(`CREATE TABLE IF NOT EXISTS stripe_processed_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      session_id TEXT NOT NULL UNIQUE,
+      appointment_id INTEGER,
+      created_at INTEGER NOT NULL
+    )`);
+  } catch { /* déjà présent */ }
   // Paiements Stripe — colonnes sur users (best-effort migration SQLite)
   const stripeUserCols = [
     "stripe_secret_key TEXT",
@@ -555,6 +569,20 @@ async function runMysqlMigrations(): Promise<void> {
       // Carrousels en images (migration 1.8) — visuels stockés sur content_posts
       "ALTER TABLE content_posts ADD COLUMN slides_json TEXT NULL",
       "ALTER TABLE content_posts ADD COLUMN background_image LONGTEXT NULL",
+      // Unicité du numéro de facture par praticien (art. 242 nonies A CGI). Vérifié
+      // sans doublon en production avant ajout ; en cas de doublon préexistant le
+      // DDL échoue en best-effort et la contrainte n'est pas posée — d'où le retry
+      // applicatif dans storage.createInvoiceNumbered, qui ne dépend pas d'elle.
+      "CREATE UNIQUE INDEX uniq_invoice_user_number ON invoices (user_id, number)",
+      // Marqueur durable des sessions Stripe traitées — survit à la suppression du RDV.
+      `CREATE TABLE IF NOT EXISTS stripe_processed_sessions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        session_id VARCHAR(255) NOT NULL UNIQUE,
+        appointment_id INT NULL,
+        created_at BIGINT NOT NULL,
+        INDEX idx_sps_user (user_id)
+      )`,
     ]) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -658,6 +686,61 @@ async function first<T>(queryPromise: Promise<T[]>): Promise<T | undefined> {
   return rows[0];
 }
 
+/**
+ * Toutes les tables portant une colonne `user_id`, dans l'ordre de suppression
+ * du cascade RGPD (`deleteUserCascade`). `users` est exclue : elle est supprimée
+ * en dernier, à part.
+ *
+ * Cette liste EST le droit à l'effacement (RGPD art. 17). L'ancienne version du
+ * cascade en couvrait 7 sur 18 : les documents clients (PDF d'analyses, donc des
+ * données de santé au sens de l'art. 9), les anamnèses, les programmes, les
+ * forfaits et l'historique IA survivaient à la suppression du compte, alors que
+ * la réponse affichait « toutes vos données ont été supprimées ».
+ *
+ * Exhaustivité vérifiée par shared/schema-drift.test.ts : ajouter une table avec
+ * un `user_id` sans l'ajouter ici fait échouer les tests.
+ *
+ * NB : natural_solutions contient aussi les solutions GLOBALES (user_id NULL),
+ * qui ne matchent pas `eq(userId, …)` et sont donc préservées. Voulu.
+ */
+export const USER_SCOPED_TABLES = [
+  invoices,
+  consultationNotes,
+  appointments,
+  clients,
+  appointmentCategories,
+  availabilitySlots,
+  sessions,
+  anamnesisResponses,
+  anamnesisTemplates,
+  programs,
+  clientDocuments,
+  packages,
+  naturalSolutions,
+  emailTemplates,
+  aiChatMessages,
+  aiDiscussions,
+  aiChatUsage,
+  contentPosts,
+  stripeProcessedSessions,
+] as const;
+
+/**
+ * Sérialise les tâches d'un même utilisateur : une chaîne de promesses par userId.
+ * Node est mono-thread, donc il suffit d'enchaîner — aucune primitive de verrou.
+ * Utilisé par la numérotation des factures, où lire et incrémenter le compteur
+ * doivent former un tout indivisible.
+ */
+const filesParUser = new Map<number, Promise<unknown>>();
+function serialiserParUser<T>(userId: number, tache: () => Promise<T>): Promise<T> {
+  const precedent = filesParUser.get(userId) ?? Promise.resolve();
+  // .catch() sur le maillon précédent : un échec ne doit pas bloquer la file.
+  const suivant = precedent.then(tache, tache);
+  // On mémorise une version « neutralisée » pour ne pas propager d'unhandled rejection.
+  filesParUser.set(userId, suivant.catch(() => undefined));
+  return suivant;
+}
+
 // ── Interface ─────────────────────────────────────────────────────────────────
 export interface IStorage {
   // Users
@@ -744,7 +827,10 @@ export interface IStorage {
   deleteInvoice(id: number): Promise<void>;
   replaceInvoiceItems(invoiceId: number, items: InsertInvoiceItem[]): Promise<InvoiceItem[]>;
   getInvoiceByAppointment(appointmentId: number): Promise<Invoice | undefined>;
+  isStripeSessionProcessed(sessionId: string): Promise<boolean>;
+  markStripeSessionProcessed(userId: number, sessionId: string, appointmentId: number | null): Promise<boolean>;
   nextInvoiceCounter(userId: number, year: number): Promise<number>;
+  createInvoiceNumbered(year: number, data: Omit<InsertInvoice, "number"> & { createdAt: number; updatedAt: number }): Promise<Invoice>;
 
   // PHASE 3.5-C — Email templates
   getEmailTemplate(userId: number, kind: string): Promise<EmailTemplate | undefined>;
@@ -855,20 +941,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserCascade(userId: number): Promise<void> {
-    // Ordre de suppression respectant les FK : invoice_items → invoices →
-    // notes → appointments → clients → categories → availability → sessions → user.
-    // Les invoice_items sont récupérés via les invoices du user.
+    // invoice_items est la seule table sans user_id : on passe par les factures.
     const userInvoices = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.userId, userId));
     for (const inv of userInvoices) {
       await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, inv.id));
     }
-    await db.delete(invoices).where(eq(invoices.userId, userId));
-    await db.delete(consultationNotes).where(eq(consultationNotes.userId, userId));
-    await db.delete(appointments).where(eq(appointments.userId, userId));
-    await db.delete(clients).where(eq(clients.userId, userId));
-    await db.delete(appointmentCategories).where(eq(appointmentCategories.userId, userId));
-    await db.delete(availabilitySlots).where(eq(availabilitySlots.userId, userId));
-    await db.delete(sessions).where(eq(sessions.userId, userId));
+    // Puis TOUTES les tables portant un user_id (cf. USER_SCOPED_TABLES).
+    for (const table of USER_SCOPED_TABLES) {
+      await db.delete(table).where(eq((table as any).userId, userId));
+    }
     await db.delete(users).where(eq(users.id, userId));
   }
 
@@ -1238,17 +1319,101 @@ export class DatabaseStorage implements IStorage {
     ) as Appointment[];
   }
 
+  /** Une session Stripe a-t-elle déjà donné lieu à un rendez-vous ? (marqueur durable) */
+  async isStripeSessionProcessed(sessionId: string): Promise<boolean> {
+    const row = await first(
+      db.select({ id: stripeProcessedSessions.id })
+        .from(stripeProcessedSessions)
+        .where(eq(stripeProcessedSessions.sessionId, sessionId)),
+    );
+    return !!row;
+  }
+
+  /**
+   * Marque une session Stripe comme traitée. Idempotent : une seconde insertion viole
+   * la contrainte UNIQUE et est avalée — c'est justement le signal « déjà traité ».
+   * Renvoie true si CE appel a posé le marqueur (donc si l'appelant peut créer le RDV).
+   */
+  async markStripeSessionProcessed(userId: number, sessionId: string, appointmentId: number | null): Promise<boolean> {
+    try {
+      await db.insert(stripeProcessedSessions).values({
+        userId, sessionId, appointmentId, createdAt: Date.now(),
+      });
+      return true;
+    } catch (e: any) {
+      const signature = `${e?.code || ""} ${e?.message || e}`;
+      if (/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(signature)) return false;
+      throw e;
+    }
+  }
+
   async nextInvoiceCounter(userId: number, year: number): Promise<number> {
-    const u = await this.getUserById(userId);
-    if (!u) throw new Error("User introuvable");
-    const currentYear = (u as any).invoiceCounterYear ?? 0;
-    const currentValue = (u as any).invoiceCounterValue ?? 0;
-    const next = currentYear === year ? currentValue + 1 : 1;
-    await this.updateUser(userId, {
-      invoiceCounterYear: year,
-      invoiceCounterValue: next,
-    } as any);
-    return next;
+    // Le prochain numéro est DÉDUIT des factures déjà émises pour cette année-là,
+    // et non d'un compteur stocké sur users.
+    //
+    // Les colonnes users.invoice_counter_{year,value} ne mémorisaient qu'UNE seule
+    // année. Émettre une facture antidatée sur l'exercice précédent (cas courant en
+    // janvier : les séances de décembre) écrasait le compteur de l'année en cours,
+    // qui repartait ensuite à 1 et entrait en collision avec les numéros existants.
+    // Elles sont conservées en base (données de production) mais ne sont plus ni
+    // lues ni écrites.
+    //
+    // Cette fonction est en LECTURE SEULE : la concurrence est traitée en amont par
+    // serialiserParUser et, en dernier ressort, par l'index UNIQUE(user_id, number)
+    // avec retry — cf. createInvoiceNumbered.
+    const prefixe = invoiceNumberPrefix(year);
+    const rows: Array<{ number: string }> = await db
+      .select({ number: invoices.number })
+      .from(invoices)
+      .where(and(eq(invoices.userId, userId), like(invoices.number, `${prefixe}%`)));
+
+    let max = 0;
+    for (const r of rows) {
+      const n = Number(String(r.number).slice(prefixe.length));
+      if (Number.isInteger(n) && n > max) max = n;
+    }
+    return max + 1;
+  }
+
+  /**
+   * Crée une facture en lui attribuant son numéro.
+   *
+   * Trois protections empilées, parce qu'aucune ne suffit seule :
+   *
+   *  1. `nextInvoiceCounter` incrémente atomiquement (plus de read-modify-write).
+   *  2. Les créations d'un MÊME praticien sont sérialisées en mémoire. Sans ça,
+   *     l'incrément et la relecture du compteur ne forment pas un tout : sous
+   *     N appels concurrents, les N incréments s'exécutent d'abord et les N
+   *     lectures renvoient toutes la même valeur finale. Mesuré : 8 créations
+   *     simultanées produisaient 8 fois le même numéro.
+   *  3. L'index UNIQUE(user_id, number) est le filet de sécurité — il couvre le
+   *     cas multi-process (plusieurs workers Passenger), que le verrou mémoire ne
+   *     voit pas. Le perdant est rejeté par la base et retenté avec un numéro frais.
+   *
+   * ponytail: verrou en mémoire, donc efficace dans un seul process. Si l'app passe
+   * à plusieurs workers, c'est (3) qui tient — au prix de quelques retries. Passer à
+   * un verrou en base (SELECT … FOR UPDATE) seulement si ces retries deviennent visibles.
+   */
+  async createInvoiceNumbered(
+    year: number,
+    data: Omit<InsertInvoice, "number"> & { createdAt: number; updatedAt: number },
+  ): Promise<Invoice> {
+    const userId = (data as any).userId as number;
+    return serialiserParUser(userId, async () => {
+      let derniere: unknown;
+      for (let tentative = 1; tentative <= 8; tentative++) {
+        const number = buildInvoiceNumber(year, await this.nextInvoiceCounter(userId, year));
+        try {
+          return await this.createInvoice({ ...data, number } as any);
+        } catch (e: any) {
+          const signature = `${e?.code || ""} ${e?.message || e}`;
+          if (!/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(signature)) throw e;
+          derniere = e;
+          console.warn(`[facture] numéro ${number} déjà pris, nouvel essai (${tentative}/8)`);
+        }
+      }
+      throw derniere;
+    });
   }
 
   // ── PHASE 3.5-B — Manage token ———————————————————————————————————————

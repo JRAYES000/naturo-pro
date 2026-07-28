@@ -14,6 +14,7 @@ import { buildIcsForAppointment } from "../../ics";
 import { renderConfirmationEmail } from "../../email-templates/confirmation";
 import { renderUserTemplate } from "../../email-templates/render-user";
 import type { TemplateVars } from "../../email-templates/render";
+import { zonedTimeKey } from "../../timezone";
 
 export function getEmailConfigForUser(u: any): EmailConfig | null {
   if (!u?.resendApiKey || !u?.emailFromAddress) return null;
@@ -107,14 +108,14 @@ export async function sendBookingConfirmationEmail(
     cancelUrl,
   });
 
-  const startDate = new Date(appt.startAt);
-  const hh = String(startDate.getHours()).padStart(2, "0");
-  const mm = String(startDate.getMinutes()).padStart(2, "0");
+  // Heure LOCALE au fuseau applicatif, et non celle du process (UTC en production).
+  // Troisième copie de ce calcul dans le code — celle de l'email de CONFIRMATION,
+  // le tout premier que reçoit le client.
   const tplVars: TemplateVars = {
     "client.name": `${clientFirstName} ${appt.clientLastName || ""}`.trim(),
     "client.email": clientEmail || "",
     "appointment.date": rdvDateText,
-    "appointment.time": `${hh}:${mm}`,
+    "appointment.time": zonedTimeKey(appt.startAt),
     "appointment.duration": `${durationMin} min`,
     "appointment.category": cat?.name || "",
     "appointment.address": location || "",

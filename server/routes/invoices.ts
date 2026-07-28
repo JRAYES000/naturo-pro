@@ -18,7 +18,7 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { sendEmail } from "../email";
 import {
   computeInvoiceTotals, computeItemTotal, buildPractitionerSnapshot,
-  buildInvoiceNumber, getYearFromMs, generateInvoicePdf, renderInvoiceEmail,
+  getYearFromMs, generateInvoicePdf, renderInvoiceEmail,
   type PractitionerSnapshot,
 } from "../invoices";
 import { createInvoiceFromAppointment } from "./helpers/invoices";
@@ -96,13 +96,12 @@ export function registerInvoiceRoutes(app: Express): void {
     const totals = computeInvoiceTotals(data.items, vatEnabled, vatRate);
     const issueDate = data.issueDate || Date.now();
     const year = getYearFromMs(issueDate);
-    const counter = await storage.nextInvoiceCounter(req.userId!, year);
-    const number = buildInvoiceNumber(year, counter);
     const snapshot = buildPractitionerSnapshot(user);
 
-    const inv = await storage.createInvoice({
+    // Numérotation + insertion dans le même appel : la contrainte UNIQUE(user_id,
+    // number) garantit l'unicité et createInvoiceNumbered retente sur collision.
+    const inv = await storage.createInvoiceNumbered(year, {
       userId: req.userId!,
-      number,
       status: "draft",
       issueDate,
       dueDate: data.dueDate ?? null,

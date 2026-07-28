@@ -14,50 +14,44 @@ import type { TemplateVars } from "../../email-templates/render";
 import { storage } from "../../storage";
 import { getEmailConfigForUser } from "./email-sending";
 import { genToken } from "./tokens";
+import { APP_TZ, zonedHour, zonedDateKey, zonedParts, zonedTimeToUtc, zonedTimeKey } from "../../timezone";
 
 const APP_URL = process.env.APP_URL || "https://app.ecole-naturo.fr";
-export const TZ = "Europe/Bucharest";
 
-/** Renvoie l'heure (0–23) actuelle dans le timezone donné. */
+/**
+ * Fuseau des crons. Était figé sur Europe/Bucharest (celui du fondateur) alors que
+ * les praticiens sont en France : « rappel à 10h » partait à 9h heure de Paris.
+ * Délègue désormais à APP_TZ — source unique, cf. server/timezone.ts.
+ */
+export const TZ = APP_TZ;
+
+/** Heure (0–23) locale au fuseau applicatif. */
 export function getLocalHour(tz = TZ, date = new Date()): number {
-  const parts = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: tz, hour: "2-digit", hourCycle: "h23",
-  }).formatToParts(date);
-  const h = parts.find((p) => p.type === "hour")?.value || "0";
-  return parseInt(h, 10);
+  return zonedHour(date.getTime(), tz);
 }
 
 /** Clé jour locale "YYYY-MM-DD" pour idempotence quotidienne du cron. */
 export function getLocalDayKey(tz = TZ, date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(date);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
+  return zonedDateKey(date.getTime(), tz);
 }
 
 /**
- * Renvoie [startMs, endMs] pour le "jour J + offsetDays" en TZ locale.
- * Ex: offsetDays=1 => demain 00:00:00 → demain 23:59:59.999 (en TZ)
+ * Renvoie [from, to] couvrant le jour civil « aujourd'hui + offsetDays » dans `tz`,
+ * de minuit local à minuit local moins 1 ms.
+ *
+ * L'ancienne implémentation soustrayait `heureLocaleÀMinuitUTC × 3600000`, ce qui
+ * n'est juste que pour les fuseaux à l'est de Greenwich et supposait une journée de
+ * 24 h pile. Ici les deux bornes passent par zonedTimeToUtc : les jours de bascule
+ * heure d'été / heure d'hiver (23 h ou 25 h) sont couverts exactement.
  */
 export function getLocalDayBounds(offsetDays: number, tz = TZ): { from: number; to: number } {
-  const now = new Date();
-  const target = new Date(now.getTime() + offsetDays * 86400000);
-  const ymdParts = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(target);
-  const get = (t: string) => parseInt(ymdParts.find((p) => p.type === t)?.value || "0", 10);
-  const y = get("year"), m = get("month"), d = get("day");
-  // On construit un Date à minuit local en passant par une chaine ISO et l'offset TZ.
-  // Approche fiable : on calcule la différence entre UTC et le timezone cible à cette date.
-  const utcMidnight = Date.UTC(y, m - 1, d, 0, 0, 0, 0);
-  // Déterminer l'offset TZ à cet instant (en min)
-  const probe = new Date(utcMidnight);
-  const localHour = getLocalHour(tz, probe);
-  // Si l'heure locale à utcMidnight n'est pas 0, on ajuste : minuit local = utcMidnight - localHour heures
-  const from = utcMidnight - localHour * 3600 * 1000;
-  const to = from + 86400000 - 1;
-  return { from, to };
+  const today = zonedParts(Date.now(), tz);
+  // Arithmétique en jours CIVILS via UTC (pas de DST en UTC) plutôt qu'en ms.
+  const cible = new Date(Date.UTC(today.year, today.month - 1, today.day) + offsetDays * 86400000);
+  const lendemain = new Date(cible.getTime() + 86400000);
+  const minuit = (d: Date) =>
+    zonedTimeToUtc(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 0, 0, tz);
+  return { from: minuit(cible), to: minuit(lendemain) - 1 };
 }
 
 /**
@@ -123,14 +117,12 @@ export async function sendRemindersForUser(user: any): Promise<{ sent: number; s
       });
 
       // PHASE 3.5.5 : try DB-editable template first, fallback hardcodé
-      const startDate = new Date(a.startAt);
-      const hh = String(startDate.getHours()).padStart(2, "0");
-      const mm = String(startDate.getMinutes()).padStart(2, "0");
+      // Heure LOCALE au fuseau applicatif, et non celle du process (UTC en prod).
       const tplVars: TemplateVars = {
         "client.name": `${ctx.clientFirstName || ""} ${ctx.clientLastName || ""}`.trim(),
         "client.email": ctx.clientEmail || "",
         "appointment.date": dateText,
-        "appointment.time": `${hh}:${mm}`,
+        "appointment.time": zonedTimeKey(a.startAt),
         "appointment.duration": ctx.cat?.durationMinutes ? `${ctx.cat.durationMinutes} min` : "",
         "appointment.category": ctx.cat?.name || "",
         "appointment.address": a.location || ctx.cat?.location || "",

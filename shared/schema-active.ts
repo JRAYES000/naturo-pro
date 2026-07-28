@@ -46,6 +46,7 @@ export const assistantSettings = activeSchema.assistantSettings;
 export const kbDocuments = activeSchema.kbDocuments;
 export const kbChunks = activeSchema.kbChunks;
 export const contentPosts = activeSchema.contentPosts;
+export const stripeProcessedSessions = activeSchema.stripeProcessedSessions;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;

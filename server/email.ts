@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { Resend } from "resend";
 import type { Appointment, AppointmentCategory, Client, User } from "@shared/schema";
+import { APP_TZ } from "./timezone";
 
 // Cache des instances Resend par clé (une praticienne = une clé)
 const resendCache = new Map<string, Resend>();
@@ -94,10 +95,10 @@ const FR_MONTHS = [
 ];
 
 /**
- * Formate une date ms epoch dans le timezone Europe/Bucharest pour affichage humain.
+ * Formate une date ms epoch dans le fuseau applicatif (APP_TZ) pour affichage humain.
  * Ex: "vendredi 8 mai 2026 à 14h30"
  */
-export function formatRdvDate(startAtMs: number, tz = "Europe/Bucharest"): string {
+export function formatRdvDate(startAtMs: number, tz = APP_TZ): string {
   const d = new Date(startAtMs);
   // On utilise toLocaleString pour récupérer les composants en TZ cible
   const parts = new Intl.DateTimeFormat("fr-FR", {
@@ -120,7 +121,7 @@ export function formatRdvDate(startAtMs: number, tz = "Europe/Bucharest"): strin
 }
 
 /** Récupère "HH:MM" dans un TZ donné */
-export function formatRdvTime(startAtMs: number, tz = "Europe/Bucharest"): string {
+export function formatRdvTime(startAtMs: number, tz = APP_TZ): string {
   const parts = new Intl.DateTimeFormat("fr-FR", {
     timeZone: tz,
     hour: "2-digit",

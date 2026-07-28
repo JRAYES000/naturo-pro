@@ -3,8 +3,15 @@
  *
  * Modèle : clé secrète PERSO par praticien (stockée sur users.stripe_secret_key).
  * Usage : acompte à la réservation en ligne via Stripe Checkout (mode payment).
- * Pas de webhook — on confirme le paiement en récupérant la session au retour
- * (success_url) avec la clé du praticien. La clé secrète ne sort jamais du serveur.
+ * La clé secrète ne sort jamais du serveur.
+ *
+ * Pas de webhook : chaque praticien ayant SA propre clé, un webhook exigerait que
+ * chacun crée un endpoint et copie un secret de signature depuis son tableau de bord
+ * Stripe — trop de configuration pour la cible. On confirme donc le paiement en
+ * récupérant la session au retour (success_url), COMPLÉTÉ par un rattrapage
+ * périodique (listRecentPaidSessions + reconcilierPaiementsStripe) : si le client
+ * paie puis ferme son onglet avant la redirection, son rendez-vous était perdu alors
+ * que l'argent avait été prélevé.
  */
 
 const STRIPE_API = "https://api.stripe.com/v1";
@@ -79,6 +86,32 @@ export async function createCheckoutSession(
     return { id: data.id, url: data.url };
   } catch (e: any) {
     return { error: e?.message || "Échec requête Stripe" };
+  }
+}
+
+/**
+ * Liste les Checkout Sessions PAYÉES créées depuis `sinceMs`.
+ *
+ * Sert au rattrapage : une session payée dont aucun rendez-vous ne porte le
+ * stripe_session_id est un paiement encaissé sans réservation créée.
+ * Renvoie [] en cas d'erreur (le rattrapage est best-effort, jamais bloquant).
+ */
+export async function listRecentPaidSessions(secretKey: string, sinceMs: number): Promise<any[]> {
+  const since = Math.floor(sinceMs / 1000);
+  try {
+    const res = await fetch(
+      `${STRIPE_API}/checkout/sessions?limit=100&created[gte]=${since}`,
+      {
+        headers: { Authorization: `Bearer ${secretKey}` },
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
+    if (!res.ok) return [];
+    const data: any = await res.json();
+    const sessions: any[] = Array.isArray(data?.data) ? data.data : [];
+    return sessions.filter((s) => s?.payment_status === "paid");
+  } catch {
+    return [];
   }
 }
 

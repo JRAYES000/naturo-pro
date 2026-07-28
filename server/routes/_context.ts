@@ -9,6 +9,7 @@
  */
 
 import type { RequestHandler } from "express";
+import { APP_TZ } from "../timezone";
 import {
   authLimiter, bookingLimiter, apiLimiter, publicLimiter, adminLimiter,
 } from "./limiters";
@@ -33,6 +34,6 @@ export function createContext(): RouteContext {
     adminLimiter,
     BASE_DOMAIN: (process.env.BASE_DOMAIN || "app.ecole-naturo.fr").toLowerCase(),
     APP_URL: process.env.APP_URL || "https://app.ecole-naturo.fr",
-    TZ: "Europe/Bucharest",
+    TZ: APP_TZ,
   };
 }

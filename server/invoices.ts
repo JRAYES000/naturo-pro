@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import PDFDocument from "pdfkit";
 import type { Invoice, InvoiceItem, User } from "@shared/schema-active";
+import { APP_TZ } from "./timezone";
 
 export interface InvoiceItemDraft {
   description: string;
@@ -111,12 +112,16 @@ export function formatDateFR(ms: number | null | undefined): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    timeZone: "Europe/Bucharest",
+    timeZone: APP_TZ,
   });
 }
 
-/** Année locale à partir d'une date ms (Europe/Bucharest). */
-export function getYearFromMs(ms: number, tz = "Europe/Bucharest"): number {
+/**
+ * Année locale à partir d'une date ms.
+ * Détermine le millésime du numéro de facture : une facture émise le 31 décembre
+ * à 23h30 heure de Paris doit porter l'année qui s'achève, pas la suivante.
+ */
+export function getYearFromMs(ms: number, tz = APP_TZ): number {
   const d = new Date(ms);
   const fmt = new Intl.DateTimeFormat("fr-FR", {
     timeZone: tz,
@@ -128,8 +133,12 @@ export function getYearFromMs(ms: number, tz = "Europe/Bucharest"): number {
 /**
  * Construit le numéro FACT-YYYY-XXXX (4 chiffres minimum).
  */
+export function invoiceNumberPrefix(year: number): string {
+  return `FACT-${year}-`;
+}
+
 export function buildInvoiceNumber(year: number, value: number): string {
-  return `FACT-${year}-${String(value).padStart(4, "0")}`;
+  return `${invoiceNumberPrefix(year)}${String(value).padStart(4, "0")}`;
 }
 
 /** Label humain d'un mode de paiement. */

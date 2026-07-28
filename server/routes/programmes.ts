@@ -10,6 +10,7 @@ import { z } from "zod";
 import PDFDocument from "pdfkit";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
+import { APP_TZ } from "../timezone";
 
 // ── Schéma d'une section de programme ────────────────────────────────────────
 const programSectionSchema = z.object({
@@ -58,7 +59,7 @@ const PDF_PASTELS = [
 function formatDateLocalFR(ms: number): string {
   return new Date(ms).toLocaleDateString("fr-FR", {
     day: "2-digit", month: "long", year: "numeric",
-    timeZone: "Europe/Paris",
+    timeZone: APP_TZ,
   });
 }
 

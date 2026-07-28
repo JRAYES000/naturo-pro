@@ -272,7 +272,7 @@ export default function Settings() {
               <Switch checked={!!draft.emailRemindersEnabled} onCheckedChange={(v) => setDraft({ ...draft, emailRemindersEnabled: v })} data-testid="switch-reminders" />
             </div>
             <div>
-              <Label className="text-sm">Heure d'envoi des rappels (heure locale Europe/Bucharest)</Label>
+              <Label className="text-sm">Heure d'envoi des rappels (heure française)</Label>
               <select
                 className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
                 value={draft.reminderHourLocal ?? 10}
