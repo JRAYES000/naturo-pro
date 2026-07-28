@@ -9,7 +9,34 @@ const require = createRequire(import.meta.url || __filename);
 let google: any = null;
 try { google = require("googleapis").google; } catch {}
 
-const STATE_SECRET = process.env.SESSION_SECRET || "naturo-pro-dev-secret";
+/**
+ * Secret HMAC de signature du `state` OAuth. Le state porte le userId à travers le
+ * redirect Google : s'il est forgeable, n'importe qui peut rattacher SON agenda
+ * Google au compte d'un autre praticien.
+ *
+ * Le repli ci-dessous est publié dans le dépôt (public) — donc réservé au dev. En
+ * production on refuse de signer plutôt que de signer avec un secret connu de tous :
+ * la connexion Google échoue bruyamment et le reste de l'app continue de tourner
+ * (préféré à un crash au boot sur une app déjà en ligne).
+ *
+ * ⚠️ SESSION_SECRET n'a aucun autre consommateur dans le code — les sessions sont des
+ * tokens aléatoires stockés en base, pas des cookies signés. Son absence en production
+ * passait donc totalement inaperçue : tout fonctionnait, avec un secret public.
+ */
+const DEV_STATE_SECRET = "naturo-pro-dev-secret";
+
+function stateSecret(): string | null {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  return process.env.NODE_ENV === "production" ? null : DEV_STATE_SECRET;
+}
+
+if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+  console.error(
+    "[google] SESSION_SECRET absent : connexion Google Calendar DÉSACTIVÉE " +
+      "(refus de signer le state OAuth avec le secret de dev, public dans le dépôt). " +
+      "Définissez SESSION_SECRET dans .env — openssl rand -hex 32",
+  );
+}
 
 export type GoogleTokens = {
   access_token?: string | null;
@@ -38,19 +65,24 @@ export function getOAuth2Client(redirectUri?: string) {
 }
 
 // --- State signing (CSRF + carries userId across redirect) ---
-export function signState(payload: Record<string, any>): string {
+/** Signe le state OAuth. `null` si aucun secret utilisable (cf. stateSecret). */
+export function signState(payload: Record<string, any>): string | null {
+  const secret = stateSecret();
+  if (!secret) return null;
   const json = JSON.stringify({ ...payload, ts: Date.now() });
   const b64 = Buffer.from(json).toString("base64url");
-  const sig = crypto.createHmac("sha256", STATE_SECRET).update(b64).digest("base64url");
+  const sig = crypto.createHmac("sha256", secret).update(b64).digest("base64url");
   return `${b64}.${sig}`;
 }
 
 export function verifyState(state: string, maxAgeMs = 10 * 60 * 1000): Record<string, any> | null {
+  const secret = stateSecret();
+  if (!secret) return null;
   if (!state || typeof state !== "string") return null;
   const [b64, sig] = state.split(".");
   if (!b64 || !sig) return null;
-  const expected = crypto.createHmac("sha256", STATE_SECRET).update(b64).digest("base64url");
-  if (sig !== expected) return null;
+  const expected = crypto.createHmac("sha256", secret).update(b64).digest("base64url");
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   try {
     const payload = JSON.parse(Buffer.from(b64, "base64url").toString("utf8"));
     if (typeof payload.ts !== "number" || Date.now() - payload.ts > maxAgeMs) return null;

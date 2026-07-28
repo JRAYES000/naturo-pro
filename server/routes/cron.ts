@@ -15,10 +15,22 @@ import {
   getLocalHour, getLocalDayKey, TZ,
 } from "./helpers/reminders";
 
-// État mutable d'idempotence du cron email (anciennement closures dans registerRoutes).
-let lastReminderRunDay = "";
-let lastRecapRunDay = "";
-let lastReviewRunDay = "";
+// État mutable d'idempotence du cron email, PAR PRATICIEN.
+// Historiquement trois chaînes globales recevaient une clé `${jour}:${userId}` :
+// avec 2 comptes, chacun écrasait la clé de l'autre et les deux se réarmaient
+// mutuellement à chaque tick (le récap quotidien, seul sans garde-fou en base,
+// partait donc jusqu'à 4× par jour). Une Map par userId supprime l'interférence.
+//
+// Le marquage reste APRÈS l'envoi, comme avant : le cron tourne 4× dans l'heure
+// cible, donc une exception (hoquet MySQL sur listAppointmentsForReminder, qui n'a
+// pas de try/catch interne) est rattrapée au tick suivant. Marquer avant coûterait
+// une journée entière de rappels J-1 pour un incident DB de quelques secondes.
+//
+// ponytail: état en mémoire, donc un redéploiement pendant l'heure d'envoi peut
+// relancer un récap. Passer à une colonne `recap_sent_at` si ça devient gênant.
+const lastReminderRunDay = new Map<number, string>();
+const lastRecapRunDay = new Map<number, string>();
+const lastReviewRunDay = new Map<number, string>();
 
 export function startCrons(): void {
   const isProd = process.env.NODE_ENV === "production";
@@ -61,35 +73,35 @@ export function startCrons(): void {
         // Reminders
         for (const u of users) {
           const reminderHour = (u as any).reminderHourLocal ?? 10;
-          if (hour === reminderHour && lastReminderRunDay !== `${dayKey}:${u.id}`) {
+          if (hour === reminderHour && lastReminderRunDay.get(u.id) !== dayKey) {
             try {
               const r = await sendRemindersForUser(u);
               if (r.sent || r.errors) {
                 console.log(`[reminder-cron] user=${u.id} sent=${r.sent} skipped=${r.skipped} errors=${r.errors}`);
               }
-              lastReminderRunDay = `${dayKey}:${u.id}`;
+              lastReminderRunDay.set(u.id, dayKey);
             } catch (e: any) {
               console.error(`[reminder-cron] user=${u.id}:`, e?.message || e);
             }
           }
           const recapHour = (u as any).recapHourLocal ?? 10;
-          if (hour === recapHour && lastRecapRunDay !== `${dayKey}:${u.id}` && (u as any).dailyRecapEnabled) {
+          if (hour === recapHour && lastRecapRunDay.get(u.id) !== dayKey && (u as any).dailyRecapEnabled) {
             try {
               const r = await sendDailyRecapForUser(u);
               if (r.ok) console.log(`[recap-cron] user=${u.id} sent (${r.sent} RDV)`);
-              lastRecapRunDay = `${dayKey}:${u.id}`;
+              lastRecapRunDay.set(u.id, dayKey);
             } catch (e: any) {
               console.error(`[recap-cron] user=${u.id}:`, e?.message || e);
             }
           }
           // Avis Google — tourne à la même heure que le récap, 1×/jour
-          if (hour === recapHour && lastReviewRunDay !== `${dayKey}:${u.id}` && (u as any).reviewRequestEnabled) {
+          if (hour === recapHour && lastReviewRunDay.get(u.id) !== dayKey && (u as any).reviewRequestEnabled) {
             try {
               const r = await sendReviewRequestsForUser(u);
               if (r.sent || r.errors) {
                 console.log(`[review-cron] user=${u.id} sent=${r.sent} skipped=${r.skipped} errors=${r.errors}`);
               }
-              lastReviewRunDay = `${dayKey}:${u.id}`;
+              lastReviewRunDay.set(u.id, dayKey);
             } catch (e: any) {
               console.error(`[review-cron] user=${u.id}:`, e?.message || e);
             }

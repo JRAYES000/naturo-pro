@@ -46,6 +46,9 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
         "X-Title": "Naturo Pro",
       },
       body: JSON.stringify({ model: EMBED_MODEL, input: batch }),
+      // `fetch` (Node) n'a aucun timeout par défaut : sans ça, un upstream qui pend
+      // immobilise la requête Express et un slot du pool MySQL indéfiniment.
+      signal: AbortSignal.timeout(60_000),
     });
     if (!res.ok) throw new Error(`Embeddings OpenRouter ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data: any = await res.json();

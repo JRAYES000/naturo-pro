@@ -75,7 +75,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isFetching, user, navigate]);
 
-  if (isLoading || isFetching || !user) {
+  // On ne bloque le rendu que sur le PREMIER chargement. Inclure `isFetching` ici
+  // démontait tout l'arbre protégé à chaque refetch en arrière-plan de /api/auth/me
+  // (retour de Settings, invalidation…) : formulaire en cours vidé, scroll perdu.
+  // Le useEffect ci-dessus garde `isFetching` : c'est lui qui doit attendre la fin
+  // du refetch avant de conclure à l'absence de session.
+  if (isLoading || !user) {
     return <div className="flex items-center justify-center h-screen text-muted-foreground">Chargement…</div>;
   }
   return <>{children}</>;

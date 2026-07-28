@@ -351,7 +351,10 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     if (!parsed.success) return res.status(400).json({ message: "Confirmation invalide", errors: parsed.error.errors });
     const user = await storage.getUserById(req.userId!);
     if (!user) return res.status(401).json({ message: "Non authentifié" });
-    if (hashPassword(parsed.data.password) !== user.passwordHash) {
+    // bcrypt tire un sel aléatoire à chaque hash : comparer hashPassword(x) au hash
+    // stocké renvoyait TOUJOURS false → la suppression de compte répondait 403 même
+    // avec le bon mot de passe. Il faut passer par bcrypt.compare (verifyPassword).
+    if (!verifyPassword(parsed.data.password, user.passwordHash || "")) {
       return res.status(403).json({ message: "Mot de passe incorrect" });
     }
     // Bloquer la suppression du compte demo et du compte owner pour sécurité.
@@ -360,8 +363,9 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     }
     console.log(`[gdpr-delete] user=${user.id} email=${user.email} slug=${user.slug}`);
     await storage.deleteUserCascade(user.id);
-    // Clear cookie
-    res.clearCookie("naturo_session", { path: "/" });
+    // Passe par le helper : le nom du cookie dépend de COOKIE_NAME (naturo_sid en
+    // prod). Le nom en dur "naturo_session" ne supprimait rien en production.
+    clearSessionCookie(res);
     res.json({ ok: true, message: "Votre compte et toutes vos données ont été supprimés." });
   });
 }

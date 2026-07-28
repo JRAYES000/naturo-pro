@@ -38,6 +38,9 @@ export async function generateBackgroundImage(prompt: string): Promise<string | 
         modalities: ["image"],
         image_config: { aspect_ratio: "4:5" },
       }),
+      // `fetch` (Node) n'a aucun timeout par défaut. La génération d'image est lente :
+      // budget large, mais borné (sinon la requête Express ne se libère jamais).
+      signal: AbortSignal.timeout(120_000),
     });
     if (!res.ok) return null;
     const data: any = await res.json();

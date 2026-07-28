@@ -32,6 +32,19 @@ export function registerGoogleRoutes(app: Express): void {
       return res.redirect("/?error=not_authenticated#/login");
     }
     const state = signState({ userId: req.userId });
+    if (!state) {
+      // Cette route est atteinte par window.location.href depuis Settings : un JSON
+      // brut s'afficherait en plein écran et sortirait l'utilisateur de la SPA. On
+      // reprend le motif de redirection déjà utilisé par le callback ci-dessous.
+      // Settings affiche `reason` tel quel dans un toast → message lisible en français,
+      // comme le fait déjà le callback pour les erreurs remontées par Google.
+      console.error("[google] SESSION_SECRET absent — connexion refusée (state OAuth non signable)");
+      return res.redirect(
+        "/?google=error&reason=" +
+          encodeURIComponent("SESSION_SECRET n'est pas configuré sur le serveur") +
+          "#/app/settings",
+      );
+    }
     const url = getAuthUrl(state);
     res.redirect(url!);
   });

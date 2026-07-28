@@ -35,6 +35,34 @@ import { getEmailConfigForUser, sendBookingConfirmationEmail } from "./helpers/e
 import { escapeHtmlMin, htmlFeedbackPage } from "./helpers/html";
 import type { RouteContext } from "./_context";
 
+// Fenêtre maximale interrogeable en une requête de créneaux. Sans borne,
+// `?to=999999999999999` faisait tourner la boucle jour-par-jour ~11 millions de
+// fois : Node étant mono-thread, tout le site gelait — sur une route publique
+// non authentifiée, où publicLimiter autorise 60 req/min.
+const MAX_SLOT_WINDOW_MS = 90 * 86400000;
+
+// Borne des timestamps que Date sait représenter (±8 640 000 000 000 000 ms).
+// Elle est indispensable sur `from` LUI-MÊME, pas seulement sur l'écart to−from :
+// au-delà de ~1,21e24 l'ulp du float64 dépasse 86400000, donc le `t += 86400000` de
+// la boucle appelante ne fait PLUS avancer `t` — boucle infinie, event loop mort
+// définitivement (pire que la version non bornée, qui finissait par se terminer).
+// En deçà de 8.64e15 l'ulp vaut au plus 2 ms : la progression est garantie.
+const MAX_TIMESTAMP_MS = 8.64e15;
+
+/**
+ * Normalise et borne une fenêtre [from, to] issue de la query string.
+ * Valeurs absentes, non numériques ou hors plage Date → maintenant / + defaultSpanMs.
+ * `to` est ramené dans [from, from + MAX_SLOT_WINDOW_MS].
+ *
+ * Terminaison garantie de la boucle appelante : au plus 91 itérations.
+ */
+export function clampSlotWindow(rawFrom: number, rawTo: number, defaultSpanMs: number): { from: number; to: number } {
+  const usable = (n: number) => Number.isFinite(n) && Math.abs(n) <= MAX_TIMESTAMP_MS;
+  const from = usable(rawFrom) ? rawFrom : Date.now();
+  const end = usable(rawTo) ? rawTo : from + defaultSpanMs;
+  return { from, to: Math.min(Math.max(end, from), from + MAX_SLOT_WINDOW_MS) };
+}
+
 export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
   const APP_URL = ctx.APP_URL;
 
@@ -80,8 +108,14 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
   app.get("/api/public/:slug/availability", async (req, res) => {
     const u = await storage.getUserBySlug(req.params.slug);
     if (!u || !u.publicPageEnabled) return res.status(404).json({ message: "Page introuvable" });
-    const from = req.query.from ? Number(req.query.from) : Date.now();
-    const to = req.query.to ? Number(req.query.to) : (Date.now() + 21 * 86400000);
+    // Le test de truthiness reproduit l'ancien comportement : `?from=` (vide) doit
+    // valoir « absent » → maintenant. Sans lui, Number("") vaut 0 et la fenêtre
+    // basculait en 1970, renvoyant un praticien sans aucune disponibilité.
+    const { from, to } = clampSlotWindow(
+      req.query.from ? Number(req.query.from) : NaN,
+      req.query.to ? Number(req.query.to) : NaN,
+      21 * 86400000,
+    );
     const durationMin = Math.max(15, Number(req.query.duration || 60));
     const stepMin = 30;
 
@@ -497,11 +531,12 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     const cat = appt.categoryId ? await storage.getCategory(appt.categoryId) : null;
     const durationMin = cat ? cat.durationMinutes : 60;
 
-    // Fenêtre par défaut : 7 jours
-    const fromParam = req.query.from ? new Date(req.query.from as string).getTime() : Date.now();
-    const toParam = req.query.to ? new Date(req.query.to as string).getTime() : (Date.now() + 7 * 86400000);
-    const from = isNaN(fromParam) ? Date.now() : fromParam;
-    const to = isNaN(toParam) ? (Date.now() + 7 * 86400000) : toParam;
+    // Fenêtre par défaut : 7 jours, bornée à MAX_SLOT_WINDOW_MS (cf. clampSlotWindow).
+    const { from, to } = clampSlotWindow(
+      req.query.from ? new Date(String(req.query.from)).getTime() : NaN,
+      req.query.to ? new Date(String(req.query.to)).getTime() : NaN,
+      7 * 86400000,
+    );
     const stepMin = 30;
 
     const avail = await storage.listAvailability(u.id);

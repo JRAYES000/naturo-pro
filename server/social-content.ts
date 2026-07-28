@@ -172,6 +172,8 @@ export async function suggestContentAngles(themes: string[], voice: { name: stri
         max_tokens: 500, temperature: 0.5,
         response_format: { type: "json_object" },
       }),
+      // `fetch` (Node) n'a aucun timeout par défaut.
+      signal: AbortSignal.timeout(60_000),
     });
     if (!res.ok) return fallback;
     const data: any = await res.json();
@@ -300,6 +302,8 @@ export async function structureCarouselSlides(text: string): Promise<CarouselDec
         max_tokens: 2000, temperature: 0.1,
         response_format: { type: "json_object" },
       }),
+      // `fetch` (Node) n'a aucun timeout par défaut.
+      signal: AbortSignal.timeout(60_000),
     });
     if (!res.ok) return splitSlidesFromText(text);
     const data: any = await res.json();

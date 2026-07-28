@@ -69,6 +69,9 @@ export async function createCheckoutSession(
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: formEncode(body).join("&"),
+      // `fetch` (Node) n'a aucun timeout par défaut : un Stripe qui pend bloquerait
+      // la réservation du client sans jamais rendre la main.
+      signal: AbortSignal.timeout(20_000),
     });
     const data: any = await res.json();
     if (!res.ok) return { error: data?.error?.message || `Stripe HTTP ${res.status}` };
@@ -84,6 +87,7 @@ export async function retrieveCheckoutSession(secretKey: string, sessionId: stri
   try {
     const res = await fetch(`${STRIPE_API}/checkout/sessions/${encodeURIComponent(sessionId)}`, {
       headers: { Authorization: `Bearer ${secretKey}` },
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) return null;
     return await res.json();

@@ -22,6 +22,11 @@ export const MAX_HISTORY = 15; // nb de tours d'historique envoyés (borne coût
 const MAX_TOKENS = 4096; // marge confortable (~3000 mots) — évite les réponses coupées
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+// `fetch` (Node) n'a AUCUN timeout par défaut : un upstream qui pend immobilise
+// une requête Express et un slot du pool MySQL (connectionLimit: 10) indéfiniment.
+const TIMEOUT_MS = 60_000; // appels JSON courts
+const STREAM_TIMEOUT_MS = 180_000; // génération streamée — budget TOTAL de la réponse
+
 /** En-têtes communs OpenRouter. `stream` choisit l'Accept (SSE vs JSON). */
 function openrouterHeaders(apiKey: string, stream = false): Record<string, string> {
   return {
@@ -113,6 +118,7 @@ export async function askNaturoAssistant(
         max_tokens: MAX_TOKENS,
         temperature: 0.3,
       }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
     if (!res.ok) {
@@ -154,6 +160,7 @@ async function* streamMistralSegment(
       temperature: 0.3,
       stream: true,
     }),
+    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
   });
   if (!res.ok || !res.body) {
     const e: any = new Error(`OpenRouter ${res.status}`);
@@ -273,6 +280,7 @@ export async function generateDiscussionMeta(firstQuestion: string): Promise<{ t
         max_tokens: 80, temperature: 0.2,
         response_format: { type: "json_object" },
       }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) return fallback;
     const data: any = await res.json();

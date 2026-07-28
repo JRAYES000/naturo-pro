@@ -88,26 +88,27 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Log d'accès : méthode, chemin, statut, durée. JAMAIS le corps de la réponse.
+// Historiquement ce middleware concaténait `JSON.stringify(body)` : les tokens de
+// session (renvoyés par /api/auth/login et /register), les données de santé des
+// clients (allergies, antécédents, anamnèses) et l'export RGPD complet finissaient
+// en clair dans les logs serveur.
+//
+// Le chemin est expurgé au passage : plusieurs routes publiques portent leur token
+// DANS l'URL (/api/rdv/confirm/:token, /api/public/manage/:token, /api/public/
+// anamnese/:token). Les journaliser reviendrait à publier de quoi annuler un rendez-
+// vous ou lire une anamnèse. On masque tout segment qui ressemble à un token hex
+// (genToken = 48 chars, randomBytes(16|32) = 32|64) plutôt que d'entretenir une
+// liste de routes qui se désynchroniserait.
+const redactPathTokens = (p: string) => p.replace(/\/[0-9a-f]{16,}(?=\/|$)/gi, "/:token");
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
-    const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      log(logLine);
+      log(`${req.method} ${redactPathTokens(path)} ${res.statusCode} in ${Date.now() - start}ms`);
     }
   });
 
