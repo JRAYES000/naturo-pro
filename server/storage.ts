@@ -1164,7 +1164,29 @@ export class DatabaseStorage implements IStorage {
     return dbUpdateReturning<Client>(clients, id, patch);
   }
 
+  /**
+   * Supprime une fiche cliente ET tout ce qui s'y rattache.
+   *
+   * Seule la ligne `clients` était supprimée : les comptes-rendus de consultation, les
+   * documents de santé (PDF d'analyses), les réponses d'anamnèse, les programmes et les
+   * forfaits restaient en base indéfiniment — et les rendez-vous à venir gardaient leur
+   * client_id, donc les rappels automatiques continuaient de partir à une personne
+   * censée avoir été effacée. C'est le droit à l'effacement (RGPD art. 17) appliqué à
+   * une cliente, pas seulement au compte de la praticienne.
+   *
+   * Les rendez-vous sont CONSERVÉS (ils portent l'historique comptable et le lien avec
+   * les factures) mais détachés : client_id passe à NULL et les coordonnées nominatives
+   * sont vidées.
+   */
   async deleteClient(id: number): Promise<void> {
+    await db.delete(consultationNotes).where(eq(consultationNotes.clientId, id));
+    await db.delete(clientDocuments).where(eq(clientDocuments.clientId, id));
+    await db.delete(anamnesisResponses).where(eq(anamnesisResponses.clientId, id));
+    await db.delete(programs).where(eq(programs.clientId, id));
+    await db.delete(packages).where(eq(packages.clientId, id));
+    await db.update(appointments)
+      .set({ clientId: null, clientFirstName: null, clientLastName: null, clientEmail: null, clientPhone: null } as any)
+      .where(eq(appointments.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
   }
 

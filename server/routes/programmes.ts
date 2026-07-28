@@ -230,7 +230,12 @@ export function registerProgrammeRoutes(app: Express): void {
       let clientName: string | null = null;
       if (prog.clientId) {
         const client = await storage.getClient(prog.clientId);
-        if (client) clientName = `${client.firstName} ${client.lastName}`.trim();
+        // Contrôle de propriété : sans lui, un clientId pointant vers la fiche d'une
+        // autre praticienne faisait imprimer SON nom sur le PDF — de quoi énumérer les
+        // carnets clients de l'instance, un nom par document généré.
+        if (client && client.userId === req.userId) {
+          clientName = `${client.firstName} ${client.lastName}`.trim();
+        }
       }
 
       let content: ProgramSection[] = [];

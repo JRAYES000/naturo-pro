@@ -367,6 +367,18 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
   });
 
   // ─── Endpoint public : annulation client par token ──────────────────────────
+  /**
+   * GET /api/rdv/cancel/:token — page de CONFIRMATION, sans effet de bord.
+   *
+   * Cette route annulait le rendez-vous directement sur un GET. Or les messageries
+   * pré-chargent les liens des emails pour les analyser (Outlook Safe Links, passerelles
+   * antivirus d'entreprise, aperçus mobiles) : le rendez-vous disparaissait de l'agenda
+   * sans que personne n'ait cliqué, la cliente se présentait sur un créneau libéré et la
+   * praticienne recevait un « X a annulé » qui n'avait jamais eu lieu.
+   *
+   * L'annulation réelle passe désormais par la page de gestion, qui la déclenche en POST
+   * après un clic explicite (et envoie les emails). Un GET ne modifie plus rien.
+   */
   app.get("/api/rdv/cancel/:token", async (req, res) => {
     const token = req.params.token;
     const appt = await storage.getAppointmentByCancelToken(token);
@@ -377,47 +389,22 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         "Ce lien d'annulation n'est pas valide. Contactez directement votre praticienne pour annuler.",
       ));
     }
-    if ((appt as any).clientCancelledAt) {
-      const dateText = formatRdvDate(appt.startAt);
+    const dateText = formatRdvDate(appt.startAt);
+    if ((appt as any).clientCancelledAt || appt.status === "cancelled") {
       return res.type("html").send(htmlFeedbackPage(
         "warning",
         "Rendez-vous déjà annulé",
         `Votre rendez-vous du ${escapeHtmlMin(dateText)} a déjà été annulé. Si c'est une erreur, contactez votre praticienne.`,
       ));
     }
-
-    const dateText = formatRdvDate(appt.startAt);
-    await storage.updateAppointment(appt.id, {
-      clientCancelledAt: Date.now(),
-      status: "cancelled",
-    } as any);
-
-    // Prévenir la praticienne par email
-    try {
-      const user = await storage.getUserById(appt.userId);
-      const cfg = user ? getEmailConfigForUser(user) : null;
-      if (user && cfg && user.email) {
-        let clientName = `${appt.clientFirstName || ""} ${appt.clientLastName || ""}`.trim();
-        if (appt.clientId) {
-          const c = await storage.getClient(appt.clientId);
-          if (c) clientName = `${c.firstName || ""} ${c.lastName || ""}`.trim();
-        }
-        const { subject, html, text } = renderClientCancellationEmail({
-          practitionerFirstName: (user.name || user.email).split(" ")[0],
-          clientName: clientName || "(client inconnu)",
-          rdvDateText: dateText,
-          appUrl: APP_URL,
-        });
-        await sendEmail(cfg, user.email, subject, html, text);
-      }
-    } catch (e: any) {
-      console.error("[cancel-notify]", e?.message || e);
-    }
-
     return res.type("html").send(htmlFeedbackPage(
-      "success",
-      "Rendez-vous annulé",
-      `Votre rendez-vous du ${escapeHtmlMin(dateText)} a bien été annulé. Votre praticienne a été prévenue. À bientôt.`,
+      "warning",
+      "Confirmer l'annulation",
+      `Votre rendez-vous du <strong>${escapeHtmlMin(dateText)}</strong> n'est pas encore annulé.<br><br>` +
+        `<a href="${APP_URL}/#/manage/${encodeURIComponent(token)}" ` +
+        `style="display:inline-block;padding:12px 24px;border-radius:12px;background:#186749;color:#fff;` +
+        `text-decoration:none;font-weight:700">Gérer mon rendez-vous</a><br><br>` +
+        `<span style="font-size:13px;color:#6b7a76">Vous pourrez l'annuler ou le reporter depuis cette page.</span>`,
     ));
   });
 

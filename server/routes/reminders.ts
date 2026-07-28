@@ -199,7 +199,9 @@ export function registerReminderRoutes(app: Express): void {
         location: (a as any).location || cat?.location || null,
         paymentStatus: (a as any).paymentStatus || null,
         confirmUrl: `${APP_URL}/api/rdv/confirm/${confirmToken}`,
-        cancelUrl: `${APP_URL}/api/rdv/cancel/${cancelToken}`,
+        // Page de gestion (annuler/reporter), comme le rappel automatique : un lien
+        // GET ne doit jamais annuler un rendez-vous à lui seul.
+        cancelUrl: `${APP_URL}/#/manage/${cancelToken}`,
         notesBefore: (a as any).notesBefore || null,
       });
 
