@@ -1,13 +1,4 @@
-import {
-  mysqlTable,
-  varchar,
-  text,
-  longtext,
-  int,
-  boolean,
-  bigint,
-  uniqueIndex,
-} from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, longtext, int, boolean, bigint, uniqueIndex, index } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -82,7 +73,10 @@ export const users = mysqlTable("users", {
   reviewRequestEnabled: boolean("review_request_enabled").notNull().default(false),
   // Apparence — préférence de thème de l'interface ("light" par défaut, "dark" sinon).
   themePreference: varchar("theme_preference", { length: 16 }).notNull().default("light"),
-});
+}, (t) => ({
+  idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
+  idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
+}));
 
 // ─── Invoices ──────────────────────────────────────────────────────────────────
 export const invoices = mysqlTable("invoices", {
@@ -122,7 +116,15 @@ export const invoices = mysqlTable("invoices", {
   // sans doublon est une obligation légale (art. 242 nonies A du CGI). C'est cette
   // contrainte — et non le compteur — qui garantit l'unicité en cas de création
   // concurrente ; storage.createInvoiceNumbered retente sur rejet.
-  uniqInvoiceUserNumber: uniqueIndex("uniq_invoice_user_number").on(t.userId, t.number),
+  idx_invoices_user: index("idx_invoices_user").on(t.userId),
+  idx_invoices_status: index("idx_invoices_status").on(t.status),
+  idx_invoices_issue_date: index("idx_invoices_issue_date").on(t.issueDate),
+  idx_invoices_appointment: index("idx_invoices_appointment").on(t.appointmentId),
+  idx_invoices_client: index("idx_invoices_client").on(t.clientId),
+  // Contrainte d'origine, posee des migrations/1.0-invoices.sql. L'audit du 28/07
+  // affirmait a tort qu'aucune unicite ne protegeait les numeros de facture et a
+  // ajoute un uniq_invoice_user_number identique : ce doublon est retire ici et en base.
+  uk_invoices_user_number: uniqueIndex("uk_invoices_user_number").on(t.userId, t.number),
 }));
 
 /**
@@ -144,7 +146,9 @@ export const stripeProcessedSessions = mysqlTable("stripe_processed_sessions", {
   sessionId: varchar("session_id", { length: 255 }).notNull().unique(),
   appointmentId: int("appointment_id"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_sps_user: index("idx_sps_user").on(t.userId),
+}));
 
 export const invoiceItems = mysqlTable("invoice_items", {
   id: int("id").autoincrement().primaryKey(),
@@ -154,7 +158,9 @@ export const invoiceItems = mysqlTable("invoice_items", {
   quantity: int("quantity").notNull().default(1), // entiers
   unitPriceCents: int("unit_price_cents").notNull().default(0), // HT par unité
   totalCents: int("total_cents").notNull().default(0), // qty * unit_price (HT)
-});
+}, (t) => ({
+  idx_invoice_items_invoice: index("idx_invoice_items_invoice").on(t.invoiceId),
+}));
 
 // ─── Appointment categories ───────────────────────────────────────────────────
 export const appointmentCategories = mysqlTable("appointment_categories", {
@@ -167,7 +173,9 @@ export const appointmentCategories = mysqlTable("appointment_categories", {
   color: varchar("color", { length: 20 }).default("#186749"),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
-});
+}, (t) => ({
+  idx_categories_user: index("idx_categories_user").on(t.userId),
+}));
 
 // ─── Availability slots — recurring weekly ────────────────────────────────────
 export const availabilitySlots = mysqlTable("availability_slots", {
@@ -176,7 +184,9 @@ export const availabilitySlots = mysqlTable("availability_slots", {
   dayOfWeek: int("day_of_week").notNull(), // 0=Sun..6=Sat
   startTime: varchar("start_time", { length: 10 }).notNull(), // "09:00"
   endTime: varchar("end_time", { length: 10 }).notNull(),     // "12:00"
-});
+}, (t) => ({
+  idx_avail_user: index("idx_avail_user").on(t.userId),
+}));
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
 export const clients = mysqlTable("clients", {
@@ -193,7 +203,9 @@ export const clients = mysqlTable("clients", {
   lifestyleNotes: text("lifestyle_notes"),
   penseBete: text("pense_bete"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_clients_user: index("idx_clients_user").on(t.userId),
+}));
 
 // ─── Appointments ─────────────────────────────────────────────────────────────
 export const appointments = mysqlTable("appointments", {
@@ -227,7 +239,13 @@ export const appointments = mysqlTable("appointments", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   // Avis Google — timestamp d'envoi de la demande (idempotence)
   reviewEmailSentAt: bigint("review_email_sent_at", { mode: "number" }),
-});
+}, (t) => ({
+  idx_appt_user_start: index("idx_appt_user_start").on(t.userId, t.startAt),
+  idx_appt_user_google_event: index("idx_appt_user_google_event").on(t.userId, t.googleEventId),
+  idx_appt_confirm_token: index("idx_appt_confirm_token").on(t.confirmToken),
+  idx_appt_cancel_token: index("idx_appt_cancel_token").on(t.cancelToken),
+  idx_appt_reminder_pending: index("idx_appt_reminder_pending").on(t.startAt, t.reminderSent),
+}));
 
 // ─── Consultation notes ───────────────────────────────────────────────────────
 export const consultationNotes = mysqlTable("consultation_notes", {
@@ -245,7 +263,11 @@ export const consultationNotes = mysqlTable("consultation_notes", {
   notesLibres: text("notes_libres"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_notes_user: index("idx_notes_user").on(t.userId),
+  idx_notes_client: index("idx_notes_client").on(t.clientId),
+  idx_notes_appointment: index("idx_notes_appointment").on(t.appointmentId),
+}));
 
 // ─── Sessions for auth ────────────────────────────────────────────────────────
 export const sessions = mysqlTable("sessions", {
@@ -253,7 +275,9 @@ export const sessions = mysqlTable("sessions", {
   userId: int("user_id").notNull(),
   token: varchar("token", { length: 128 }).notNull().unique(),
   expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_sessions_expires: index("idx_sessions_expires").on(t.expiresAt),
+}));
 
 // PHASE 3.5-C — Email templates
 export const emailTemplates = mysqlTable("email_templates", {
@@ -263,7 +287,9 @@ export const emailTemplates = mysqlTable("email_templates", {
   subject: varchar("subject", { length: 500 }).notNull(),
   bodyHtml: text("body_html").notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  unique_user_kind: uniqueIndex("unique_user_kind").on(t.userId, t.kind),
+}));
 
 // ─── Lot métier (Phase 0) — Anamnèse, Programmes, Documents ───────────────────
 export const anamnesisTemplates = mysqlTable("anamnesis_templates", {
@@ -275,7 +301,9 @@ export const anamnesisTemplates = mysqlTable("anamnesis_templates", {
   isActive: boolean("is_active").default(true),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_anamnesis_tpl_user: index("idx_anamnesis_tpl_user").on(t.userId),
+}));
 
 export const anamnesisResponses = mysqlTable("anamnesis_responses", {
   id: int("id").autoincrement().primaryKey(),
@@ -287,7 +315,10 @@ export const anamnesisResponses = mysqlTable("anamnesis_responses", {
   answers: text("answers"), // JSON
   submittedAt: bigint("submitted_at", { mode: "number" }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_anamnesis_resp_user: index("idx_anamnesis_resp_user").on(t.userId),
+  idx_anamnesis_resp_token: index("idx_anamnesis_resp_token").on(t.token),
+}));
 
 export const programs = mysqlTable("programs", {
   id: int("id").autoincrement().primaryKey(),
@@ -299,7 +330,10 @@ export const programs = mysqlTable("programs", {
   status: varchar("status", { length: 20 }).default("draft"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_programs_user: index("idx_programs_user").on(t.userId),
+  idx_programs_client: index("idx_programs_client").on(t.clientId),
+}));
 
 export const clientDocuments = mysqlTable("client_documents", {
   id: int("id").autoincrement().primaryKey(),
@@ -310,7 +344,9 @@ export const clientDocuments = mysqlTable("client_documents", {
   sizeBytes: int("size_bytes"),
   dataBase64: longtext("data_base64").notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_client_docs_user_client: index("idx_client_docs_user_client").on(t.userId, t.clientId),
+}));
 
 // ─── Forfaits / carnets de séances prépayées ─────────────────────────────────
 export const packages = mysqlTable("packages", {
@@ -324,7 +360,9 @@ export const packages = mysqlTable("packages", {
   notes: text("notes"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_packages_user_client: index("idx_packages_user_client").on(t.userId, t.clientId),
+}));
 
 export const naturalSolutions = mysqlTable("natural_solutions", {
   id: int("id").autoincrement().primaryKey(),
@@ -336,7 +374,9 @@ export const naturalSolutions = mysqlTable("natural_solutions", {
   usageNotes: text("usage_notes"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_natural_solutions_user: index("idx_natural_solutions_user").on(t.userId),
+}));
 
 // Assistant IA (Mistral) — conversation continue unique par utilisatrice.
 export const aiChatMessages = mysqlTable("ai_chat_messages", {
@@ -346,7 +386,9 @@ export const aiChatMessages = mysqlTable("ai_chat_messages", {
   content: text("content").notNull(),
   discussionId: int("discussion_id"), // null = legacy (backfillé en « Discussion générale »)
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_ai_chat_user_created: index("idx_ai_chat_user_created").on(t.userId, t.createdAt),
+}));
 
 // Assistant IA — discussions (fil par sujet) rattachées à une cliente OU à une thématique.
 export const aiDiscussions = mysqlTable("ai_discussions", {
@@ -357,7 +399,9 @@ export const aiDiscussions = mysqlTable("ai_discussions", {
   title: varchar("title", { length: 255 }).notNull().default("Nouvelle discussion"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_ai_discussions_user: index("idx_ai_discussions_user").on(t.userId),
+}));
 
 // Studio Contenu — posts générés pour les réseaux sociaux.
 export const contentPosts = mysqlTable("content_posts", {
@@ -374,7 +418,9 @@ export const contentPosts = mysqlTable("content_posts", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
   publishedAt: bigint("published_at", { mode: "number" }),
-});
+}, (t) => ({
+  idx_content_posts_user: index("idx_content_posts_user").on(t.userId, t.status),
+}));
 
 // Assistant IA — quota d'usage quotidien par utilisatrice.
 export const aiChatUsage = mysqlTable("ai_chat_usage", {
@@ -382,7 +428,9 @@ export const aiChatUsage = mysqlTable("ai_chat_usage", {
   userId: int("user_id").notNull(),
   day: varchar("day", { length: 10 }).notNull(),
   count: int("count").notNull().default(0),
-});
+}, (t) => ({
+  idx_ai_usage_user_day: index("idx_ai_usage_user_day").on(t.userId, t.day),
+}));
 
 // Assistant IA — réglages globaux (1 ligne).
 // ⚠️ MySQL : TEXT n'accepte pas de DEFAULT non-null → pas de .default("") sur custom_instructions.
@@ -414,7 +462,9 @@ export const kbChunks = mysqlTable("kb_chunks", {
   content: text("content").notNull(),
   embedding: text("embedding").notNull(), // JSON array de floats
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}, (t) => ({
+  idx_kb_chunks_document_id: index("idx_kb_chunks_document_id").on(t.documentId),
+}));
 
 // ─── Insert schemas (same names as schema.ts so imports are swappable) ────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });

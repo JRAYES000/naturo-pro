@@ -11,9 +11,11 @@
     "smoke": "cross-env DB_DRIVER=sqlite tsx script/smoke-routes.ts",
     "test": "cross-env DB_DRIVER=sqlite tsx --test \"server/**/*.test.ts\" \"shared/**/*.test.ts\" \"client/src/**/*.test.ts\"",
     "routes:inventory": "tsx script/routes-inventory.ts",
-    "db:push": "drizzle-kit push",
-    "db:push:mysql": "drizzle-kit push --config=drizzle.config.mysql.ts",
-    "test:e2e": "node script/e2e-fonctionnel.mjs"
+    "db:push": "drizzle-kit push --force",
+    "test:e2e": "node script/e2e-fonctionnel.mjs",
+    "predev": "npm run db:push",
+    "pretest": "npm run db:push",
+    "db:generate:mysql": "drizzle-kit generate --config=drizzle.config.mysql.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

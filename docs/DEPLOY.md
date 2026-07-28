@@ -123,20 +123,43 @@ Ouvre l'app, login avec un compte de test, vérifie que l'agenda charge et que l
 
 ## Migrations DB
 
-Les migrations sont des **fichiers SQL purs** dans `migrations/`. Tu les exécutes manuellement sur la DB de prod.
+Depuis le 28/07/2026, les migrations sont **versionnées et automatiques**. Il n'y a plus
+rien à exécuter à la main.
+
+### Ajouter une colonne ou une table
+
+1. Déclarez-la dans `shared/schema.ts` **et** `shared/schema-mysql.ts`
+   (plus `shared/schema-active.ts` pour une nouvelle table).
+2. `npm run db:generate:mysql` — produit un fichier dans `migrations-mysql/`.
+3. **Relisez le SQL généré**, puis committez-le avec le reste.
+4. Déployez : le fichier `migrations-mysql/` doit partir avec le bundle (voir ci-dessous).
+   La migration s'applique au redémarrage et s'inscrit dans `__drizzle_migrations`.
+
+En développement (SQLite) rien à faire : `npm run dev` et `npm test` appliquent le schéma
+via `drizzle-kit push` avant de démarrer.
+
+### Ce qui change au déploiement
+
+Le dossier `migrations-mysql/` fait partie du livrable, au même titre que `dist/` :
 
 ```bash
-ssh <user>@<host>
-cd <APP_PATH>
-mysql -u <DB_USER> -p<DB_PASSWORD> -h <DB_HOST> <DB_NAME> < migrations/X.Y-name.sql
+scp -r migrations-mysql <user>@<host>:<APP_PATH>/
 ```
 
-**Toujours faire un dump avant** :
+### En cas d'échec
+
+Une migration qui échoue **arrête le démarrage**, volontairement — une application qui
+tourne sur un schéma à moitié migré corrompt des données. Le journal Passenger porte
+l'erreur exacte. Corrigez la migration, redéployez.
+
+### Toujours faire un dump avant
+
 ```bash
-mysqldump -u <DB_USER> -p<DB_PASSWORD> -h <DB_HOST> <DB_NAME> > backup-$(date +%Y%m%d-%H%M).sql
+mysqldump --single-transaction -u <DB_USER> -p<DB_PASSWORD> -h <DB_HOST> <DB_NAME> > backup-$(date +%Y%m%d-%H%M).sql
 ```
 
----
+Les fichiers de `migrations/` (sans suffixe) sont **historiques** et ne doivent plus être
+rejoués — cf. `migrations/README.md`.
 
 ## Rollback
 

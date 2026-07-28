@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -71,7 +71,10 @@ export const users = sqliteTable("users", {
   // Avis Google — lien de dépôt d'avis + activation de l'envoi automatique
   googleReviewUrl: text("google_review_url"),
   reviewRequestEnabled: integer("review_request_enabled", { mode: "boolean" }).default(false),
-});
+}, (t) => ({
+  idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
+  idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
+}));
 
 // Invoices
 export const invoices = sqliteTable("invoices", {
@@ -106,7 +109,15 @@ export const invoices = sqliteTable("invoices", {
   // sans doublon est une obligation légale (art. 242 nonies A du CGI). C'est cette
   // contrainte — et non le compteur — qui garantit l'unicité en cas de création
   // concurrente ; storage.createInvoiceNumbered retente sur rejet.
-  uniqInvoiceUserNumber: uniqueIndex("uniq_invoice_user_number").on(t.userId, t.number),
+  idx_invoices_user: index("idx_invoices_user").on(t.userId),
+  idx_invoices_status: index("idx_invoices_status").on(t.status),
+  idx_invoices_issue_date: index("idx_invoices_issue_date").on(t.issueDate),
+  idx_invoices_appointment: index("idx_invoices_appointment").on(t.appointmentId),
+  idx_invoices_client: index("idx_invoices_client").on(t.clientId),
+  // Contrainte d'origine, posee des migrations/1.0-invoices.sql. L'audit du 28/07
+  // affirmait a tort qu'aucune unicite ne protegeait les numeros de facture et a
+  // ajoute un uniq_invoice_user_number identique : ce doublon est retire ici et en base.
+  uk_invoices_user_number: uniqueIndex("uk_invoices_user_number").on(t.userId, t.number),
 }));
 
 /**
@@ -128,7 +139,9 @@ export const stripeProcessedSessions = sqliteTable("stripe_processed_sessions", 
   sessionId: text("session_id").notNull().unique(),
   appointmentId: integer("appointment_id"),
   createdAt: integer("created_at").notNull(),
-});
+}, (t) => ({
+  idx_sps_user: index("idx_sps_user").on(t.userId),
+}));
 
 export const invoiceItems = sqliteTable("invoice_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -138,7 +151,9 @@ export const invoiceItems = sqliteTable("invoice_items", {
   quantity: integer("quantity").notNull().default(1),
   unitPriceCents: integer("unit_price_cents").notNull().default(0),
   totalCents: integer("total_cents").notNull().default(0),
-});
+}, (t) => ({
+  idx_invoice_items_invoice: index("idx_invoice_items_invoice").on(t.invoiceId),
+}));
 
 // Appointment categories
 export const appointmentCategories = sqliteTable("appointment_categories", {
@@ -151,7 +166,9 @@ export const appointmentCategories = sqliteTable("appointment_categories", {
   color: text("color").default("#186749"),
   description: text("description"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
-});
+}, (t) => ({
+  idx_categories_user: index("idx_categories_user").on(t.userId),
+}));
 
 // Availability slots — recurring weekly
 export const availabilitySlots = sqliteTable("availability_slots", {
@@ -160,7 +177,9 @@ export const availabilitySlots = sqliteTable("availability_slots", {
   dayOfWeek: integer("day_of_week").notNull(), // 0=Sun..6=Sat
   startTime: text("start_time").notNull(), // "09:00"
   endTime: text("end_time").notNull(),     // "12:00"
-});
+}, (t) => ({
+  idx_avail_user: index("idx_avail_user").on(t.userId),
+}));
 
 // Clients
 export const clients = sqliteTable("clients", {
@@ -177,7 +196,9 @@ export const clients = sqliteTable("clients", {
   lifestyleNotes: text("lifestyle_notes"),
   penseBete: text("pense_bete"),
   createdAt: integer("created_at").notNull(),
-});
+}, (t) => ({
+  idx_clients_user: index("idx_clients_user").on(t.userId),
+}));
 
 // Appointments
 export const appointments = sqliteTable("appointments", {
@@ -214,7 +235,13 @@ export const appointments = sqliteTable("appointments", {
   createdAt: integer("created_at").notNull(),
   // Avis Google — timestamp d'envoi de la demande (idempotence)
   reviewEmailSentAt: integer("review_email_sent_at"),
-});
+}, (t) => ({
+  idx_appt_user_start: index("idx_appt_user_start").on(t.userId, t.startAt),
+  idx_appt_user_google_event: index("idx_appt_user_google_event").on(t.userId, t.googleEventId),
+  idx_appt_confirm_token: index("idx_appt_confirm_token").on(t.confirmToken),
+  idx_appt_cancel_token: index("idx_appt_cancel_token").on(t.cancelToken),
+  idx_appt_reminder_pending: index("idx_appt_reminder_pending").on(t.startAt, t.reminderSent),
+}));
 
 // Consultation notes
 export const consultationNotes = sqliteTable("consultation_notes", {
@@ -232,7 +259,11 @@ export const consultationNotes = sqliteTable("consultation_notes", {
   notesLibres: text("notes_libres"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  idx_notes_user: index("idx_notes_user").on(t.userId),
+  idx_notes_client: index("idx_notes_client").on(t.clientId),
+  idx_notes_appointment: index("idx_notes_appointment").on(t.appointmentId),
+}));
 
 // Sessions for auth
 export const sessions = sqliteTable("sessions", {
@@ -240,7 +271,9 @@ export const sessions = sqliteTable("sessions", {
   userId: integer("user_id").notNull(),
   token: text("token").notNull().unique(),
   expiresAt: integer("expires_at").notNull(),
-});
+}, (t) => ({
+  idx_sessions_expires: index("idx_sessions_expires").on(t.expiresAt),
+}));
 
 // ─── Lot métier (Phase 0) — Anamnèse, Programmes, Documents ───────────────────
 // Anamnèse : modèles de questionnaires d'intake (questions = JSON).
@@ -253,7 +286,9 @@ export const anamnesisTemplates = sqliteTable("anamnesis_templates", {
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  idx_anamnesis_tpl_user: index("idx_anamnesis_tpl_user").on(t.userId),
+}));
 
 // Anamnèse : réponses d'une cliente (saisie via lien public par token).
 export const anamnesisResponses = sqliteTable("anamnesis_responses", {
@@ -266,7 +301,10 @@ export const anamnesisResponses = sqliteTable("anamnesis_responses", {
   answers: text("answers"), // JSON: { [questionId]: value }
   submittedAt: integer("submitted_at"),
   createdAt: integer("created_at").notNull(),
-});
+}, (t) => ({
+  idx_anamnesis_resp_user: index("idx_anamnesis_resp_user").on(t.userId),
+  idx_anamnesis_resp_token: index("idx_anamnesis_resp_token").on(t.token),
+}));
 
 // Programmes d'hygiène de vie (protocole construit pour une cliente).
 export const programs = sqliteTable("programs", {
@@ -279,7 +317,10 @@ export const programs = sqliteTable("programs", {
   status: text("status").default("draft"), // draft | sent
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  idx_programs_user: index("idx_programs_user").on(t.userId),
+  idx_programs_client: index("idx_programs_client").on(t.clientId),
+}));
 
 // Documents attachés à une fiche cliente (stockés en base64).
 export const clientDocuments = sqliteTable("client_documents", {
@@ -291,7 +332,9 @@ export const clientDocuments = sqliteTable("client_documents", {
   sizeBytes: integer("size_bytes"),
   dataBase64: text("data_base64").notNull(),
   createdAt: integer("created_at").notNull(),
-});
+}, (t) => ({
+  idx_client_docs_user_client: index("idx_client_docs_user_client").on(t.userId, t.clientId),
+}));
 
 // Forfaits / carnets de séances prépayées
 export const packages = sqliteTable("packages", {
@@ -305,7 +348,9 @@ export const packages = sqliteTable("packages", {
   notes: text("notes"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  idx_packages_user_client: index("idx_packages_user_client").on(t.userId, t.clientId),
+}));
 
 // Base de solutions naturelles (catalogue de référence : plantes, HE, compléments…)
 // userId null = entrée globale fournie par l'app ; non-null = entrée perso du praticien.
@@ -319,7 +364,9 @@ export const naturalSolutions = sqliteTable("natural_solutions", {
   usageNotes: text("usage_notes"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  idx_natural_solutions_user: index("idx_natural_solutions_user").on(t.userId),
+}));
 
 // Assistant IA (Mistral) — conversation continue unique par utilisatrice.
 // Une ligne = un message ; "la conversation" = tous les messages d'un userId triés par createdAt.
@@ -330,7 +377,9 @@ export const aiChatMessages = sqliteTable("ai_chat_messages", {
   content: text("content").notNull(),
   discussionId: integer("discussion_id"), // null = legacy (backfillé en « Discussion générale »)
   createdAt: integer("created_at").notNull(),
-});
+}, (t) => ({
+  idx_ai_chat_user_created: index("idx_ai_chat_user_created").on(t.userId, t.createdAt),
+}));
 
 // Assistant IA — discussions (fil par sujet) rattachées à une cliente OU à une thématique.
 export const aiDiscussions = sqliteTable("ai_discussions", {
@@ -341,7 +390,9 @@ export const aiDiscussions = sqliteTable("ai_discussions", {
   title: text("title").notNull().default("Nouvelle discussion"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  idx_ai_discussions_user: index("idx_ai_discussions_user").on(t.userId),
+}));
 
 // Studio Contenu — posts générés pour les réseaux sociaux.
 export const contentPosts = sqliteTable("content_posts", {
@@ -358,7 +409,9 @@ export const contentPosts = sqliteTable("content_posts", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
   publishedAt: integer("published_at"),
-});
+}, (t) => ({
+  idx_content_posts_user: index("idx_content_posts_user").on(t.userId, t.status),
+}));
 
 // Assistant IA — quota d'usage quotidien par utilisatrice.
 export const aiChatUsage = sqliteTable("ai_chat_usage", {
@@ -366,7 +419,9 @@ export const aiChatUsage = sqliteTable("ai_chat_usage", {
   userId: integer("user_id").notNull(),
   day: text("day").notNull(), // 'YYYY-MM-DD'
   count: integer("count").notNull().default(0),
-});
+}, (t) => ({
+  idx_ai_usage_user_day: index("idx_ai_usage_user_day").on(t.userId, t.day),
+}));
 
 // Assistant IA — réglages globaux (1 ligne) : instructions personnalisées du formateur.
 export const assistantSettings = sqliteTable("assistant_settings", {
@@ -396,7 +451,9 @@ export const kbChunks = sqliteTable("kb_chunks", {
   content: text("content").notNull(),
   embedding: text("embedding").notNull(), // JSON array de floats
   createdAt: integer("created_at").notNull(),
-});
+}, (t) => ({
+  idx_kb_chunks_document_id: index("idx_kb_chunks_document_id").on(t.documentId),
+}));
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -477,7 +534,9 @@ export const emailTemplates = sqliteTable("email_templates", {
   subject: text("subject").notNull(),
   bodyHtml: text("body_html").notNull(),
   updatedAt: integer("updated_at").notNull(),
-});
+}, (t) => ({
+  unique_user_kind: uniqueIndex("unique_user_kind").on(t.userId, t.kind),
+}));
 
 export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({ id: true });
 

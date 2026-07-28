@@ -82,3 +82,15 @@ TODO.local.md
 
 # Artefacts Playwright MCP
 .playwright-mcp/
+
+# Rapports de campagnes de test à la racine — jetables, et AUTH_TEST_ACCOUNTS.txt
+# contient des mots de passe de comptes de production en clair. Le dépôt est public.
+/APPOINTMENT_TEST_*
+/AUTH_*
+/CLIENT_MANAGEMENT_TEST_REPORT.md
+/INVOICING_*
+/TESTING_SUMMARY.md
+/TEST_EXECUTION_REPORT.md
+/TEST_RESULTS.txt
+/PLAN.md
+/test_invoicing*.py
