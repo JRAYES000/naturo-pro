@@ -10,6 +10,14 @@ import { seedNaturalSolutions } from "./solutions-seed";
 import { migrationsReady } from "./storage";
 
 const app = express();
+
+// L'app tourne derrière le proxy Hostinger (Passenger). Sans `trust proxy`, req.ip vaut
+// l'IP du proxy pour TOUTES les requêtes : les rate-limiters partagent alors un unique
+// compteur planétaire. Concrètement, 10 tentatives de connexion ratées d'un seul bot
+// verrouillaient la connexion de toutes les praticiennes pendant 15 minutes, et la 31e
+// réservation de l'heure — tous cabinets confondus — était refusée.
+// 1 = on ne fait confiance qu'au premier proxy en amont (celui de l'hébergeur).
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 // En-têtes de sécurité — CSP différenciée dev/prod

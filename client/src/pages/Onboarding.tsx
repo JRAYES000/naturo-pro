@@ -89,10 +89,14 @@ export default function Onboarding() {
             city: data.city || undefined,
             address: data.address || undefined,
             bio: data.bio || undefined,
-            specialties: data.specialties.length ? data.specialties.join(", ") : undefined,
-            firstService: {
+            // ⚠️ Ces noms doivent correspondre EXACTEMENT à onboardingSchema
+            // (server/routes/auth.ts), qui est `.strict()`. Le client envoyait
+            // `specialties` en chaîne et une clé `firstService` inconnue : le
+            // formulaire rempli était rejeté en 400 et RIEN n'était enregistré.
+            specialties: data.specialties.length ? data.specialties : undefined,
+            firstCategory: {
               name: data.serviceName || "Consultation",
-              durationMin: Number(data.serviceDuration) || 60,
+              durationMinutes: Number(data.serviceDuration) || 60,
               priceCents: Math.round((Number(data.servicePrice) || 0) * 100),
               color: data.serviceColor || "#186749",
             },

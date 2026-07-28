@@ -12,7 +12,8 @@
     "test": "cross-env DB_DRIVER=sqlite tsx --test \"server/**/*.test.ts\" \"shared/**/*.test.ts\" \"client/src/**/*.test.ts\"",
     "routes:inventory": "tsx script/routes-inventory.ts",
     "db:push": "drizzle-kit push",
-    "db:push:mysql": "drizzle-kit push --config=drizzle.config.mysql.ts"
+    "db:push:mysql": "drizzle-kit push --config=drizzle.config.mysql.ts",
+    "test:e2e": "node script/e2e-fonctionnel.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

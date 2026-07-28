@@ -265,6 +265,16 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     if (!reservation) return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
     let appt = reservation;
 
+    // Jeton de gestion (annulation / report) créé DÈS la réservation. Il ne l'était
+    // qu'au moment d'envoyer l'email de confirmation, après le `return` du cas « aucune
+    // config email » : une praticienne sans email configuré, ou un envoi en échec,
+    // laissait sa cliente sans aucun moyen d'annuler en ligne. Idempotent.
+    try {
+      await storage.ensureCancelToken(appt.id);
+    } catch (e: any) {
+      console.warn("[booking] ensureCancelToken:", e?.message || e);
+    }
+
     // Push to Google Calendar if practitioner has connected
     const eventId = await syncApptToGoogle("create", u.id, appt);
     if (eventId) {
@@ -642,6 +652,43 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       reminderSent: false,
       cancelToken: newCancelToken,
     } as any);
+
+    // Google Agenda : retirer l'ancien créneau, poser le nouveau. Sans ça, la
+    // praticienne gardait l'ancien rendez-vous bloqué dans son agenda et ne voyait
+    // jamais le nouveau — elle n'était pas là au moment du report.
+    try {
+      await syncApptToGoogle("delete", appt.userId, appt as any);
+      const eventId = await syncApptToGoogle("create", appt.userId, newAppt);
+      if (eventId) await storage.updateAppointment(newAppt.id, { googleEventId: eventId } as any);
+    } catch (e: any) {
+      console.error("[reschedule][google]", e?.message || e);
+    }
+
+    // Confirmation à la cliente pour le NOUVEAU créneau (avec .ics et lien de gestion),
+    // exactement comme une réservation. Elle n'en recevait aucune.
+    try {
+      const cat2 = newAppt.categoryId ? await storage.getCategory(newAppt.categoryId) : null;
+      if (newAppt.clientEmail) {
+        void sendBookingConfirmationEmail(u, newAppt, cat2).catch((e) =>
+          console.error("[reschedule][confirm]", e),
+        );
+      }
+      // Notification à la praticienne : son planning vient de changer sans elle.
+      const cfg = getEmailConfigForUser(u);
+      if (cfg && u.email) {
+        const nom = `${newAppt.clientFirstName || ""} ${newAppt.clientLastName || ""}`.trim() || "(cliente inconnue)";
+        await sendEmail(
+          cfg, u.email,
+          `Rendez-vous reporté — ${nom}`,
+          `<p>Bonjour,</p><p><strong>${escapeHtmlMin(nom)}</strong> a reporté son rendez-vous.</p>` +
+            `<p>Ancien créneau : ${escapeHtmlMin(formatRdvDate(appt.startAt))}<br>` +
+            `Nouveau créneau : <strong>${escapeHtmlMin(formatRdvDate(newAppt.startAt))}</strong></p>` +
+            `<p><a href="${APP_URL}/#/agenda">Voir mon agenda</a></p>`,
+        );
+      }
+    } catch (e: any) {
+      console.error("[reschedule][email]", e?.message || e);
+    }
 
     res.json({
       ok: true,

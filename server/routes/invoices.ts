@@ -192,6 +192,23 @@ export function registerInvoiceRoutes(app: Express): void {
     if (data.clientPostalCode !== undefined) patch.clientPostalCode = data.clientPostalCode;
     if (data.clientCity !== undefined) patch.clientCity = data.clientCity;
 
+    // ── Immuabilité d'une facture ÉMISE ────────────────────────────────────
+    // Une facture envoyée ou payée ne se modifie plus : le PDF détenu par la cliente
+    // ferait foi contre un document que l'application ressortirait différent (montant,
+    // lignes, identité). En France, une facture émise se corrige par un avoir, pas en
+    // la réécrivant. Seuls le suivi de règlement et les notes restent ouverts.
+    if (inv.status !== "draft") {
+      const champsFiges = ["items", "clientFirstName", "clientLastName", "clientEmail",
+        "clientAddress", "clientPostalCode", "clientCity", "issueDate"] as const;
+      const touches = champsFiges.filter((c) => (data as any)[c] !== undefined);
+      if (touches.length) {
+        return res.status(409).json({
+          message: `Cette facture est ${inv.status === "paid" ? "payée" : "émise"} : son contenu ne peut plus être modifié. `
+            + `Créez un avoir ou une nouvelle facture. (champs refusés : ${touches.join(", ")})`,
+        });
+      }
+    }
+
     // Auto-set paidAt si status passe à paid sans date
     if (data.status === "paid" && !inv.paidAt && data.paidAt === undefined) {
       patch.paidAt = Date.now();
@@ -223,6 +240,15 @@ export function registerInvoiceRoutes(app: Express): void {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    // Une facture émise ne se supprime pas : la séquence de numérotation deviendrait
+    // trouée, et le numéro libéré serait réattribué à la facture suivante — deux
+    // clientes se retrouveraient avec le même numéro. On l'annule (statut "cancelled"),
+    // ce qui la conserve dans la séquence. Un brouillon, lui, n'a jamais été émis.
+    if (inv.status !== "draft") {
+      return res.status(409).json({
+        message: "Une facture émise ne peut pas être supprimée. Passez-la en « annulée » pour la neutraliser tout en conservant sa trace comptable.",
+      });
+    }
     await storage.deleteInvoice(id);
     res.json({ ok: true });
   });

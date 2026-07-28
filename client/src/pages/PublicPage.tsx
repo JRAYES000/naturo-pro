@@ -295,7 +295,7 @@ export default function PublicPage() {
 
       <footer className="border-t border-border py-6 sm:py-8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row gap-2 sm:gap-3 items-center justify-between text-sm text-muted-foreground">
-          <span>© 2025 {naturo.name}</span>
+          <span>© {new Date().getFullYear()} {naturo.name}</span>
           <span>
             Page propulsée par{" "}
             <Link href="/" className="text-primary font-bold">

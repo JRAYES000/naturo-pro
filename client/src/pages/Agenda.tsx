@@ -6,6 +6,7 @@ import { fr } from "date-fns/locale";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { AppLayout } from "@/components/AppLayout";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ const messages = {
 
 export default function Agenda() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [, navigate] = useLocation();
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [resendDialog, setResendDialog] = useState(false);
@@ -270,7 +272,15 @@ export default function Agenda() {
                       <CalendarArrowDown className="h-4 w-4 mr-1" /> Ajouter à mon agenda (.ics)
                     </Button>
                   </a>
-                  <Button size="sm" variant="destructive" onClick={() => deleteMut.mutate(selected.id)} className="rounded-[12px]" data-testid="button-delete-appointment">
+                  <Button size="sm" variant="destructive" onClick={async () => {
+                    const ok = await confirm({
+                      title: "Supprimer ce rendez-vous ?",
+                      description: "Il sera définitivement effacé, ainsi que de votre Google Agenda s'il y est synchronisé. Cette action est irréversible.",
+                      confirmLabel: "Supprimer",
+                      destructive: true,
+                    });
+                    if (ok) deleteMut.mutate(selected.id);
+                  }} className="rounded-[12px]" data-testid="button-delete-appointment">
                     <Trash2 className="h-4 w-4 mr-1" /> Supprimer
                   </Button>
                 </div>
@@ -333,8 +343,13 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
 
   const initialDate = initial?.start ? new Date(initial.start) : new Date();
   if (open && !date) {
-    setDate(initialDate.toISOString().slice(0, 10));
-    setTime(initialDate.toTimeString().slice(0, 5));
+    // Date LOCALE, pas UTC. `toISOString().slice(0,10)` renvoyait le jour en UTC :
+    // en France l'été (UTC+2), cliquer la case du 28 dans la vue Mois pré-remplissait
+    // le 27 — le rendez-vous partait un jour trop tôt, email et Google Agenda compris.
+    // L'heure, elle, venait déjà de toTimeString() (locale) : les deux étaient incohérents.
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    setDate(`${initialDate.getFullYear()}-${p2(initialDate.getMonth() + 1)}-${p2(initialDate.getDate())}`);
+    setTime(`${p2(initialDate.getHours())}:${p2(initialDate.getMinutes())}`);
   }
 
   const createMut = useMutation({

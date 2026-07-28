@@ -108,6 +108,19 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
           color: c.color,
         });
       }
+      // Horaires par défaut : lundi→vendredi, 9h-12h et 14h-18h.
+      //
+      // Sans plage de disponibilité, la page publique est EN LIGNE mais ne propose
+      // aucun créneau : la cliente tombe sur une page de réservation vide. C'est ce
+      // qui est arrivé aux 8 praticiennes inscrites en production — aucune n'avait
+      // saisi d'horaires, et l'assistant de configuration ne le demande pas.
+      // On pré-remplit donc les horaires comme on pré-remplit déjà les 3 prestations ;
+      // la praticienne les ajuste dans « Disponibilités ».
+      const horairesDefaut = [1, 2, 3, 4, 5].flatMap((jour) => [
+        { userId: user.id, dayOfWeek: jour, startTime: "09:00", endTime: "12:00" },
+        { userId: user.id, dayOfWeek: jour, startTime: "14:00", endTime: "18:00" },
+      ]);
+      await storage.replaceAvailability(user.id, horairesDefaut as any);
     } catch (e: any) {
       console.error("[register] seed default categories failed:", e?.message || e);
     }
@@ -246,6 +259,7 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       name: z.string().min(1).max(255),
       durationMinutes: z.number().int().positive(),
       priceCents: z.number().int().min(0),
+      color: z.string().max(20).optional(),
     }).optional(),
   }).strict();
   app.post("/api/auth/onboarding", requireAuth, async (req: AuthedRequest, res) => {
@@ -267,6 +281,7 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
           name: parsed.data.firstCategory.name,
           durationMinutes: parsed.data.firstCategory.durationMinutes,
           priceCents: parsed.data.firstCategory.priceCents,
+          color: parsed.data.firstCategory.color || "#186749",
           isActive: true,
         } as any);
       } catch (e: any) {

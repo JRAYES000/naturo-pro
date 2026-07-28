@@ -47,6 +47,25 @@ const noteContentSchema = z.object({
   notesLibres: z.string().nullable().optional(),
 }).strict();
 
+/**
+ * Vérifie que le client et la prestation référencés appartiennent BIEN au praticien.
+ *
+ * Ni la création ni la modification ne le contrôlaient : un praticien pouvait attacher
+ * son rendez-vous au clientId d'une consœur, puis relire nom, email et adresse de cette
+ * personne via GET /api/clients/:id du RDV — et lui envoyer un rappel.
+ */
+async function referencesValides(userId: number, clientId?: number | null, categoryId?: number | null): Promise<boolean> {
+  if (clientId != null) {
+    const c = await storage.getClient(clientId);
+    if (!c || c.userId !== userId) return false;
+  }
+  if (categoryId != null) {
+    const cat = await storage.getCategory(categoryId);
+    if (!cat || cat.userId !== userId) return false;
+  }
+  return true;
+}
+
 export function registerAppointmentRoutes(app: Express): void {
   // ---------- APPOINTMENTS ----------
   app.get("/api/appointments", requireAuth, async (req: AuthedRequest, res) => {
@@ -68,6 +87,9 @@ export function registerAppointmentRoutes(app: Express): void {
     // Créer le premier rendez-vous (occurrence 0)
     const parsed = insertAppointmentSchema.safeParse({ ...req.body, userId: req.userId });
     if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
+    if (!(await referencesValides(req.userId!, (parsed.data as any).clientId, (parsed.data as any).categoryId))) {
+      return res.status(400).json({ message: "Client ou prestation introuvable" });
+    }
     let appt = await storage.createAppointment(parsed.data);
     const eventId = await syncApptToGoogle("create", req.userId!, appt);
     if (eventId) {
@@ -119,6 +141,9 @@ export function registerAppointmentRoutes(app: Express): void {
     if (!a || a.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
     const parsed = patchAppointmentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
+    if (!(await referencesValides(req.userId!, parsed.data.clientId, parsed.data.categoryId))) {
+      return res.status(400).json({ message: "Client ou prestation introuvable" });
+    }
     const wasCompleted = a.status === "completed";
     let updated = await storage.updateAppointment(id, parsed.data as any);
     if (!updated) return res.status(404).json({ message: "Introuvable" });

@@ -12,7 +12,12 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
-  base: "./",
+  // Base ABSOLUE. Avec "./", les balises <script src="./assets/…"> se résolvaient
+  // relativement à l'URL courante : depuis https://app.ecole-naturo.fr/p/marie-dupont
+  // le navigateur demandait /p/assets/index-*.js, le catch-all renvoyait index.html,
+  // et le module refusait de s'exécuter → PAGE BLANCHE sur le lien de réservation
+  // que les praticiennes partagent. L'app est servie à la racine du domaine.
+  base: "/",
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

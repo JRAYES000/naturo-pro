@@ -79,6 +79,9 @@ export async function buildReminderContext(appt: any, user: any) {
  */
 export async function sendRemindersForUser(user: any): Promise<{ sent: number; skipped: number; errors: number; details: any[] }> {
   const out = { sent: 0, skipped: 0, errors: 0, details: [] as any[] };
+  // Réglage « Rappels automatiques J-1 » : il était enregistré et affiché, mais AUCUN
+  // code ne le lisait — la praticienne pouvait le couper, les rappels partaient quand même.
+  if (user.emailRemindersEnabled === false) { out.skipped++; return out; }
   const cfg = getEmailConfigForUser(user);
   if (!cfg) { out.skipped++; return out; }
 
