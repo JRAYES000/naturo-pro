@@ -141,6 +141,14 @@ export function registerContentRoutes(app: Express): void {
     const post = await storage.createContentPost({ userId: req.userId!, ...p.data, theme: p.data.theme ?? null });
     res.json(post);
   });
+  // Fond d'image d'un carrousel, servi à la demande. La liste ne le renvoie plus :
+  // c'est un LONGTEXT de plusieurs Mo par post, qui faisait exploser /api/content/posts.
+  app.get("/api/content/posts/:id/background", requireAuth, async (req: AuthedRequest, res) => {
+    const row = await storage.getContentPostBackground(Number(req.params.id));
+    if (!row || row.userId !== req.userId) return res.status(404).json({ message: "Contenu introuvable" });
+    res.json({ backgroundImage: row.backgroundImage ?? null });
+  });
+
   app.patch("/api/content/posts/:id", requireAuth, async (req: AuthedRequest, res) => {
     const existing = await storage.getContentPost(Number(req.params.id));
     if (!existing || existing.userId !== req.userId) return res.status(404).json({ message: "Contenu introuvable" });

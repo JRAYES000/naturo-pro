@@ -24,7 +24,8 @@ type ContentFormat = "carrousel" | "reel" | "story" | "post_groupe" | "legende";
 type TopicType = "client_theme" | "theme" | "libre";
 interface IdeaSources { clientThemes: { theme: string; count: number }[]; predefinedThemes: string[]; }
 interface Angle { title: string; hook: string; suggestedFormat: ContentFormat; }
-interface ContentPost { id: number; channel: string; format: string; theme: string | null; title: string; body: string; status: string; createdAt: number; updatedAt: number; publishedAt: number | null; slidesJson?: string | null; backgroundImage?: string | null; }
+// backgroundImage n'est PAS dans la liste (LONGTEXT de plusieurs Mo) : chargé à la demande.
+interface ContentPost { id: number; channel: string; format: string; theme: string | null; title: string; body: string; status: string; createdAt: number; updatedAt: number; publishedAt: number | null; slidesJson?: string | null; }
 const STATUS_LABELS: Record<string, string> = { brouillon: "Brouillon", a_publier: "À publier", publie: "Publié" };
 
 const FORMAT_LABELS: Record<ContentFormat, string> = {
@@ -431,17 +432,33 @@ function PostVisuals({ post, practitionerName }: { post: ContentPost; practition
   const { toast } = useToast();
   const [slides, setSlides] = useState<RenderedSlide[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fond, setFond] = useState<string | null | undefined>(undefined);
 
   let deck: CarouselDeck | null = null;
   try { deck = post.slidesJson ? (JSON.parse(post.slidesJson) as CarouselDeck) : null; } catch { deck = null; }
   if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) return null;
   const safeDeck = deck;
 
+  // Le fond (data-URL de plusieurs Mo) n'est plus renvoyé par /api/content/posts :
+  // on le récupère au premier rendu de visuels, puis on le garde en mémoire.
+  async function chargerFond(): Promise<string | null> {
+    if (fond !== undefined) return fond;
+    try {
+      const r = await apiRequest("GET", `/api/content/posts/${post.id}/background`);
+      const j = await r.json();
+      setFond(j.backgroundImage ?? null);
+      return j.backgroundImage ?? null;
+    } catch {
+      setFond(null);
+      return null;
+    }
+  }
+
   async function toggle() {
     if (slides) { slides.forEach((s) => URL.revokeObjectURL(s.url)); setSlides(null); return; }
     setBusy(true);
     try {
-      setSlides(await renderCarouselSlides(safeDeck, { background: post.backgroundImage ?? null, practitionerName }));
+      setSlides(await renderCarouselSlides(safeDeck, { background: await chargerFond(), practitionerName }));
     } catch {
       toast({ title: "Erreur", description: "Rendu des visuels impossible.", variant: "destructive" });
     } finally { setBusy(false); }
@@ -450,7 +467,7 @@ function PostVisuals({ post, practitionerName }: { post: ContentPost; practition
   async function zip() {
     setBusy(true);
     try {
-      const r = slides ?? await renderCarouselSlides(safeDeck, { background: post.backgroundImage ?? null, practitionerName });
+      const r = slides ?? await renderCarouselSlides(safeDeck, { background: await chargerFond(), practitionerName });
       const entries: ZipEntry[] = [];
       for (const s of r) entries.push({ name: `slide-${s.index + 1}.png`, data: new Uint8Array(await s.blob.arrayBuffer()) });
       entries.push({ name: "legende.txt", data: new TextEncoder().encode(buildCaptionFile(safeDeck)) });

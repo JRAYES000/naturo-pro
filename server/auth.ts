@@ -5,6 +5,8 @@ import { storage } from "./storage";
 
 export interface AuthedRequest extends Request {
   userId?: number;
+  /** Utilisateur résolu par attachUser — évite un getUserById par middleware/handler. */
+  user?: any;
   // Phase 3 Lot 2 — sous-domaines personnels
   tenantUserId?: number;
   tenantSlug?: string;
@@ -70,6 +72,9 @@ export async function attachUser(req: AuthedRequest, _res: Response, next: NextF
     return next();
   }
   req.userId = session.userId;
+  // Chargé une fois ici : le trial-guard et requireAdmin le relisaient chacun en base,
+  // soit deux requêtes supplémentaires sur chaque mutation.
+  req.user = await storage.getUserById(session.userId);
   next();
 }
 
@@ -92,7 +97,7 @@ export function isAdminEmail(email?: string | null): boolean {
 
 export async function requireAdmin(req: AuthedRequest, res: Response, next: NextFunction) {
   if (!req.userId) return res.status(401).json({ message: "Non authentifié" });
-  const user = await storage.getUserById(req.userId);
+  const user = req.user ?? (await storage.getUserById(req.userId));
   if (!user || !isAdminEmail(user.email)) {
     return res.status(403).json({ message: "Accès refusé" });
   }

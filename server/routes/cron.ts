@@ -60,6 +60,21 @@ export function startCrons(): void {
     console.log(`[google-poll] enabled, every ${POLL_MS / 60000} min`);
   }
 
+  // ─── Purge quotidienne des sessions expirées ───────────────────────────────
+  // Une session n'était supprimée que si son propriétaire repassait avec ce jeton :
+  // la table grossissait indéfiniment, et attachUser la lit à CHAQUE requête.
+  const PURGE_MS = 24 * 3600 * 1000;
+  const purger = async () => {
+    try {
+      const n = await storage.purgeExpiredSessions();
+      if (n) console.log(`[sessions] ${n} session(s) expirée(s) purgée(s)`);
+    } catch (e: any) {
+      console.error("[sessions]", e?.message || e);
+    }
+  };
+  setInterval(purger, PURGE_MS);
+  void purger();
+
   // ─── Rattrapage des acomptes Stripe payés sans rendez-vous créé ────────────
   // Le RDV est normalement créé au retour sur success_url ; si le client ferme son
   // onglet juste après avoir payé, l'argent est encaissé et rien n'est réservé.

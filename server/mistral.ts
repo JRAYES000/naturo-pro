@@ -27,6 +27,10 @@ const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 const TIMEOUT_MS = 60_000; // appels JSON courts
 const STREAM_TIMEOUT_MS = 180_000; // génération streamée — budget TOTAL de la réponse
 
+const MAX_SEGMENTS = 4; // 1 réponse + jusqu'à 3 reprises automatiques
+const CONTINUE_NUDGE =
+  "Poursuis ta réponse précédente exactement là où elle s'est arrêtée (même au milieu d'une phrase ou d'un tableau), sans rien répéter, sans te resaluer et sans réintroduire le sujet.";
+
 /** En-têtes communs OpenRouter. `stream` choisit l'Accept (SSE vs JSON). */
 function openrouterHeaders(apiKey: string, stream = false): Record<string, string> {
   return {
@@ -86,60 +90,6 @@ export function buildMistralMessages(
     { role: "user", content: userMessage },
   ];
 }
-
-export type AssistantResult =
-  | { ok: true; reply: string }
-  | { ok: false; status: number; error: string };
-
-/**
- * Appelle l'API OpenRouter et renvoie la réponse de l'assistant.
- * Dégradation propre :
- *   - clé absente  → { ok:false, status:503 }
- *   - erreur réseau / réponse non-2xx / vide → { ok:false, status:502 }
- */
-export async function askNaturoAssistant(
-  history: ChatTurn[],
-  userMessage: string,
-): Promise<AssistantResult> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return { ok: false, status: 503, error: "OPENROUTER_API_KEY manquante" };
-  }
-
-  const messages = buildMistralMessages(history, userMessage);
-
-  try {
-    const res = await fetch(OPENROUTER_CHAT_URL, {
-      method: "POST",
-      headers: openrouterHeaders(apiKey),
-      body: JSON.stringify({
-        model: LLM_MODEL,
-        messages,
-        max_tokens: MAX_TOKENS,
-        temperature: 0.3,
-      }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return { ok: false, status: 502, error: `OpenRouter ${res.status}: ${body.slice(0, 300)}` };
-    }
-
-    const data: any = await res.json();
-    const reply = data?.choices?.[0]?.message?.content;
-    if (!reply || typeof reply !== "string") {
-      return { ok: false, status: 502, error: "Réponse OpenRouter vide" };
-    }
-    return { ok: true, reply: reply.trim() };
-  } catch (e: any) {
-    return { ok: false, status: 502, error: e?.message || String(e) };
-  }
-}
-
-const MAX_SEGMENTS = 4; // 1 réponse + jusqu'à 3 reprises automatiques
-const CONTINUE_NUDGE =
-  "Poursuis ta réponse précédente exactement là où elle s'est arrêtée (même au milieu d'une phrase ou d'un tableau), sans rien répéter, sans te resaluer et sans réintroduire le sujet.";
 
 /**
  * Stream un seul appel OpenRouter à partir d'un tableau de messages prêt à l'emploi.

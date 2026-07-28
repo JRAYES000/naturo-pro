@@ -93,7 +93,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     ) return next();
     if (!p.startsWith("/api/")) return next();
     try {
-      const u = await storage.getUserById(req.userId);
+      const u = req.user ?? (await storage.getUserById(req.userId));
       if (u && u.plan === "trial" && u.trialEndsAt && u.trialEndsAt < Date.now()) {
         return res.status(402).json({
           message: "Votre essai gratuit est terminé. Activez votre abonnement pour continuer à utiliser Naturo Pro.",

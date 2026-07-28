@@ -229,6 +229,9 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       passwordResetToken: null,
       passwordResetExpiresAt: null,
     } as any);
+    // Révoque les sessions existantes : sans ça, « je change mon mot de passe » ne
+    // coupait pas l'accès de quelqu'un déjà connecté sur le compte.
+    await storage.deleteSessionsForUser(u.id);
     res.json({ ok: true });
   });
 
@@ -307,7 +310,7 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     const [categories, allClients, allAppointments, allNotes, allInvoices] = await Promise.all([
       storage.listCategories(user.id),
       storage.listClients(user.id),
-      storage.listAppointments(user.id),
+      storage.listAllAppointments(user.id),
       storage.listNotesForUser(user.id),
       storage.listInvoices(user.id),
     ]);

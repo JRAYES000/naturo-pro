@@ -24,7 +24,7 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
-import { storage } from "../storage";
+import { storage, serialiserParUser } from "../storage";
 import { type AuthedRequest } from "../auth";
 import { sendEmail, renderClientCancellationEmail, formatRdvDate } from "../email";
 import { createCheckoutSession, retrieveCheckoutSession } from "../stripe";
@@ -80,7 +80,7 @@ export function clampSlotWindow(rawFrom: number, rawTo: number, defaultSpanMs: n
  *
  * `busy` : intervalles [début, fin] déjà occupés (RDV non annulés).
  */
-function computeSlotsByDay(opts: {
+export function computeSlotsByDay(opts: {
   avail: Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
   busy: Array<[number, number]>;
   from: number;
@@ -109,6 +109,29 @@ function computeSlotsByDay(opts: {
     }
   }
   return slotsByDay;
+}
+
+/**
+ * Le créneau demandé fait-il partie de ceux que le praticien propose réellement ?
+ *
+ * Ni POST /:slug/book ni POST /manage/:token/reschedule ne le vérifiaient : ils se
+ * contentaient du non-chevauchement et de l'horizon de 2 h. Un POST fabriqué à la main
+ * (ou un lien de report bricolé) plaçait donc un rendez-vous un dimanche à 3 h du matin,
+ * hors de toute plage d'ouverture. On réutilise le calcul qui sert à AFFICHER les
+ * créneaux : ce qui n'est pas proposé n'est pas réservable.
+ */
+async function creneauProposable(
+  userId: number, startMs: number, durationMin: number, exclureApptId?: number,
+): Promise<boolean> {
+  const avail = await storage.listAvailability(userId);
+  if (!avail.length) return false;
+  const finJournee = startMs + 86400000;
+  const existants = await storage.listAppointments(userId, startMs - 86400000, finJournee);
+  const busy = existants
+    .filter((a) => a.status !== "cancelled" && a.id !== exclureApptId)
+    .map((a) => [a.startAt, (a as any).endAt] as [number, number]);
+  const proposes = computeSlotsByDay({ avail, busy, from: startMs, to: startMs, durationMin });
+  return (proposes[zonedDateKey(startMs)] || []).includes(new Date(startMs).toISOString());
 }
 
 export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
@@ -197,10 +220,9 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     if (startAt < Date.now() + 2 * 3600 * 1000) return res.status(400).json({ message: "Créneau trop proche" });
 
     const endAt = startAt + cat.durationMinutes * 60000;
-    // Check no overlap
-    const sameDayAppts = await storage.listAppointments(u.id, startAt - 86400000, endAt + 86400000);
-    const overlap = sameDayAppts.some(a => a.status !== "cancelled" && startAt < a.endAt && endAt > a.startAt);
-    if (overlap) return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
+    if (!(await creneauProposable(u.id, startAt, cat.durationMinutes))) {
+      return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
+    }
 
     // ── Acompte Stripe : si activé, on redirige vers le paiement AVANT de créer le RDV.
     //    Le RDV ne sera créé qu'au retour (success_url) une fois le paiement confirmé.
@@ -227,14 +249,21 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       }
     }
 
-    let appt = await storage.createAppointment({
-      userId: u.id, clientId: null, categoryId,
-      startAt, endAt, status: "confirmed",
-      clientFirstName: firstName, clientLastName: lastName,
-      clientEmail: email, clientPhone: phone,
-      notesBefore: notes || null,
-      location: cat.location, googleEventId: null, reminderSent: false,
+    // Sérialisé par praticien : entre le contrôle de disponibilité et l'insertion, deux
+    // réservations simultanées sur le dernier créneau passaient toutes les deux.
+    const reservation = await serialiserParUser(u.id, async () => {
+      if (!(await creneauProposable(u.id, startAt, cat.durationMinutes))) return null;
+      return storage.createAppointment({
+        userId: u.id, clientId: null, categoryId,
+        startAt, endAt, status: "confirmed",
+        clientFirstName: firstName, clientLastName: lastName,
+        clientEmail: email, clientPhone: phone,
+        notesBefore: notes || null,
+        location: cat.location, googleEventId: null, reminderSent: false,
+      });
     });
+    if (!reservation) return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
+    let appt = reservation;
 
     // Push to Google Calendar if practitioner has connected
     const eventId = await syncApptToGoogle("create", u.id, appt);
@@ -580,12 +609,11 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     const durationMin = cat ? cat.durationMinutes : Math.round(((appt as any).endAt - appt.startAt) / 60000);
     const newEndMs = newStartMs + durationMin * 60000;
 
-    // Vérifier non-chevauchement (exclusion du RDV actuel)
-    const sameDayAppts = await storage.listAppointments(u.id, newStartMs - 86400000, newEndMs + 86400000);
-    const overlap = sameDayAppts.some(a =>
-      a.status !== "cancelled" && a.id !== appt.id && newStartMs < (a as any).endAt && newEndMs > a.startAt
-    );
-    if (overlap) return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
+    // Le nouveau créneau doit être RÉELLEMENT proposé (plage d'ouverture + non occupé),
+    // pas seulement libre : sans ça un report pouvait tomber un dimanche à 3 h du matin.
+    if (!(await creneauProposable(u.id, newStartMs, durationMin, appt.id))) {
+      return res.status(409).json({ message: "Ce créneau n'est plus disponible" });
+    }
 
     // Annuler l'ancien RDV
     await storage.updateAppointment(appt.id, {

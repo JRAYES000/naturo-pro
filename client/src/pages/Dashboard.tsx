@@ -18,7 +18,10 @@ export default function Dashboard() {
   const last30d = now - 30 * 86400000;
 
   const { data: appts, isLoading } = useQuery<Appointment[]>({
-    queryKey: ["appointments-dashboard"],
+    // Préfixe /api/appointments : c'est ce que les mutations de l'agenda invalident.
+    // Avec l'ancienne clé "appointments-dashboard", le tableau de bord gardait des
+    // données périmées après création ou modification d'un rendez-vous.
+    queryKey: ["/api/appointments", "dashboard", last30d, in14d],
     queryFn: async () => (await apiRequest("GET", `/api/appointments?from=${last30d}&to=${in14d}`)).json(),
   });
   const { data: clients } = useQuery<Client[]>({ queryKey: ["/api/clients"] });

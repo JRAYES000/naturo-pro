@@ -31,6 +31,20 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
+/** Produit scalaire normalisé quand la norme du vecteur stocké est déjà connue. */
+function cosineAvecNorme(q: number[], v: number[], normeV: number, normeQ: number): number {
+  if (normeV === 0 || normeQ === 0) return 0;
+  let dot = 0;
+  for (let i = 0; i < q.length; i++) dot += q[i] * v[i];
+  return dot / (normeV * normeQ);
+}
+
+function norme(v: number[]): number {
+  let n = 0;
+  for (let i = 0; i < v.length; i++) n += v[i] * v[i];
+  return Math.sqrt(n);
+}
+
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY manquante");
@@ -58,14 +72,32 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   return out;
 }
 
-// Cache mémoire des vecteurs
-let cache: { id: number; documentId: number; content: string; vec: number[] }[] | null = null;
-export function invalidateVectorCache() { cache = null; }
-async function loadCache() {
+// Cache mémoire des vecteurs, avec leur norme précalculée.
+//
+// ponytail: tout tient en RAM et chaque question trie l'ensemble. Suffisant tant que la
+// base de connaissances reste de l'ordre du millier de chunks ; au-delà, passer à un
+// index vectoriel (pgvector, sqlite-vec) plutôt que d'optimiser cette boucle.
+type ChunkCache = { id: number; documentId: number; content: string; vec: number[]; norme: number };
+let cache: ChunkCache[] | null = null;
+// La PROMESSE est mémorisée, pas seulement le résultat : deux questions simultanées sur
+// un cache froid déclenchaient deux chargements complets et deux parsings JSON.
+let chargement: Promise<ChunkCache[]> | null = null;
+
+export function invalidateVectorCache() { cache = null; chargement = null; }
+
+async function loadCache(): Promise<ChunkCache[]> {
   if (cache) return cache;
-  const rows = await storage.listAllKbChunks();
-  cache = rows.map((r) => ({ id: r.id, documentId: r.documentId, content: r.content, vec: JSON.parse(r.embedding) as number[] }));
-  return cache;
+  if (!chargement) {
+    chargement = (async () => {
+      const rows = await storage.listAllKbChunks();
+      cache = rows.map((r) => {
+        const vec = JSON.parse(r.embedding) as number[];
+        return { id: r.id, documentId: r.documentId, content: r.content, vec, norme: norme(vec) };
+      });
+      return cache;
+    })().finally(() => { chargement = null; });
+  }
+  return chargement;
 }
 
 export interface RetrievedChunk { content: string; documentId: number; score: number; }
@@ -73,8 +105,9 @@ export async function retrieveRelevantChunks(question: string, topK = 5): Promis
   const all = await loadCache();
   if (all.length === 0) return [];
   const [qVec] = await embedTexts([question]);
+  const normeQ = norme(qVec);
   return all
-    .map((c) => ({ content: c.content, documentId: c.documentId, score: cosineSimilarity(qVec, c.vec) }))
+    .map((c) => ({ content: c.content, documentId: c.documentId, score: cosineAvecNorme(qVec, c.vec, c.norme, normeQ) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
     .filter((c) => c.score > 0.2);

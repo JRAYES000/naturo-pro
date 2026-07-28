@@ -78,3 +78,66 @@ test("clampSlotWindow — la boucle jour-par-jour se termine pour toute entrée 
     }
   }
 });
+
+// ─── Grille de créneaux ────────────────────────────────────────────────────────
+// Ni POST /:slug/book ni POST /manage/:token/reschedule ne vérifiaient que le créneau
+// demandé faisait partie de ceux réellement proposés : ils se contentaient du
+// non-chevauchement. Un POST fabriqué plaçait donc un rendez-vous un dimanche à 3 h du
+// matin. Les deux routes s'appuient désormais sur computeSlotsByDay — c'est donc ici
+// que se joue « ce qui n'est pas proposé n'est pas réservable ».
+
+import { computeSlotsByDay } from "./public";
+import { zonedTimeToUtc, zonedDateKey } from "../timezone";
+
+// Mercredi 15 juillet 2026, 09:00–12:00 heure de Paris.
+const MERCREDI = { dayOfWeek: 3, startTime: "09:00", endTime: "12:00" };
+const jourTest = () => {
+  // La grille exclut tout créneau à moins de 2 h (minBookHorizon) : on vise loin devant.
+  const dans30j = new Date(Date.now() + 30 * 86400000);
+  while (dans30j.getUTCDay() !== 3) dans30j.setUTCDate(dans30j.getUTCDate() + 1);
+  return { y: dans30j.getUTCFullYear(), m: dans30j.getUTCMonth() + 1, d: dans30j.getUTCDate() };
+};
+
+test("computeSlotsByDay — la grille suit l'heure d'ouverture saisie, en heure de Paris", () => {
+  const { y, m, d } = jourTest();
+  const debut = zonedTimeToUtc(y, m, d, 9, 0);
+  const slots = computeSlotsByDay({
+    avail: [MERCREDI], busy: [], from: debut, to: debut, durationMin: 60,
+  });
+  const heures = (slots[zonedDateKey(debut)] || []).map((iso) => zonedTimeKeyLocal(iso));
+  // 09:00 → 12:00, séances d'1 h, pas de 30 min : dernier départ possible à 11:00.
+  assert.deepEqual(heures, ["09:00", "09:30", "10:00", "10:30", "11:00"]);
+});
+
+test("computeSlotsByDay — rien en dehors des plages : nuit, et jour sans disponibilité", () => {
+  const { y, m, d } = jourTest();
+  const debut = zonedTimeToUtc(y, m, d, 9, 0);
+  const slots = computeSlotsByDay({ avail: [MERCREDI], busy: [], from: debut, to: debut, durationMin: 60 });
+  const proposes = slots[zonedDateKey(debut)] || [];
+  assert.ok(!proposes.includes(new Date(zonedTimeToUtc(y, m, d, 3, 0)).toISOString()), "3 h du matin proposé");
+  assert.ok(!proposes.includes(new Date(zonedTimeToUtc(y, m, d, 9, 7)).toISOString()), "créneau hors grille proposé");
+
+  // Jeudi : aucune plage déclarée → aucun créneau.
+  const jeudi = zonedTimeToUtc(y, m, d + 1, 9, 0);
+  const vide = computeSlotsByDay({ avail: [MERCREDI], busy: [], from: jeudi, to: jeudi, durationMin: 60 });
+  assert.deepEqual(vide[zonedDateKey(jeudi)] ?? [], []);
+});
+
+test("computeSlotsByDay — un créneau occupé disparaît de la grille", () => {
+  const { y, m, d } = jourTest();
+  const debut = zonedTimeToUtc(y, m, d, 9, 0);
+  const occupe = zonedTimeToUtc(y, m, d, 10, 0);
+  const slots = computeSlotsByDay({
+    avail: [MERCREDI], busy: [[occupe, occupe + 3600000]], from: debut, to: debut, durationMin: 60,
+  });
+  const heures = (slots[zonedDateKey(debut)] || []).map((iso) => zonedTimeKeyLocal(iso));
+  assert.ok(!heures.includes("10:00"), "le créneau occupé est encore proposé");
+  assert.ok(!heures.includes("09:30"), "un créneau qui chevauche l'occupé est encore proposé");
+  assert.ok(heures.includes("09:00") && heures.includes("11:00"));
+});
+
+function zonedTimeKeyLocal(iso: string): string {
+  return new Date(iso).toLocaleTimeString("fr-FR", {
+    timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  });
+}

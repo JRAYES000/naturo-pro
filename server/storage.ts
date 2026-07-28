@@ -397,6 +397,30 @@ if (DB_DRIVER !== "mysql") {
   try { raw.exec(`ALTER TABLE appointments ADD COLUMN review_email_sent_at INTEGER`); } catch { /* already exists */ }
   // Unicité du numéro de facture par praticien (obligation légale, art. 242 nonies A CGI).
   try { raw.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_invoice_user_number ON invoices (user_id, number)`); } catch { /* déjà présent */ }
+  // Index de recherche — cf. migrations/2.1-indexes.sql pour la version MySQL.
+  for (const ddl of [
+    `CREATE INDEX IF NOT EXISTS idx_clients_user ON clients (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_appt_user_start ON appointments (user_id, start_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_notes_user ON consultation_notes (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_notes_client ON consultation_notes (client_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_notes_appointment ON consultation_notes (appointment_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_avail_user ON availability_slots (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_categories_user ON appointment_categories (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_email_templates_user ON email_templates (user_id, kind)`,
+    `CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_anamnesis_tpl_user ON anamnesis_templates (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_anamnesis_resp_user ON anamnesis_responses (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_anamnesis_resp_token ON anamnesis_responses (token)`,
+    `CREATE INDEX IF NOT EXISTS idx_programs_user ON programs (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_programs_client ON programs (client_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_client_docs_user_client ON client_documents (user_id, client_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_natural_solutions_user ON natural_solutions (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_packages_user_client ON packages (user_id, client_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ai_discussions_user ON ai_discussions (user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_content_posts_user ON content_posts (user_id, status)`,
+  ]) {
+    try { raw.exec(ddl); } catch { /* déjà présent */ }
+  }
   // Marqueur durable des sessions Stripe traitées (cf. shared/schema.ts).
   try {
     raw.exec(`CREATE TABLE IF NOT EXISTS stripe_processed_sessions (
@@ -574,6 +598,28 @@ async function runMysqlMigrations(): Promise<void> {
       // DDL échoue en best-effort et la contrainte n'est pas posée — d'où le retry
       // applicatif dans storage.createInvoiceNumbered, qui ne dépend pas d'elle.
       "CREATE UNIQUE INDEX uniq_invoice_user_number ON invoices (user_id, number)",
+      // ── Index de recherche (migration 2.1). MySQL n'a pas de CREATE INDEX IF NOT
+      // EXISTS : après la première application, chaque DDL échoue et est journalisé
+      // en best-effort, comme les ALTER TABLE au-dessus. Comportement assumé.
+      "CREATE INDEX idx_clients_user ON clients (user_id)",
+      "CREATE INDEX idx_appt_user_start ON appointments (user_id, start_at)",
+      "CREATE INDEX idx_notes_user ON consultation_notes (user_id)",
+      "CREATE INDEX idx_notes_client ON consultation_notes (client_id)",
+      "CREATE INDEX idx_notes_appointment ON consultation_notes (appointment_id)",
+      "CREATE INDEX idx_avail_user ON availability_slots (user_id)",
+      "CREATE INDEX idx_categories_user ON appointment_categories (user_id)",
+      "CREATE INDEX idx_email_templates_user ON email_templates (user_id, kind)",
+      "CREATE INDEX idx_sessions_expires ON sessions (expires_at)",
+      "CREATE INDEX idx_anamnesis_tpl_user ON anamnesis_templates (user_id)",
+      "CREATE INDEX idx_anamnesis_resp_user ON anamnesis_responses (user_id)",
+      "CREATE INDEX idx_anamnesis_resp_token ON anamnesis_responses (token)",
+      "CREATE INDEX idx_programs_user ON programs (user_id)",
+      "CREATE INDEX idx_programs_client ON programs (client_id)",
+      "CREATE INDEX idx_client_docs_user_client ON client_documents (user_id, client_id)",
+      "CREATE INDEX idx_natural_solutions_user ON natural_solutions (user_id)",
+      "CREATE INDEX idx_packages_user_client ON packages (user_id, client_id)",
+      "CREATE INDEX idx_ai_discussions_user ON ai_discussions (user_id)",
+      "CREATE INDEX idx_content_posts_user ON content_posts (user_id, status)",
       // Marqueur durable des sessions Stripe traitées — survit à la suppression du RDV.
       `CREATE TABLE IF NOT EXISTS stripe_processed_sessions (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -732,7 +778,7 @@ export const USER_SCOPED_TABLES = [
  * doivent former un tout indivisible.
  */
 const filesParUser = new Map<number, Promise<unknown>>();
-function serialiserParUser<T>(userId: number, tache: () => Promise<T>): Promise<T> {
+export function serialiserParUser<T>(userId: number, tache: () => Promise<T>): Promise<T> {
   const precedent = filesParUser.get(userId) ?? Promise.resolve();
   // .catch() sur le maillon précédent : un échec ne doit pas bloquer la file.
   const suivant = precedent.then(tache, tache);
@@ -764,6 +810,8 @@ export interface IStorage {
   createSession(userId: number, token: string, expiresAt: number): Promise<Session>;
   getSessionByToken(token: string): Promise<Session | undefined>;
   deleteSession(token: string): Promise<void>;
+  purgeExpiredSessions(): Promise<number>;
+  deleteSessionsForUser(userId: number): Promise<void>;
 
   // Categories
   listCategories(userId: number): Promise<AppointmentCategory[]>;
@@ -786,6 +834,7 @@ export interface IStorage {
 
   // Appointments
   listAppointments(userId: number, from?: number, to?: number): Promise<Appointment[]>;
+  listAllAppointments(userId: number): Promise<Appointment[]>;
   getAppointment(id: number): Promise<Appointment | undefined>;
   getAppointmentByGoogleEventId(userId: number, googleEventId: string): Promise<Appointment | undefined>;
   listAppointmentsWithGoogleEventId(userId: number, from: number, to: number): Promise<Appointment[]>;
@@ -904,7 +953,8 @@ export interface IStorage {
 
   // Studio contenu
   createContentPost(d: { userId: number; channel: string; format: string; theme: string | null; title: string; body: string; slidesJson?: string | null; backgroundImage?: string | null }): Promise<ContentPost>;
-  listContentPosts(userId: number, status?: string): Promise<ContentPost[]>;
+  listContentPosts(userId: number, status?: string): Promise<Omit<ContentPost, "backgroundImage">[]>;
+  getContentPostBackground(id: number): Promise<{ userId: number; backgroundImage: string | null } | undefined>;
   getContentPost(id: number): Promise<ContentPost | undefined>;
   updateContentPost(id: number, patch: { body?: string; status?: string }): Promise<ContentPost | undefined>;
   deleteContentPost(id: number): Promise<void>;
@@ -1003,6 +1053,19 @@ export class DatabaseStorage implements IStorage {
 
   async getSessionByToken(token: string): Promise<Session | undefined> {
     return first(db.select().from(sessions).where(eq(sessions.token, token)));
+  }
+
+  /** Supprime les sessions expirées. Rien ne les purgeait : la table grossissait sans fin. */
+  async purgeExpiredSessions(): Promise<number> {
+    const expirees = await db.select({ id: sessions.id }).from(sessions)
+      .where(lte(sessions.expiresAt, Date.now()));
+    if (expirees.length) await db.delete(sessions).where(lte(sessions.expiresAt, Date.now()));
+    return expirees.length;
+  }
+
+  /** Révoque toutes les sessions d'un utilisateur (changement de mot de passe). */
+  async deleteSessionsForUser(userId: number): Promise<void> {
+    await db.delete(sessions).where(eq(sessions.userId, userId));
   }
 
   async deleteSession(token: string): Promise<void> {
@@ -1106,11 +1169,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── Appointments ───────────────────────────────────────────────────────────
+  /**
+   * Rendez-vous d'un praticien. Sans bornes, la fenêtre par défaut couvre 12 mois
+   * glissants : l'agenda appelait la route sans paramètres et rapatriait TOUT
+   * l'historique à chaque ouverture, pour n'en afficher qu'une semaine.
+   */
   async listAppointments(userId: number, from?: number, to?: number): Promise<Appointment[]> {
-    const conds = [eq(appointments.userId, userId)];
-    if (from) conds.push(gte(appointments.startAt, from));
-    if (to) conds.push(lte(appointments.startAt, to));
-    return db.select().from(appointments).where(and(...conds));
+    const now = Date.now();
+    const debut = from ?? now - 365 * 86400000;
+    const fin = to ?? now + 365 * 86400000;
+    return db.select().from(appointments).where(and(
+      eq(appointments.userId, userId),
+      gte(appointments.startAt, debut),
+      lte(appointments.startAt, fin),
+    ));
+  }
+
+  /** Variante explicitement NON bornée — export RGPD uniquement. */
+  async listAllAppointments(userId: number): Promise<Appointment[]> {
+    return db.select().from(appointments).where(eq(appointments.userId, userId));
   }
 
   async getAppointment(id: number): Promise<Appointment | undefined> {
@@ -1705,12 +1782,32 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async listContentPosts(userId: number, status?: string): Promise<ContentPost[]> {
+  /**
+   * Liste les contenus SANS le fond d'image (`background_image`, LONGTEXT jusqu'à 4 Mo
+   * de base64 par post). Un `select()` complet faisait descendre plusieurs dizaines de
+   * Mo à chaque ouverture de la bibliothèque. Le fond est servi à la demande par
+   * getContentPostBackground, quand l'utilisateur affiche ou télécharge les visuels.
+   */
+  async listContentPosts(userId: number, status?: string): Promise<Omit<ContentPost, "backgroundImage">[]> {
     const where = status
       ? and(eq(contentPosts.userId, userId), eq(contentPosts.status, status))
       : eq(contentPosts.userId, userId);
-    return db.select().from(contentPosts).where(where)
+    return db.select({
+      id: contentPosts.id, userId: contentPosts.userId, channel: contentPosts.channel,
+      format: contentPosts.format, theme: contentPosts.theme, title: contentPosts.title,
+      body: contentPosts.body, status: contentPosts.status, slidesJson: contentPosts.slidesJson,
+      createdAt: contentPosts.createdAt, updatedAt: contentPosts.updatedAt,
+      publishedAt: contentPosts.publishedAt,
+    }).from(contentPosts).where(where)
       .orderBy(desc(contentPosts.updatedAt), desc(contentPosts.id));
+  }
+
+  /** Fond d'image d'un contenu, chargé à la demande (cf. listContentPosts). */
+  async getContentPostBackground(id: number): Promise<{ userId: number; backgroundImage: string | null } | undefined> {
+    return first(
+      db.select({ userId: contentPosts.userId, backgroundImage: contentPosts.backgroundImage })
+        .from(contentPosts).where(eq(contentPosts.id, id)),
+    );
   }
 
   async getContentPost(id: number): Promise<ContentPost | undefined> {
