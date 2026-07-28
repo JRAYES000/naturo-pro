@@ -94,3 +94,11 @@ TODO.local.md
 /TEST_RESULTS.txt
 /PLAN.md
 /test_invoicing*.py
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+# Session Playwright enregistree
+/tests/.auth/

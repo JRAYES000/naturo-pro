@@ -15,7 +15,8 @@
     "test:e2e": "node script/e2e-fonctionnel.mjs",
     "predev": "npm run db:push",
     "pretest": "npm run db:push",
-    "db:generate:mysql": "drizzle-kit generate --config=drizzle.config.mysql.ts"
+    "db:generate:mysql": "drizzle-kit generate --config=drizzle.config.mysql.ts",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -89,6 +90,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.18",
     "@types/better-sqlite3": "^7.6.13",

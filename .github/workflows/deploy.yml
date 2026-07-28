@@ -1,0 +1,113 @@
+name: Déploiement
+
+# Déploie en production, uniquement si la CI est verte sur main.
+#
+# Remplace la séquence manuelle (build → scp du bundle → scp des assets → scp des
+# migrations → touch restart.txt) : cinq commandes à ne pas se tromper, dans le bon
+# ordre, avec le bon nom de fichier d'asset haché. Une seule oubliée et la production
+# tourne sur un mélange de deux versions.
+#
+# ─────────────────────────────────────────────────────────────────────────────────
+# AVANT LE PREMIER USAGE — deux secrets à créer dans le dépôt
+# (Settings → Secrets and variables → Actions → New repository secret) :
+#
+#   SSH_CLE_DEPLOIEMENT   la clé privée SSH autorisée sur le serveur
+#   SSH_HOTE_CONNU        la sortie de : ssh-keyscan -p <port> <hôte>
+#
+# Tant qu'ils n'existent pas, le workflow s'arrête proprement avec un message.
+# Je n'ai pas créé ces secrets moi-même : une clé privée ne se confie pas à un tiers,
+# même pour la coller dans un formulaire.
+# ─────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploiement-production
+  cancel-in-progress: false
+
+env:
+  SSH_UTILISATEUR: u379081112
+  SSH_HOTE: ${{ vars.SSH_HOTE }}
+  SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+  CHEMIN_APP: domains/app.ecole-naturo.fr/nodejs
+
+jobs:
+  deployer:
+    name: Déployer en production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Sur workflow_run, ne déploie que si la CI a réussi.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Vérifier que les secrets sont configurés
+        run: |
+          if [ -z "${{ secrets.SSH_CLE_DEPLOIEMENT }}" ] || [ -z "${{ secrets.SSH_HOTE_CONNU }}" ] || [ -z "${{ vars.SSH_HOTE }}" ]; then
+            echo "::error::Déploiement non configuré. Créez les secrets SSH_CLE_DEPLOIEMENT et SSH_HOTE_CONNU, et la variable SSH_HOTE. Voir l'en-tête de ce fichier."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Préparer SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_CLE_DEPLOIEMENT }}" > ~/.ssh/id_deploiement
+          chmod 600 ~/.ssh/id_deploiement
+          printf '%s\n' "${{ secrets.SSH_HOTE_CONNU }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Sauvegarder le bundle en place
+        run: |
+          ssh -i ~/.ssh/id_deploiement -p "$SSH_PORT" "$SSH_UTILISATEUR@$SSH_HOTE" \
+            "cd $CHEMIN_APP && cp dist/index.cjs dist/index.cjs.bak.avant-$(date +%Y%m%d-%H%M%S)"
+
+      - name: Envoyer le bundle, les assets et les migrations
+        run: |
+          CIBLE="$SSH_UTILISATEUR@$SSH_HOTE:$CHEMIN_APP"
+          SCP="scp -i $HOME/.ssh/id_deploiement -P $SSH_PORT"
+          $SCP dist/index.cjs           "$CIBLE/dist/index.cjs"
+          $SCP dist/public/index.html   "$CIBLE/dist/public/index.html"
+          # Les noms d'assets sont hachés : on envoie ce que le build vient de produire.
+          $SCP dist/public/assets/*     "$CIBLE/dist/public/assets/"
+          $SCP -r migrations-mysql      "$CIBLE/"
+
+      - name: Redémarrer et vérifier l'empreinte
+        run: |
+          LOCAL=$(md5sum dist/index.cjs | cut -d' ' -f1)
+          DISTANT=$(ssh -i ~/.ssh/id_deploiement -p "$SSH_PORT" "$SSH_UTILISATEUR@$SSH_HOTE" \
+            "cd $CHEMIN_APP && touch tmp/restart.txt && md5sum dist/index.cjs | cut -d' ' -f1")
+          echo "local=$LOCAL distant=$DISTANT"
+          [ "$LOCAL" = "$DISTANT" ] || { echo "::error::empreintes différentes, déploiement incomplet"; exit 1; }
+
+      - name: Contrôle de santé
+        run: |
+          sleep 20
+          for tentative in 1 2 3 4 5; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' https://app.ecole-naturo.fr/api/auth/me || true)
+            ACCUEIL=$(curl -s -o /dev/null -w '%{http_code}' https://app.ecole-naturo.fr/ || true)
+            if [ "$CODE" = "401" ] && [ "$ACCUEIL" = "200" ]; then
+              echo "production en ligne (accueil 200, /api/auth/me 401)"; exit 0
+            fi
+            echo "tentative $tentative : accueil=$ACCUEIL me=$CODE"; sleep 10
+          done
+          echo "::error::la production ne répond pas correctement après déploiement"
+          exit 1
+
+      - name: Effacer la clé
+        if: always()
+        run: rm -f ~/.ssh/id_deploiement

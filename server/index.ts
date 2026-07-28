@@ -167,7 +167,12 @@ app.use((req, res, next) => {
       reusePort: process.platform === "linux",
     },
     () => {
-      log(`serving on port ${port}`);
+      // Le PID permet de distinguer un REDÉMARRAGE (Passenger recycle le process quand
+      // l'app est inactive — 4 à 5 fois par jour) d'un déploiement multi-workers. Deux
+      // PID vivants en parallèle signifient que les verrous en mémoire
+      // (serialiserParUser, utilisés par la numérotation de factures et la réservation)
+      // ne couvrent qu'une partie du trafic.
+      log(`serving on port ${port} (pid ${process.pid})`);
     },
   );
 })();

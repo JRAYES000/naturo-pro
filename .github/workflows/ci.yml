@@ -2,16 +2,17 @@ name: CI
 
 # Vérifie chaque poussée sur main et chaque pull request.
 #
-# Pourquoi : jusqu'ici rien ne tournait automatiquement. Les régressions n'étaient
-# détectées que si quelqu'un pensait à lancer les tests à la main avant de déployer —
-# et une bonne partie des défauts trouvés lors de l'audit du 28/07/2026 étaient
-# précisément des régressions silencieuses (page blanche du lien de réservation,
-# assistant de configuration cassé, dates décalées d'un jour).
+# Pourquoi : jusqu'au 28/07/2026 rien ne tournait automatiquement. Les régressions
+# n'étaient détectées que si quelqu'un pensait à lancer les tests avant de déployer — et
+# une bonne partie des défauts trouvés lors de l'audit étaient précisément des régressions
+# silencieuses. La CI a d'ailleurs trouvé un vrai bug à son premier passage : six tables
+# déclarées dans le schéma mais jamais créées sur une base vierge.
 #
-# Les trois niveaux sont complémentaires :
-#   check    — le compilateur (rapide, attrape les contrats rompus entre fichiers)
-#   test     — 127 tests unitaires (logique pure : fuseaux, factures, créneaux)
-#   test:e2e — 89 vérifications sur un vrai serveur, du point de vue d'une utilisatrice
+# Trois niveaux complémentaires :
+#   check / test  — compilateur et logique pure (fuseaux, factures, créneaux)
+#   test:e2e      — 89 vérifications HTTP, du point de vue d'une utilisatrice
+#   test:ui       — parcours dans un vrai navigateur : rendu, routage par hash, mobile,
+#                   et fuseau horaire du poste de la visiteuse
 
 on:
   push:
@@ -21,13 +22,13 @@ on:
 
 jobs:
   verification:
+    name: Types, tests et parcours HTTP
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -51,18 +52,48 @@ jobs:
           PORT: 3000
         run: |
           npm run dev > /tmp/serveur.log 2>&1 &
-          # Attendre que le serveur réponde (60 s max) plutôt qu'un sleep arbitraire.
           for i in $(seq 1 60); do
-            if curl -sf http://localhost:3000/api/auth/me -o /dev/null -w '%{http_code}' | grep -q 401; then
+            if curl -sf -o /dev/null -w '%{http_code}' http://localhost:3000/api/auth/me | grep -q 401; then
               echo "serveur prêt après ${i}s"; exit 0
             fi
             sleep 1
           done
           echo "::error::le serveur n'a pas démarré"; cat /tmp/serveur.log; exit 1
 
-      - name: Tests fonctionnels bout-en-bout
+      - name: Parcours fonctionnels (HTTP)
         run: npm run test:e2e
 
       - name: Journal du serveur en cas d'échec
         if: failure()
         run: cat /tmp/serveur.log || true
+
+  navigateur:
+    name: Parcours dans un vrai navigateur
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Installer Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Parcours navigateur (bureau, mobile, autre fuseau)
+        run: npm run test:ui
+        env:
+          CI: "true"
+
+      - name: Rapport Playwright en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-playwright
+          path: playwright-report/
+          retention-days: 7
