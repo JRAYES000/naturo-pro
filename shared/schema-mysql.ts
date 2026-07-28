@@ -32,6 +32,9 @@ export const users = mysqlTable("users", {
   marketingTone: varchar("marketing_tone", { length: 64 }),
   marketingAudience: varchar("marketing_audience", { length: 255 }),
   studioIntroSeenAt: bigint("studio_intro_seen_at", { mode: "number" }),
+  // Dernier envoi du recap quotidien (ms). Seule tache sans garde-fou en base :
+  // le cron externe la rejouerait a chaque passage. Cf. sendDailyRecapForUser.
+  recapSentAt: bigint("recap_sent_at", { mode: "number" }),
   // Phase 0.7 — Email rappels via Resend
   resendApiKey: varchar("resend_api_key", { length: 255 }),
   emailFromAddress: varchar("email_from_address", { length: 255 }),

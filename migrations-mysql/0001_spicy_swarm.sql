@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `recap_sent_at` bigint;

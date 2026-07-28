@@ -32,6 +32,9 @@ export const users = sqliteTable("users", {
   marketingTone: text("marketing_tone"),
   marketingAudience: text("marketing_audience"),
   studioIntroSeenAt: integer("studio_intro_seen_at"),
+  // Dernier envoi du recap quotidien (ms). Seule tache sans garde-fou en base :
+  // le cron externe la rejouerait a chaque passage. Cf. sendDailyRecapForUser.
+  recapSentAt: integer("recap_sent_at"),
   // Phase 0.7 — Email rappels via Resend
   resendApiKey: text("resend_api_key"),                       // clé personnelle de la praticienne (chiffrée plus tard)
   emailFromAddress: text("email_from_address"),               // ex "noreply@ecole-naturo.fr"

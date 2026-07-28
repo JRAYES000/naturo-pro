@@ -167,6 +167,15 @@ export async function sendDailyRecapForUser(user: any): Promise<{ ok: boolean; r
   if (!cfg) return { ok: false, reason: "no-config" };
   if (!user.email) return { ok: false, reason: "no-recipient" };
 
+  // Idempotence EN BASE, une fois par jour local. C'était la seule tâche sans garde-fou
+  // persistant : le garde-fou vivait en mémoire, dans une Map perdue à chaque
+  // redémarrage — et Passenger recycle le process 4 à 5 fois par jour. Un cron externe
+  // rejouerait donc le récap à chaque passage.
+  const aujourdHui = getLocalDayKey();
+  if (user.recapSentAt && getLocalDayKey(TZ, new Date(user.recapSentAt)) === aujourdHui) {
+    return { ok: false, reason: "already-sent-today" };
+  }
+
   const { from, to } = getLocalDayBounds(0);
   const appts = await storage.listAppointments(user.id, from, to);
   appts.sort((a, b) => a.startAt - b.startAt);
@@ -201,7 +210,10 @@ export async function sendDailyRecapForUser(user: any): Promise<{ ok: boolean; r
   });
 
   const r = await sendEmail(cfg, user.email, subject, html, text);
-  if (r.ok) return { ok: true, sent: rows.length };
+  if (r.ok) {
+    await storage.updateUser(user.id, { recapSentAt: Date.now() } as any);
+    return { ok: true, sent: rows.length };
+  }
   console.error(`[recap] failed user=${user.id}: ${r.error}`);
   return { ok: false, reason: r.error };
 }
