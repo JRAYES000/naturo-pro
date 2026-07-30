@@ -8,15 +8,18 @@ name: Déploiement
 # tourne sur un mélange de deux versions.
 #
 # ─────────────────────────────────────────────────────────────────────────────────
-# AVANT LE PREMIER USAGE — deux secrets à créer dans le dépôt
-# (Settings → Secrets and variables → Actions → New repository secret) :
+# AVANT LE PREMIER USAGE — un seul secret reste à créer :
 #
-#   SSH_CLE_DEPLOIEMENT   la clé privée SSH autorisée sur le serveur
-#   SSH_HOTE_CONNU        la sortie de : ssh-keyscan -p <port> <hôte>
+#   gh secret set SSH_CLE_DEPLOIEMENT < ~/.ssh/naturo_pro_deploy
 #
-# Tant qu'ils n'existent pas, le workflow s'arrête proprement avec un message.
-# Je n'ai pas créé ces secrets moi-même : une clé privée ne se confie pas à un tiers,
-# même pour la coller dans un formulaire.
+# Les quatre autres (SSH_HOTE_CONNU, SSH_HOTE, SSH_PORT, SSH_UTILISATEUR) sont déjà
+# en place. Tant que la clé n'existe pas, le workflow s'arrête proprement.
+# Je ne l'ai pas créée moi-même : une clé privée ne se confie pas à un tiers, même
+# pour la coller dans un formulaire.
+#
+# Hôte, port et utilisateur sont des secrets et non des variables : Actions masque
+# les secrets dans les logs, pas les variables, et les logs d'un dépôt public sont
+# lisibles par tout le monde.
 # ─────────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -30,17 +33,18 @@ concurrency:
   group: deploiement-production
   cancel-in-progress: false
 
-env:
-  SSH_UTILISATEUR: u379081112
-  SSH_HOTE: ${{ vars.SSH_HOTE }}
-  SSH_PORT: ${{ vars.SSH_PORT || '22' }}
-  CHEMIN_APP: domains/app.ecole-naturo.fr/nodejs
-
 jobs:
   deployer:
     name: Déployer en production
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # ponytail: env au niveau du job, pas du workflow — le contexte `secrets`
+    # n'est pas disponible dans un `env:` de niveau workflow.
+    env:
+      SSH_UTILISATEUR: ${{ secrets.SSH_UTILISATEUR }}
+      SSH_HOTE: ${{ secrets.SSH_HOTE }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      CHEMIN_APP: domains/app.ecole-naturo.fr/nodejs
     # Sur workflow_run, ne déploie que si la CI a réussi.
     if: >
       github.event_name == 'workflow_dispatch' ||
@@ -49,10 +53,16 @@ jobs:
     steps:
       - name: Vérifier que les secrets sont configurés
         run: |
-          if [ -z "${{ secrets.SSH_CLE_DEPLOIEMENT }}" ] || [ -z "${{ secrets.SSH_HOTE_CONNU }}" ] || [ -z "${{ vars.SSH_HOTE }}" ]; then
-            echo "::error::Déploiement non configuré. Créez les secrets SSH_CLE_DEPLOIEMENT et SSH_HOTE_CONNU, et la variable SSH_HOTE. Voir l'en-tête de ce fichier."
+          if [ -z "${{ secrets.SSH_CLE_DEPLOIEMENT }}" ]; then
+            echo "::error::Clé de déploiement absente. Voir l'en-tête de ce fichier."
             exit 1
           fi
+          for nom in SSH_HOTE_CONNU SSH_HOTE SSH_PORT SSH_UTILISATEUR; do
+            eval "valeur=\$$nom"
+            [ -n "${valeur:-}" ] || { echo "::error::secret $nom absent"; exit 1; }
+          done
+        env:
+          SSH_HOTE_CONNU: ${{ secrets.SSH_HOTE_CONNU }}
 
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
