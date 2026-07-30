@@ -1,15 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link } from "wouter";
-import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical } from "lucide-react";
+import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, Wallet, CheckCircle2, XCircle, TrendingUp } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuth } from "@/lib/auth";
-import { formatTime, formatDay, durationLabel } from "@/lib/format";
+import { formatTime, formatDay, durationLabel, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 import type { Appointment, Client, AppointmentCategory } from "@shared/schema";
+
+interface StatsOverview {
+  caEncaisseCents: number;
+  caPrevuCents: number;
+  nbRdv: number;
+  nbRdvAnnules: number;
+  topPrestations: Array<{ name: string; count: number; caCents: number }>;
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -26,18 +34,33 @@ export default function Dashboard() {
   });
   const { data: clients } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
   const { data: cats } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
+  const { data: stats, isLoading: statsLoading } = useQuery<StatsOverview>({
+    queryKey: ["/api/stats/overview"],
+    queryFn: async () => (await apiRequest("GET", "/api/stats/overview")).json(),
+  });
 
   const upcoming = (appts || []).filter(a => a.startAt >= now && a.status !== "cancelled").sort((a,b) => a.startAt - b.startAt);
   const todayCount = upcoming.filter(a => new Date(a.startAt).toDateString() === new Date().toDateString()).length;
   const thisWeekCount = upcoming.filter(a => a.startAt < now + 7 * 86400000).length;
   const completed = (appts || []).filter(a => a.status === "completed").length;
 
+  const heure = new Date().getHours();
+  const salutation = heure >= 5 && heure < 12 ? "Bonjour" : heure >= 12 && heure < 18 ? "Bon après-midi" : "Bonsoir";
+  const dateDuJour = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  const tauxAnnulation = stats && stats.nbRdv + stats.nbRdvAnnules > 0
+    ? Math.round((stats.nbRdvAnnules / (stats.nbRdv + stats.nbRdvAnnules)) * 100)
+    : null;
+
+  const remplissageLabel = thisWeekCount >= 16 ? "Semaine complète" : thisWeekCount >= 6 ? "Semaine chargée" : "Semaine calme";
+
   return (
     <AppLayout>
       <div className="max-w-6xl">
         <PageHeader
-          kicker={`Bonjour ${user?.name?.split(" ")[0] ?? ""}`.trim()}
+          kicker={`${salutation} ${user?.name?.split(" ")[0] ?? ""}`.trim()}
           title="Votre cabinet, en un coup d'œil"
+          subtitle={dateDuJour}
         />
 
         {user?.plan === "active" && (
@@ -69,11 +92,47 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <StatCard label="RDV aujourd'hui" value={todayCount} icon={Calendar} testid="stat-today" />
           <StatCard label="Cette semaine" value={thisWeekCount} icon={Sparkles} testid="stat-week" />
           <StatCard label="Clients" value={(clients || []).length} icon={Users} testid="stat-clients" />
           <StatCard label="Consultations terminées (30j)" value={completed} icon={Tag} testid="stat-completed" />
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {statsLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div className="card-naturo" key={i}>
+                <Skeleton className="h-4 w-24 mb-3" />
+                <Skeleton className="h-8 w-32" />
+              </div>
+            ))
+          ) : (
+            <>
+              <StatCard label="CA encaissé (mois)" value={formatPrice(stats?.caEncaisseCents ?? 0)} icon={Euro} testid="stat-ca-encaisse" />
+              <StatCard label="CA prévu" value={formatPrice(stats?.caPrevuCents ?? 0)} icon={Wallet} testid="stat-ca-prevu" />
+              <StatCard label="RDV honorés (mois)" value={stats?.nbRdv ?? 0} icon={CheckCircle2} testid="stat-rdv-honores" />
+              <StatCard
+                label="RDV annulés (mois)"
+                value={stats?.nbRdvAnnules ?? 0}
+                icon={XCircle}
+                testid="stat-rdv-annules"
+                sub={tauxAnnulation !== null ? `${tauxAnnulation}% d'annulation` : undefined}
+              />
+            </>
+          )}
+        </div>
+
+        <div className="card-naturo mb-8 flex items-center gap-4" data-testid="card-remplissage-semaine">
+          <div className="h-10 w-10 shrink-0 rounded-lg bg-secondary flex items-center justify-center text-primary">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Remplissage des 7 prochains jours</p>
+            <p className="font-extrabold text-heading">
+              {thisWeekCount} RDV — <span className="text-primary">{remplissageLabel}</span>
+            </p>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -149,6 +208,34 @@ export default function Dashboard() {
                 </div>
               </a>
             )}
+
+            <div className="card-naturo" data-testid="card-top-prestations">
+              <h3 className="font-extrabold mb-3">Top prestations du mois</h3>
+              {statsLoading ? (
+                <div className="space-y-3" aria-busy="true">
+                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                </div>
+              ) : (stats?.topPrestations || []).length === 0 ? (
+                <EmptyState
+                  icon={Tag}
+                  title="Aucune prestation ce mois"
+                  description="Vos prestations les plus demandées apparaîtront ici."
+                  card={false}
+                />
+              ) : (
+                <ul className="space-y-3">
+                  {stats!.topPrestations.slice(0, 3).map((p, i) => (
+                    <li key={p.name} className="flex items-center justify-between gap-3" data-testid={`top-prestation-${i}`}>
+                      <div className="min-w-0">
+                        <p className="font-bold truncate">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">{p.count} RDV</p>
+                      </div>
+                      <p className="font-extrabold text-primary shrink-0">{formatPrice(p.caCents)}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -156,7 +243,7 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, testid }: any) {
+function StatCard({ label, value, icon: Icon, testid, sub }: any) {
   return (
     <div className="card-naturo" data-testid={testid}>
       <div className="flex items-center justify-between mb-2">
@@ -164,6 +251,7 @@ function StatCard({ label, value, icon: Icon, testid }: any) {
         <Icon className="h-4 w-4 text-primary" />
       </div>
       <p className="text-3xl font-extrabold text-heading">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
 }
