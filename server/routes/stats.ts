@@ -86,11 +86,17 @@ export function registerStatsRoutes(app: Express): void {
       }
 
       // Enrichir avec le CA des factures payées liées aux RDV de chaque catégorie
+      // Perf (audit D, 30/07) : `appts.find(...)` dans cette boucle refaisait un scan
+      // linéaire de TOUS les RDV de la période pour CHAQUE facture payée liée à un RDV
+      // — un balayage O(factures × RDV). Sur un praticien avec plusieurs années
+      // d'historique (factures ET RDV en volume), ce coût croît en carré. Un index
+      // Map construit une seule fois ramène le lookup à O(1) par facture.
+      const apptById = new Map(appts.map((a) => [a.id, a]));
       const invByCatId = new Map<number, number>(); // catId → CA encaissé cumulé
       for (const inv of invoices) {
         if (inv.status !== "paid") continue;
         if (!inv.appointmentId) continue;
-        const appt = appts.find((a) => a.id === inv.appointmentId);
+        const appt = apptById.get(inv.appointmentId);
         if (!appt?.categoryId) continue;
         invByCatId.set(appt.categoryId, (invByCatId.get(appt.categoryId) || 0) + (inv.totalCents || 0));
       }
