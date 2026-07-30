@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar as BigCalendar, dateFnsLocalizer, Views } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { format, parse, startOfWeek, getDay } from "date-fns";
@@ -20,6 +20,7 @@ import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Loading } from "@/components/Loading";
 
 const locales = { fr };
 const localizer = dateFnsLocalizer({
@@ -45,10 +46,55 @@ const messages = {
   noEventsInRange: "Aucun rendez-vous sur cette période.",
 };
 
+// Détecte le mobile (<=640px) pour basculer la vue par défaut du calendrier.
+// Pas de nouvelle dépendance : matchMedia natif + écoute de l'événement "change".
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false
+  );
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 640px)");
+    const onChange = () => setIsMobile(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
+
+// Encart repliable expliquant les codes couleur/visuels utilisés dans le calendrier.
+function AgendaColorLegend({ showGoogle }: { showGoogle: boolean }) {
+  return (
+    <details className="card-naturo p-3 text-sm mb-4" data-testid="agenda-color-legend">
+      <summary className="cursor-pointer font-semibold text-heading">Comprendre les couleurs de l'agenda</summary>
+      <ul className="mt-2 space-y-1.5 text-muted-foreground">
+        <li className="flex items-center gap-2">
+          <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: "#186749" }} />
+          RDV normal — la couleur reprend celle de la catégorie de prestation.
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="inline-block h-3 w-3 shrink-0 border-l-4" style={{ borderColor: "#15803d" }} />
+          Bordure gauche verte plus marquée — rendez-vous confirmé par la cliente.
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="inline-block h-3 w-3 rounded-full shrink-0 line-through" style={{ backgroundColor: "#dc2626" }} />
+          Rouge barré — rendez-vous annulé par la cliente.
+        </li>
+        {showGoogle && (
+          <li className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: "#6b7280" }} />
+            Gris — événement importé depuis Google Agenda (lecture seule).
+          </li>
+        )}
+      </ul>
+    </details>
+  );
+}
+
 export default function Agenda() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const [, navigate] = useLocation();
+  const isMobile = useIsMobile();
   // On mémorise l'IDENTIFIANT, pas une copie du rendez-vous : la fiche ouverte doit
   // refléter les données fraîches après chaque mutation. Auparavant `selected` était un
   // instantané figé — après « Envoyer le rappel », la liste se rafraîchissait mais la
@@ -58,10 +104,15 @@ export default function Agenda() {
   const [resendDialog, setResendDialog] = useState(false);
   const [creating, setCreating] = useState<{ start: Date; end: Date } | null>(null);
 
-  const { data: appts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
-  const { data: cats = [] } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
+  const { data: appts = [], isLoading: apptsLoading } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
+  const { data: cats = [], isLoading: catsLoading } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
   const { data: googleStatus } = useQuery<{ configured: boolean; connected: boolean; email: string | null }>({ queryKey: ["/api/google/status"] });
+
+  // Tant que les RDV ou les catégories (utilisées par eventPropGetter) ne sont pas
+  // chargés, on affiche un état de chargement plutôt qu'un calendrier vide qui se
+  // remplit brusquement.
+  const isLoading = apptsLoading || catsLoading;
 
   // Dérivé des données fraîches (cf. commentaire sur selectedId ci-dessus).
   const selected = selectedId != null ? (appts.find((a) => a.id === selectedId) ?? null) : null;
@@ -137,22 +188,33 @@ export default function Agenda() {
                   variant="outline"
                   onClick={() => importGoogleMut.mutate()}
                   disabled={importGoogleMut.isPending}
-                  className="rounded-lg font-bold"
+                  className="rounded-lg font-bold w-full sm:w-auto"
                   data-testid="button-sync-google-agenda"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${importGoogleMut.isPending ? "animate-spin" : ""}`} />
                   {importGoogleMut.isPending ? "Synchronisation…" : "Synchroniser Google"}
                 </Button>
               )}
-              <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-lg font-bold" data-testid="button-new-appointment">
+              <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-lg font-bold w-full sm:w-auto" data-testid="button-new-appointment">
                 <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
               </Button>
             </div>
           }
         />
 
-        <div className="card-naturo p-4">
+        <AgendaColorLegend showGoogle={!!googleStatus?.connected} />
+
+        <div className="card-naturo p-4 relative">
+          {isLoading && (
+            <div className="absolute inset-0 z-10 bg-card/90 backdrop-blur-sm rounded-[inherit] p-4 overflow-auto">
+              <Loading variant="cards" label="Chargement de l'agenda…" />
+            </div>
+          )}
           <BigCalendar
+            // `defaultView` est une prop non contrôlée (appliquée seulement au montage) :
+            // la `key` force un remontage propre quand on franchit le seuil mobile/desktop
+            // (ex. rotation d'écran), sans quoi le changement de defaultView serait ignoré.
+            key={isMobile ? "mobile" : "desktop"}
             localizer={localizer}
             events={events}
             startAccessor="start"
@@ -160,7 +222,7 @@ export default function Agenda() {
             culture="fr"
             messages={messages}
             views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
-            defaultView={Views.WEEK}
+            defaultView={isMobile ? Views.AGENDA : Views.WEEK}
             min={new Date(0,0,0,7,0)}
             max={new Date(0,0,0,21,0)}
             step={30}
@@ -191,6 +253,14 @@ export default function Agenda() {
             data-testid="calendar-agenda"
           />
         </div>
+
+        <style>{`
+          .rbc-btn-group button { min-height: 40px; padding: 0.5rem 0.75rem; }
+          @media (max-width: 640px) {
+            .rbc-toolbar { flex-direction: column; gap: 0.5rem; align-items: stretch; }
+            .rbc-toolbar-label { text-align: center; font-weight: 700; }
+          }
+        `}</style>
       </div>
 
       <Dialog open={!!selected} onOpenChange={() => setSelectedId(null)}>
