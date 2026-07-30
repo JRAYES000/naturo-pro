@@ -10,12 +10,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck } from "lucide-react";
+import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Loading } from "@/components/Loading";
+import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -73,8 +74,8 @@ const mdComponents: Components = {
   ),
 };
 
-function Bubble({ role, content, typing, userPhoto, userName }: {
-  role: string; content: string; typing?: boolean; userPhoto?: string | null; userName?: string | null;
+function Bubble({ role, content, typing, streaming, userPhoto, userName }: {
+  role: string; content: string; typing?: boolean; streaming?: boolean; userPhoto?: string | null; userName?: string | null;
 }) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
@@ -102,12 +103,13 @@ function Bubble({ role, content, typing, userPhoto, userName }: {
         ) : (
           <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-pre:bg-muted prose-pre:text-foreground">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{content}</ReactMarkdown>
+            {streaming && <span className="motion-safe:animate-pulse text-primary" aria-hidden="true">▍</span>}
           </div>
         )}
-        {!isUser && !typing && content && (
+        {!isUser && !typing && !streaming && content && (
           <button
             onClick={copy}
-            className="absolute -bottom-2 -right-2 opacity-0 group-hover:opacity-100 transition bg-card border border-border rounded-full p-1 shadow-sm"
+            className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card border border-border rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
             aria-label="Copier la réponse"
             data-testid="button-copy-message"
           >
@@ -136,6 +138,7 @@ export default function Chat() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: discussions = [] } = useQuery<AiDiscussion[]>({ queryKey: ["/api/discussions"] });
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
@@ -220,13 +223,25 @@ export default function Chat() {
     if (q) c.scrollTo({ top: Math.max(0, q.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 12) });
   }, [streamText, pending, sendMut.isPending]);
 
+  // Auto-grow : la zone de saisie s'agrandit avec le contenu (jusqu'à 200px, puis scroll interne).
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }, [input]);
+
   function submit(text?: string) {
     const t = (text ?? input).trim();
     if (!t || sendMut.isPending || selectedId == null) return;
     setPending(t); setInput(""); sendMut.mutate(t);
   }
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+    // isComposing : ne pas intercepter Entrée pendant une composition IME (accents, etc.).
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (input.trim() && !sendMut.isPending) submit();
+    }
   }
   async function del() {
     const ok = await confirm({ title: "Supprimer cette discussion ?", description: "Les échanges seront effacés. Action irréversible.", confirmLabel: "Supprimer", destructive: true });
@@ -236,7 +251,18 @@ export default function Chat() {
   return (
     <AppLayout>
       <PageHeader title="Naturobot" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
-      <NaturobotTabs />
+      <div className="flex items-center justify-between gap-2">
+        <NaturobotTabs />
+        <Button
+          onClick={() => setDialogOpen(true)}
+          className="sm:hidden rounded-[12px] shrink-0 mb-4 h-11 w-11"
+          size="icon"
+          aria-label="Nouvelle discussion"
+          data-testid="button-new-discussion-mobile"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm flex gap-2 items-start mb-4" data-testid="text-disclaimer-sante">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
@@ -278,18 +304,46 @@ export default function Chat() {
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
             {selectedId == null ? (
-              <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-2">
-                <Sparkles className="h-8 w-8 text-primary" />
-                <p className="font-semibold text-heading">Choisis ou démarre une discussion</p>
-                <Button onClick={() => setDialogOpen(true)} className="rounded-[12px] mt-2">Nouvelle discussion</Button>
+              <div className="h-full flex items-center justify-center">
+                <EmptyState
+                  icon={Sparkles}
+                  title="Prêt à discuter avec Naturobot"
+                  description="Naturobot est votre formateur virtuel en naturopathie. Posez vos questions sur les protocoles, plantes, cas cliniques…"
+                  card={false}
+                  action={<Button onClick={() => setDialogOpen(true)} className="rounded-[12px]" data-testid="button-new-discussion-empty"><Plus className="h-4 w-4 mr-1" /> Nouvelle discussion</Button>}
+                  testid="empty-state-no-discussion"
+                />
               </div>
-            ) : isLoading ? <Loading /> : (
+            ) : isLoading ? <Loading /> : messages.length === 0 && !pending && !sendMut.isPending ? (
+              <div className="h-full flex items-center justify-center">
+                <EmptyState
+                  icon={Sparkles}
+                  title="Prêt à discuter avec Naturobot"
+                  description="Naturobot est votre formateur virtuel en naturopathie. Posez vos questions sur les protocoles, plantes, cas cliniques…"
+                  card={false}
+                  testid="empty-state-discussion-vide"
+                />
+              </div>
+            ) : (
               <>
                 {messages.map((m) => <Bubble key={m.id} role={m.role} content={m.content} userPhoto={user?.photoUrl} userName={user?.name} />)}
                 {pending && <Bubble role="user" content={pending} userPhoto={user?.photoUrl} userName={user?.name} />}
                 {sendMut.isPending && (
                   <div>
-                    <Bubble role="assistant" content={streamText || "…"} typing={!streamText} />
+                    {streamText === "" ? (
+                      <div className="flex items-end gap-2 justify-start" data-testid="message-assistant-thinking">
+                        <Avatar src={NATUROBOT_AVATAR} fallback={<Sparkles className="h-4 w-4" />} title="Naturobot" />
+                        <div className="bg-card border border-border shadow-sm rounded-2xl px-4 py-3">
+                          <div className="flex gap-1 items-center" aria-label="Naturobot réfléchit" role="status">
+                            <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <Bubble role="assistant" content={streamText} streaming />
+                    )}
                     {sources.length > 0 && <p className="text-xs text-muted-foreground mt-1 ml-1" data-testid="text-sources">Sources : {sources.join(", ")}</p>}
                   </div>
                 )}
@@ -298,9 +352,12 @@ export default function Chat() {
           </div>
 
           {selectedId != null && (
-            <div className="border-t border-border p-3 flex items-end gap-2 bg-card">
-              <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder="Écris ta question…" className="resize-none min-h-[44px] max-h-32" rows={1} data-testid="input-chat-message" />
-              <Button onClick={() => submit()} disabled={!input.trim() || sendMut.isPending} className="rounded-[12px] shrink-0" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
+            <div className="border-t border-border p-3 bg-card">
+              <div className="flex items-end gap-2">
+                <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder="Écris ta question…" className="resize-none overflow-y-auto min-h-[44px] max-h-[200px]" rows={1} data-testid="input-chat-message" />
+                <Button onClick={() => submit()} disabled={!input.trim() || sendMut.isPending} className="rounded-[12px] shrink-0" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
+              </div>
+              <p className="hidden sm:block text-xs text-muted-foreground mt-1">Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne</p>
             </div>
           )}
         </div>
