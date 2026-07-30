@@ -6,7 +6,7 @@
  * Elle remplit le questionnaire et soumet — aucun compte requis.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CheckCircle2, AlertCircle, Loader2, ChevronDown } from "lucide-react";
@@ -53,6 +53,7 @@ export default function AnamnesePublicPage() {
   const { token } = useParams<{ token: string }>();
   const [answers, setAnswers] = useState<Answers>({});
   const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data, isLoading, error } = useQuery<TemplatePublic>({
     queryKey: ["/api/public/anamnese", token],
@@ -72,8 +73,28 @@ export default function AnamnesePublicPage() {
     onSuccess: () => setSubmitted(true),
   });
 
+  // Avertit la cliente si elle tente de fermer/rafraîchir la page alors que des
+  // réponses non soumises existent. Aucune persistance client n'est utilisée
+  // (localStorage/sessionStorage interdits par COMMON.md) : cette confirmation
+  // est la seule protection possible contre une perte accidentelle de saisie.
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (Object.keys(answers).length > 0 && !submitted && !submitMut.isPending) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [answers, submitted, submitMut.isPending]);
+
   function setAnswer(id: string, value: AnswerValue) {
     setAnswers(prev => ({ ...prev, [id]: value }));
+    setErrors(prev => {
+      if (!(id in prev)) return prev;
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
   }
 
   function toggleMulti(id: string, option: string) {
@@ -84,21 +105,40 @@ export default function AnamnesePublicPage() {
     setAnswer(id, next);
   }
 
+  function isAnswerEmpty(ans: AnswerValue | undefined): boolean {
+    return ans === undefined || ans === "" || (Array.isArray(ans) && ans.length === 0);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!data) return;
-    // Vérification des champs requis
+    // Vérification des champs requis — validation inline (plus d'alert()).
+    const nextErrors: Record<string, string> = {};
     for (const q of data.questions) {
       if (!q.required) continue;
-      const ans = answers[q.id];
-      const empty = ans === undefined || ans === "" || (Array.isArray(ans) && ans.length === 0);
-      if (empty) {
-        alert(`La question « ${q.label} » est obligatoire.`);
-        return;
+      if (isAnswerEmpty(answers[q.id])) {
+        nextErrors[q.id] = "Cette réponse est obligatoire";
       }
     }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      const firstErrorId = data.questions.find(q => nextErrors[q.id])?.id;
+      if (firstErrorId) {
+        const el = document.querySelector(`[data-question-id="${firstErrorId}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        const focusable = el?.querySelector<HTMLElement>("input, textarea, [tabindex]");
+        focusable?.focus();
+      }
+      return;
+    }
+    setErrors({});
     submitMut.mutate();
   }
+
+  const totalQuestions = data?.questions.length ?? 0;
+  const answeredCount = data?.questions.filter(q => !isAnswerEmpty(answers[q.id])).length ?? 0;
+  const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+  const requiredMissing = data?.questions.filter(q => q.required && isAnswerEmpty(answers[q.id])).length ?? 0;
 
   // ── Rendu ─────────────────────────────────────────────────────────────────
 
@@ -158,7 +198,29 @@ export default function AnamnesePublicPage() {
   }
 
   return (
-    <PublicShell>
+    <PublicShell
+      progressBar={
+        <div
+          className="sticky top-0 z-20 backdrop-blur bg-background/95 py-2 px-4 border-b border-border"
+          data-testid="anamnese-progress"
+        >
+          <div className="max-w-xl mx-auto">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">
+                {answeredCount} / {totalQuestions} questions
+              </span>
+              <span className="text-xs font-semibold text-primary">{progressPercent}%</span>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary motion-safe:transition-all"
+                style={{ width: progressPercent + "%" }}
+              />
+            </div>
+          </div>
+        </div>
+      }
+    >
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-extrabold mb-2 text-heading">{data.name}</h1>
@@ -171,15 +233,20 @@ export default function AnamnesePublicPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           {data.questions.map((q, idx) => (
-            <div key={q.id} className={`border rounded-[12px] p-4 ${PASTELS[idx % PASTELS.length]}`}>
+            <div
+              key={q.id}
+              data-question-id={q.id}
+              className={`border rounded-[12px] p-4 ${errors[q.id] ? "border-destructive" : PASTELS[idx % PASTELS.length]}`}
+            >
               <QuestionField
                 question={q}
                 index={idx}
                 value={answers[q.id]}
                 onChange={val => setAnswer(q.id, val)}
                 onToggleMulti={opt => toggleMulti(q.id, opt)}
+                error={errors[q.id]}
               />
             </div>
           ))}
@@ -187,6 +254,16 @@ export default function AnamnesePublicPage() {
           {submitMut.isError && (
             <p className="text-sm text-destructive">
               {(submitMut.error as Error)?.message ?? "Une erreur est survenue."}
+            </p>
+          )}
+
+          {requiredMissing > 0 ? (
+            <p className="text-sm text-amber-700 font-semibold" data-testid="text-required-missing">
+              Il reste {requiredMissing} question{requiredMissing > 1 ? "s" : ""} obligatoire{requiredMissing > 1 ? "s" : ""} à remplir
+            </p>
+          ) : (
+            <p className="text-sm text-primary font-semibold" data-testid="text-required-missing">
+              Toutes les questions obligatoires sont remplies ✓
             </p>
           )}
 
@@ -209,7 +286,7 @@ export default function AnamnesePublicPage() {
 
 // ─── Wrapper de la page publique ──────────────────────────────────────────────
 
-function PublicShell({ children }: { children: React.ReactNode }) {
+function PublicShell({ children, progressBar }: { children: React.ReactNode; progressBar?: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card px-6 py-4 flex items-center gap-3">
@@ -218,6 +295,11 @@ function PublicShell({ children }: { children: React.ReactNode }) {
         </div>
         <span className="font-extrabold text-sm text-heading">Naturo Pro</span>
       </header>
+      {/* Le header ci-dessus n'est PAS sticky (comportement d'origine conservé) :
+          il scrolle normalement avec la page. La barre de progression, elle,
+          est sticky top-0 et se retrouve donc seule fixée en haut lors du
+          scroll — aucune superposition avec le header n'est possible. */}
+      {progressBar}
       <main>{children}</main>
     </div>
   );
@@ -225,12 +307,13 @@ function PublicShell({ children }: { children: React.ReactNode }) {
 
 // ─── Champ de question ────────────────────────────────────────────────────────
 
-function QuestionField({ question, index, value, onChange, onToggleMulti }: {
+function QuestionField({ question, index, value, onChange, onToggleMulti, error }: {
   question: Question;
   index: number;
   value: AnswerValue | undefined;
   onChange: (val: AnswerValue) => void;
   onToggleMulti: (opt: string) => void;
+  error?: string;
 }) {
   const labelEl = (
     <Label className="text-sm font-semibold text-foreground block mb-2">
@@ -238,6 +321,13 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
       {question.required && <span className="text-destructive ml-1">*</span>}
     </Label>
   );
+
+  const errorId = `err-${question.id}`;
+  const errorEl = error ? (
+    <p id={errorId} className="text-sm text-destructive font-semibold mt-1">
+      {error}
+    </p>
+  ) : null;
 
   switch (question.type) {
     case "text":
@@ -249,7 +339,10 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
             onChange={e => onChange(e.target.value)}
             placeholder="Votre réponse…"
             data-testid={`field-${question.id}`}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
           />
+          {errorEl}
         </div>
       );
 
@@ -263,7 +356,10 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
             onChange={e => onChange(e.target.value)}
             placeholder="Votre réponse…"
             data-testid={`field-${question.id}`}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
           />
+          {errorEl}
         </div>
       );
 
@@ -273,15 +369,20 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
           {labelEl}
           <div className="space-y-2">
             {(question.options ?? []).map(opt => (
-              <label key={opt} className="flex items-center gap-2 cursor-pointer">
+              <label
+                key={opt}
+                className="flex items-center gap-2 cursor-pointer min-h-11 py-2 px-1 -mx-1 rounded-md hover:bg-black/5"
+              >
                 <input
                   type="radio"
                   name={question.id}
                   value={opt}
                   checked={(value as string) === opt}
                   onChange={() => onChange(opt)}
-                  className="accent-primary"
+                  className="accent-primary h-5 w-5 shrink-0"
                   data-testid={`radio-${question.id}-${opt}`}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? errorId : undefined}
                 />
                 <span className="text-sm">{opt}</span>
               </label>
@@ -291,9 +392,12 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
                 value={(value as string) ?? ""}
                 onChange={e => onChange(e.target.value)}
                 placeholder="Votre réponse…"
+                aria-invalid={!!error}
+                aria-describedby={error ? errorId : undefined}
               />
             )}
           </div>
+          {errorEl}
         </div>
       );
 
@@ -305,19 +409,25 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
             {(question.options ?? []).map(opt => {
               const checked = Array.isArray(value) && value.includes(opt);
               return (
-                <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                <label
+                  key={opt}
+                  className="flex items-center gap-2 cursor-pointer min-h-11 py-2 px-1 -mx-1 rounded-md hover:bg-black/5"
+                >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => onToggleMulti(opt)}
-                    className="accent-primary"
+                    className="accent-primary h-5 w-5 shrink-0"
                     data-testid={`checkbox-${question.id}-${opt}`}
+                    aria-invalid={!!error}
+                    aria-describedby={error ? errorId : undefined}
                   />
                   <span className="text-sm">{opt}</span>
                 </label>
               );
             })}
           </div>
+          {errorEl}
         </div>
       );
 
@@ -325,7 +435,7 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
       return (
         <div>
           {labelEl}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-h-11">
             <span className="text-xs text-muted-foreground w-6 text-center">1</span>
             <input
               type="range"
@@ -334,14 +444,17 @@ function QuestionField({ question, index, value, onChange, onToggleMulti }: {
               step={1}
               value={(value as number) ?? 5}
               onChange={e => onChange(Number(e.target.value))}
-              className="flex-1 accent-primary"
+              className="flex-1 accent-primary h-6"
               data-testid={`range-${question.id}`}
+              aria-invalid={!!error}
+              aria-describedby={error ? errorId : undefined}
             />
             <span className="text-xs text-muted-foreground w-6 text-center">10</span>
             <span className="font-extrabold text-primary w-8 text-center text-sm">
               {(value as number) ?? 5}
             </span>
           </div>
+          {errorEl}
         </div>
       );
 
