@@ -24,17 +24,28 @@ export default defineConfig({
     // Chunking manuel : on regroupe les gros modules "lourds et rarement modifiés"
     // dans des chunks vendor séparés pour maximiser le cache long-terme. Quand la
     // praticienne revient après un déploiement, seuls les chunks qui ont vraiment
-    // changé sont re-téléchargés (le vendor React, le calendrier, les charts, les
-    // primitives Radix ne bougent quasi jamais d'une version à l'autre).
+    // changé sont re-téléchargés (le vendor React, les primitives Radix ne bougent
+    // quasi jamais d'une version à l'autre).
+    //
+    // vendor-calendar (react-big-calendar/date-fns/react-day-picker) a été retiré
+    // volontairement du chunking manuel : ces libs n'étaient utilisées QUE par
+    // Agenda et Availability, mais un manualChunk force Vite à générer un
+    // <link rel="modulepreload"> pour CE chunk sur TOUTES les pages, y compris
+    // les routes publiques (landing, page de réservation /p/:slug, login) qui ne
+    // les chargent jamais. Sans entrée manuelle, Rollup fait du chunk-splitting
+    // automatique et co-localise ces libs dans les chunks des pages qui les
+    // importent réellement — plus de préchargement fantôme sur le public.
+    //
+    // vendor-charts a été supprimé : recharts n'était importé que par
+    // client/src/components/ui/chart.tsx, lui-même jamais importé nulle part.
+    // Le chunk généré faisait 482 octets (tree-shaké à vide) mais coûtait quand
+    // même un modulepreload sur chaque page. chart.tsx a été supprimé et
+    // recharts retiré de package.json.
     rollupOptions: {
       output: {
         manualChunks: {
           // Runtime React + query : partagé par TOUTES les pages.
           "vendor-react": ["react", "react-dom", "wouter", "@tanstack/react-query"],
-          // Calendrier : n'est utilisé que dans Agenda + Availability.
-          "vendor-calendar": ["react-big-calendar", "date-fns", "react-day-picker"],
-          // Charts : uniquement Stats. ~90 Ko qu'on évitait de charger sur Landing.
-          "vendor-charts": ["recharts"],
           // Primitives Radix : utilisées partout mais mises à jour rarement.
           "vendor-radix": [
             "@radix-ui/react-dialog",
