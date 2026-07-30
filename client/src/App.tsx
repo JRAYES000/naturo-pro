@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
@@ -6,44 +7,63 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 import { ConfirmProvider } from "@/hooks/use-confirm";
-import NotFound from "@/pages/not-found";
+import { Loading } from "@/components/Loading";
+import { isOnTenantSubdomain } from "@/lib/tenant";
+
+// ─── Chargement direct ────────────────────────────────────────────────────────
+// Les 4 écrans "point d'entrée" restent dans le bundle initial pour éviter tout
+// clignotement à l'ouverture. Ce sont ceux qu'une visiteuse voit AVANT toute
+// interaction utile :
+//   • Landing / Login : marketing + connexion, la porte d'entrée du domaine app.
+//   • PublicPage      : page publique d'une praticienne, la porte d'entrée du
+//                       tunnel client (souvent ouverte via un lien partagé).
+//   • BookingFlow     : tunnel de réservation, écran le plus critique pour la
+//                       conversion — on ne veut PAS d'un état vide pendant le
+//                       download d'un chunk quand le client clique "Réserver".
+// Tout le reste est chargé à la demande via React.lazy (voir plus bas).
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import Agenda from "@/pages/Agenda";
-import Clients from "@/pages/Clients";
-import ClientDetail from "@/pages/ClientDetail";
-import ConsultationNote from "@/pages/ConsultationNote";
-import Categories from "@/pages/Categories";
-import Availability from "@/pages/Availability";
-import PublicPageEditor from "@/pages/PublicPageEditor";
-import Settings from "@/pages/Settings";
-import Invoices from "@/pages/Invoices";
-import InvoiceEditor from "@/pages/InvoiceEditor";
 import PublicPage from "@/pages/PublicPage";
 import BookingFlow from "@/pages/BookingFlow";
-import VerifyEmail from "@/pages/VerifyEmail";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import Onboarding from "@/pages/Onboarding";
-import Reminders from "@/pages/Reminders";
-import EmailTemplates from "@/pages/EmailTemplates";
-import Anamnese from "@/pages/Anamnese";
-import AnamnesePublic from "@/pages/AnamnesePublic";
-import Programmes from "@/pages/Programmes";
-import Solutions from "@/pages/Solutions";
-import Packages from "@/pages/Packages";
-import Stats from "@/pages/Stats";
-import Chat from "@/pages/Chat";
-import StudioContenu from "@/pages/StudioContenu";
-import BookingManage from "@/pages/BookingManage";
-// Phase 3 Lot 4 — admin
-import AdminUsers from "@/pages/admin/AdminUsers";
-import AdminUserDetail from "@/pages/admin/AdminUserDetail";
-import AssistantAdmin from "@/pages/admin/AssistantAdmin";
-// Phase 3 Lot 2 — détection sous-domaine personnel
-import { isOnTenantSubdomain } from "@/lib/tenant";
+import NotFound from "@/pages/not-found";
+
+// ─── Chargement à la demande (code splitting) ─────────────────────────────────
+// Chaque page devient son propre chunk Vite : les écrans admin, la facturation,
+// les templates email, le studio de contenu, l'assistant, etc. ne sont plus
+// téléchargés tant que la praticienne n'y va pas. Gain principal : le premier
+// écran (Landing ou PublicPage) apparaît beaucoup plus vite, et le tunnel de
+// réservation partagé aux clients pèse une fraction du bundle actuel.
+const Register = lazy(() => import("@/pages/Register"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Agenda = lazy(() => import("@/pages/Agenda"));
+const Clients = lazy(() => import("@/pages/Clients"));
+const ClientDetail = lazy(() => import("@/pages/ClientDetail"));
+const ConsultationNote = lazy(() => import("@/pages/ConsultationNote"));
+const Categories = lazy(() => import("@/pages/Categories"));
+const Availability = lazy(() => import("@/pages/Availability"));
+const PublicPageEditor = lazy(() => import("@/pages/PublicPageEditor"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Invoices = lazy(() => import("@/pages/Invoices"));
+const InvoiceEditor = lazy(() => import("@/pages/InvoiceEditor"));
+const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
+const Reminders = lazy(() => import("@/pages/Reminders"));
+const EmailTemplates = lazy(() => import("@/pages/EmailTemplates"));
+const Anamnese = lazy(() => import("@/pages/Anamnese"));
+const AnamnesePublic = lazy(() => import("@/pages/AnamnesePublic"));
+const Programmes = lazy(() => import("@/pages/Programmes"));
+const Solutions = lazy(() => import("@/pages/Solutions"));
+const Packages = lazy(() => import("@/pages/Packages"));
+const Stats = lazy(() => import("@/pages/Stats"));
+const Chat = lazy(() => import("@/pages/Chat"));
+const StudioContenu = lazy(() => import("@/pages/StudioContenu"));
+const BookingManage = lazy(() => import("@/pages/BookingManage"));
+// Phase 3 Lot 4 — admin (rarement visité, jamais en même temps que le reste)
+const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
+const AdminUserDetail = lazy(() => import("@/pages/admin/AdminUserDetail"));
+const AssistantAdmin = lazy(() => import("@/pages/admin/AssistantAdmin"));
 
 function AppRouter() {
   // Phase 3 Lot 2 — sur {slug}.app.ecole-naturo.fr, la racine "/" affiche
@@ -105,7 +125,12 @@ export default function App() {
         <Router hook={useHashLocation}>
           <AuthProvider>
             <ConfirmProvider>
-              <AppRouter />
+              {/* Suspense enveloppe le router : pendant le download d'un chunk
+                  de page, on affiche le composant Loading unifié (aria-busy,
+                  cohérent avec le reste des états de chargement de l'app). */}
+              <Suspense fallback={<Loading label="Chargement…" />}>
+                <AppRouter />
+              </Suspense>
             </ConfirmProvider>
           </AuthProvider>
         </Router>

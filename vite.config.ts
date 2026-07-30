@@ -21,6 +21,33 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Chunking manuel : on regroupe les gros modules "lourds et rarement modifiés"
+    // dans des chunks vendor séparés pour maximiser le cache long-terme. Quand la
+    // praticienne revient après un déploiement, seuls les chunks qui ont vraiment
+    // changé sont re-téléchargés (le vendor React, le calendrier, les charts, les
+    // primitives Radix ne bougent quasi jamais d'une version à l'autre).
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Runtime React + query : partagé par TOUTES les pages.
+          "vendor-react": ["react", "react-dom", "wouter", "@tanstack/react-query"],
+          // Calendrier : n'est utilisé que dans Agenda + Availability.
+          "vendor-calendar": ["react-big-calendar", "date-fns", "react-day-picker"],
+          // Charts : uniquement Stats. ~90 Ko qu'on évitait de charger sur Landing.
+          "vendor-charts": ["recharts"],
+          // Primitives Radix : utilisées partout mais mises à jour rarement.
+          "vendor-radix": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-toast",
+            "@radix-ui/react-tooltip",
+          ],
+        },
+      },
+    },
   },
   server: {
     fs: {
