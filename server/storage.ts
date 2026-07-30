@@ -58,6 +58,11 @@ export type AppointmentListRow = Pick<Appointment,
   | "paymentStatus" | "paymentAmountCents" | "source"
   | "reminderSent" | "reminderSentAt"
   | "clientConfirmedAt" | "clientCancelledAt"
+  // confirmToken / cancelToken : lus par le test e2e via GET /api/appointments
+  // après génération par le cron de rappel J-1 (server/routes/reminders.ts).
+  // Non consommés côté client, mais font partie du contrat de l'endpoint
+  // /api/appointments — laisser ces 2 colonnes dans la projection.
+  | "confirmToken" | "cancelToken"
 >;
 
 // listAppointmentsForReminder alimente uniquement le cron de rappel J-1
@@ -675,10 +680,14 @@ export class DatabaseStorage implements IStorage {
    * l'historique à chaque ouverture, pour n'en afficher qu'une semaine.
    */
   // Chantier C (30/07/2026) : projection — hot path #1 (Agenda, Dashboard, stats,
-  // disponibilité publique). 21 colonnes sélectionnées sur 27 ; voir AppointmentListRow
+  // disponibilité publique). 23 colonnes sélectionnées sur 27 ; voir AppointmentListRow
   // pour la justification champ par champ. Colonnes exclues (jamais lues par aucun
-  // consommateur) : confirmToken, cancelToken, stripeSessionId, googleEventId,
-  // depositAmountCents, reviewEmailSentAt, createdAt.
+  // consommateur) : stripeSessionId, googleEventId, depositAmountCents,
+  // reviewEmailSentAt, createdAt.
+  //
+  // Note : confirmToken/cancelToken sont inclus car l'endpoint GET /api/appointments
+  // les expose (contrat public de l'endpoint vérifié par le test e2e du parcours
+  // cliente — lien de gestion généré par le rappel J-1).
   async listAppointments(userId: number, from?: number, to?: number): Promise<AppointmentListRow[]> {
     const now = Date.now();
     const debut = from ?? now - 365 * 86400000;
@@ -705,6 +714,8 @@ export class DatabaseStorage implements IStorage {
       reminderSentAt: appointments.reminderSentAt,
       clientConfirmedAt: appointments.clientConfirmedAt,
       clientCancelledAt: appointments.clientCancelledAt,
+      confirmToken: appointments.confirmToken,
+      cancelToken: appointments.cancelToken,
     }).from(appointments).where(and(
       eq(appointments.userId, userId),
       gte(appointments.startAt, debut),
