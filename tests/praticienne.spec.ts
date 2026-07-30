@@ -15,7 +15,8 @@ async function seConnecter(page: import("@playwright/test").Page) {
   await page.getByPlaceholder("vous@exemple.fr").fill(EMAIL);
   await page.getByPlaceholder("••••••••").fill(MDP);
   await page.getByRole("button", { name: /Se connecter/i }).click();
-  await expect(page.getByText(/Bonjour Marie/i)).toBeVisible({ timeout: 15_000 });
+  // Salutation contextuelle (Bonjour / Bon après-midi / Bonsoir) depuis e8d3a5d.
+  await expect(page.getByText(/(Bonjour|Bon après-midi|Bonsoir) Marie/i)).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe("Connexion", () => {

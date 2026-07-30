@@ -15,6 +15,8 @@ setup("authentifier la praticienne de démonstration", async ({ page }) => {
   await page.getByPlaceholder("vous@exemple.fr").fill("marie@demo.fr");
   await page.getByPlaceholder("••••••••").fill("demo1234");
   await page.getByRole("button", { name: /Se connecter/i }).click();
-  await expect(page.getByText(/Bonjour Marie/i)).toBeVisible({ timeout: 20_000 });
+  // La salutation du Dashboard est contextuelle (Bonjour / Bon après-midi / Bonsoir
+  // selon l'heure) depuis le commit e8d3a5d. On accepte les trois variantes.
+  await expect(page.getByText(/(Bonjour|Bon après-midi|Bonsoir) Marie/i)).toBeVisible({ timeout: 20_000 });
   await page.context().storageState({ path: FICHIER_SESSION });
 });
