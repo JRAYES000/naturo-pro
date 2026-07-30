@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import helmet from "helmet";
+import compression from "compression";
 import { registerRoutes } from "./routes/index";
 import { serveStatic } from "./static";
 import { createServer } from "node:http";
@@ -10,6 +11,22 @@ import { seedNaturalSolutions } from "./solutions-seed";
 import { migrationsReady } from "./storage";
 
 const app = express();
+
+// Compression gzip/deflate sur toutes les réponses. Réduit le HTML/JS/CSS/JSON de
+// 60 à 75 % sur le réseau. Le seuil de 1 Ko évite d'ajouter de l'overhead CPU sur
+// les toutes petites réponses (204, redirects, JSON très courts). `filter` respecte
+// l'en-tête `Cache-Control: no-transform` posé par certaines routes qui refusent
+// explicitement la compression (aucune aujourd'hui, mais on garde le comportement
+// standard du middleware pour ne pas casser d'éventuels ajouts futurs).
+app.use(
+  compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 // L'app tourne derrière le proxy Hostinger (Passenger). Sans `trust proxy`, req.ip vaut
 // l'IP du proxy pour TOUTES les requêtes : les rate-limiters partagent alors un unique
