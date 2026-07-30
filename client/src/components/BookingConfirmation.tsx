@@ -38,7 +38,7 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref }: Book
   const { when, cat } = confirmed;
 
   return (
-    <div className="text-center py-8 px-2" data-testid="booking-confirmation">
+    <div className="text-center py-8 px-4" data-testid="booking-confirmation">
       {/* Success badge */}
       <div className="relative inline-flex mb-6">
         <div className="h-24 w-24 mx-auto rounded-full bg-primary/10 border-4 border-primary/20 flex items-center justify-center">
@@ -131,9 +131,12 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref }: Book
         )}
       </div>
 
-      {/* Back button */}
-      <Link href={backHref} data-testid="button-back-public">
-        <Button variant="outline" className="rounded-lg py-6 font-bold gap-2 border-primary/30 hover:bg-primary/5">
+      {/* Back button — pleine largeur sur mobile pour rester le CTA dominant, largeur naturelle dès sm */}
+      <Link href={backHref} data-testid="button-back-public" className="block max-w-sm mx-auto sm:max-w-none sm:inline-block sm:mx-0">
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto rounded-lg py-6 font-bold gap-2 border-primary/30 hover:bg-primary/5 min-h-[44px] active:motion-safe:scale-[0.98] motion-safe:transition"
+        >
           <ArrowLeft className="h-4 w-4" />
           Retour à la page de la praticienne
         </Button>

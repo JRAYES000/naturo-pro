@@ -134,12 +134,32 @@ export default function BookingFlow() {
     data,
     isLoading: loadingNaturo,
     isError: errorNaturo,
+    error: naturoError,
+    refetch: refetchNaturo,
   } = useQuery<PublicData>({
     queryKey: ["/api/public", onSub ? "_self" : slug],
     queryFn: async () => (await apiRequest("GET", onSub ? "/api/public/_self" : `/api/public/${slug}`)).json(),
     enabled: onSub || !!slug,
     retry: 2,
   });
+
+  // Suivi de la connexion pour distinguer "vous êtes hors ligne" de "cette page n'existe pas" :
+  // deux causes très différentes pour la cliente, qui appellent une action de repli différente.
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
+
+  // "Page introuvable" = 404 backend (praticienne inexistante ou page désactivée), message métier explicite.
+  // Toute autre erreur (réseau, 5xx) = erreur technique générique, avec bouton « Réessayer ».
+  const naturoNotFound = errorNaturo && !isOffline && (naturoError as any)?.message === "Page introuvable";
 
   const cat = data?.categories.find(c => c.id === categoryId) || null;
 
@@ -184,12 +204,29 @@ export default function BookingFlow() {
       setConfirmedAt({ when: new Date(selectedSlot!), cat });
       setStep(5);
     },
-    onError: (e: any) =>
+    onError: (e: any) => {
+      // Cas particulier : le créneau vient d'être pris par quelqu'un d'autre pile au moment du
+      // submit (race condition côté backend, cf. serialiserParUser). On ne laisse pas la cliente
+      // sur un formulaire mort : on la ramène choisir un autre créneau avec une liste à jour.
+      const message: string = e?.message || "Une erreur est survenue. Veuillez réessayer.";
+      const slotGone = /cr[ée]neau.*(disponible|plus)/i.test(message);
+      if (slotGone) {
+        toast({
+          title: "Ce créneau vient d'être réservé",
+          description: "Quelqu'un d'autre a pris ce créneau entre-temps. Choisissez un autre horaire ci-dessous.",
+          variant: "destructive",
+        });
+        setSelectedSlot(null);
+        refetchAvail();
+        setStep(3);
+        return;
+      }
       toast({
         title: "Erreur de réservation",
-        description: e.message || "Une erreur est survenue. Veuillez réessayer.",
+        description: message,
         variant: "destructive",
-      }),
+      });
+    },
   });
 
   // Document title with practitioner name
@@ -207,26 +244,77 @@ export default function BookingFlow() {
 
   // ---- Error / not found ----
   if (errorNaturo || !data) {
+    // Cas 1 : hors ligne — la cause est claire, on invite à reconnecter puis réessayer.
+    if (isOffline) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10" data-testid="booking-page-error">
+          <div className="max-w-sm w-full text-center">
+            <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
+              <WifiOff className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold mb-2 text-heading">Vous êtes hors connexion</h1>
+            <p className="text-muted-foreground text-sm mb-6">
+              Vérifiez votre connexion internet ou vos données mobiles, puis réessayez.
+            </p>
+            <Button
+              onClick={() => refetchNaturo()}
+              className="w-full rounded-lg py-6 font-bold min-h-[44px] active:motion-safe:scale-[0.98]"
+              data-testid="button-retry-load"
+            >
+              Réessayer
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // Cas 2 : 404 métier — praticienne inexistante ou page désactivée. Pas la peine de proposer
+    // « Réessayer » (ça ne changera rien) : on oriente vers un retour à la page publique.
+    if (naturoNotFound) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10" data-testid="booking-page-error">
+          <div className="max-w-sm w-full text-center">
+            <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold mb-2 text-heading">Page introuvable</h1>
+            <p className="text-muted-foreground text-sm mb-6">
+              Cette page de réservation n'existe pas ou n'est plus disponible. Le lien est peut-être
+              incorrect, ou la praticienne a désactivé sa prise de rendez-vous en ligne.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link href="/">
+                <Button variant="outline" className="w-full rounded-lg py-6 font-bold min-h-[44px] active:motion-safe:scale-[0.98]" data-testid="button-back-error">
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Retour à l'accueil
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Cas 3 : erreur technique générique (réseau instable, 5xx…) — on encourage à réessayer.
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4" data-testid="booking-page-error">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10" data-testid="booking-page-error">
         <div className="max-w-sm w-full text-center">
           <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-extrabold mb-2 text-heading">Impossible de charger</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold mb-2 text-heading">Impossible de charger</h1>
           <p className="text-muted-foreground text-sm mb-6">
-            Une erreur réseau est survenue. Vérifiez votre connexion et rechargez la page.
+            Une erreur est survenue. Vérifiez votre connexion et réessayez.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
-              onClick={() => window.location.reload()}
-              className="rounded-lg py-6 font-bold"
+              onClick={() => refetchNaturo()}
+              className="w-full sm:w-auto rounded-lg py-6 font-bold min-h-[44px] active:motion-safe:scale-[0.98]"
               data-testid="button-retry-load"
             >
               Réessayer
             </Button>
             <Link href={onSub ? "/" : `/p/${slug}`}>
-              <Button variant="outline" className="w-full rounded-lg py-6 font-bold" data-testid="button-back-error">
+              <Button variant="outline" className="w-full rounded-lg py-6 font-bold min-h-[44px] active:motion-safe:scale-[0.98]" data-testid="button-back-error">
                 <ArrowLeft className="h-4 w-4 mr-1" /> Retour
               </Button>
             </Link>
@@ -245,7 +333,7 @@ export default function BookingFlow() {
           <Link href={backHref}><Logo /></Link>
           <Link
             href={backHref}
-            className="text-sm font-bold text-muted-foreground hover:text-primary inline-flex items-center gap-1 py-2 px-3 rounded-lg hover:bg-secondary/60 transition"
+            className="text-sm font-bold text-muted-foreground hover:text-primary inline-flex items-center gap-1 py-2 px-3 rounded-lg hover:bg-secondary/60 motion-safe:transition min-h-[44px] active:motion-safe:scale-[0.98]"
             data-testid="link-back-public"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -283,7 +371,7 @@ export default function BookingFlow() {
                   {data.naturo.name} n'a pas encore configuré ses prestations.
                 </p>
                 <Link href={backHref}>
-                  <Button variant="outline" className="rounded-lg font-bold" data-testid="button-back-no-services">
+                  <Button variant="outline" className="rounded-lg font-bold min-h-[44px] active:motion-safe:scale-[0.98]" data-testid="button-back-no-services">
                     <ArrowLeft className="h-4 w-4 mr-1" /> Retour à la page
                   </Button>
                 </Link>
@@ -294,7 +382,7 @@ export default function BookingFlow() {
                   <button
                     key={c.id}
                     onClick={() => { setCategoryId(c.id); setStep(2); }}
-                    className="card-naturo text-left hover:-translate-y-0.5 hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="card-naturo text-left motion-safe:hover:-translate-y-0.5 hover:shadow-md motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:motion-safe:scale-[0.98] min-h-[44px]"
                     data-testid={`button-cat-${c.id}`}
                   >
                     <div className="flex items-start gap-2.5 mb-2">
@@ -324,7 +412,7 @@ export default function BookingFlow() {
           <div>
             <button
               onClick={() => setStep(1)}
-              className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-4 hover:text-primary py-1 transition"
+              className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-4 hover:text-primary py-2.5 motion-safe:transition min-h-[44px] active:motion-safe:scale-[0.98]"
               data-testid="button-prev-step2"
             >
               <ArrowLeft className="h-4 w-4" /> Étape précédente
@@ -351,7 +439,7 @@ export default function BookingFlow() {
                 <Button
                   onClick={() => refetchAvail()}
                   variant="outline"
-                  className="rounded-lg font-bold"
+                  className="rounded-lg font-bold min-h-[44px] active:motion-safe:scale-[0.98]"
                   data-testid="button-retry-avail"
                 >
                   Réessayer
@@ -370,7 +458,7 @@ export default function BookingFlow() {
                 <Button
                   onClick={() => setStep(1)}
                   variant="outline"
-                  className="rounded-lg font-bold"
+                  className="rounded-lg font-bold min-h-[44px] active:motion-safe:scale-[0.98]"
                   data-testid="button-back-no-slots"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" /> Changer de prestation
@@ -387,7 +475,7 @@ export default function BookingFlow() {
                     <button
                       key={d}
                       onClick={() => { setSelectedDay(d); setStep(3); }}
-                      className="card-naturo text-center hover:-translate-y-0.5 hover:bg-secondary/50 hover:border-primary/40 transition py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className="card-naturo text-center motion-safe:hover:-translate-y-0.5 hover:bg-secondary/50 hover:border-primary/40 motion-safe:transition py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:motion-safe:scale-[0.98] min-h-[44px]"
                       data-testid={`button-day-${d}`}
                     >
                       <p className="text-xs uppercase font-bold text-primary">
@@ -415,11 +503,11 @@ export default function BookingFlow() {
         {/* ================================================ */}
         {/* Step 3: choose time slot                        */}
         {/* ================================================ */}
-        {step === 3 && cat && selectedDay && avail && (
+        {step === 3 && cat && selectedDay && (
           <div>
             <button
               onClick={() => setStep(2)}
-              className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-4 hover:text-primary py-1 transition"
+              className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-4 hover:text-primary py-2.5 motion-safe:transition min-h-[44px] active:motion-safe:scale-[0.98]"
               data-testid="button-prev-step3"
             >
               <ArrowLeft className="h-4 w-4" /> Étape précédente
@@ -445,7 +533,23 @@ export default function BookingFlow() {
             )}
             <div className="mb-4" />
 
-            {avail.slotsByDay[selectedDay]?.length === 0 ? (
+            {loadingAvail ? (
+              <SlotsSkeleton />
+            ) : errorAvail || !avail ? (
+              <div className="card-naturo text-center py-10" data-testid="text-avail-error-step3">
+                <WifiOff className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-bold mb-1">Impossible de charger les créneaux</p>
+                <p className="text-sm text-muted-foreground mb-4">Vérifiez votre connexion et réessayez.</p>
+                <Button
+                  onClick={() => refetchAvail()}
+                  variant="outline"
+                  className="rounded-lg font-bold min-h-[44px] active:motion-safe:scale-[0.98]"
+                  data-testid="button-retry-avail-step3"
+                >
+                  Réessayer
+                </Button>
+              </div>
+            ) : avail!.slotsByDay[selectedDay]?.length === 0 ? (
               <div className="card-naturo text-center py-10" data-testid="text-no-time-slots">
                 <CalendarOff className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-bold mb-1">Aucun créneau disponible ce jour</p>
@@ -453,7 +557,7 @@ export default function BookingFlow() {
                 <Button
                   onClick={() => setStep(2)}
                   variant="outline"
-                  className="rounded-lg font-bold"
+                  className="rounded-lg font-bold min-h-[44px] active:motion-safe:scale-[0.98]"
                   data-testid="button-back-no-time-slots"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" /> Choisir une autre date
@@ -461,11 +565,11 @@ export default function BookingFlow() {
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                {avail.slotsByDay[selectedDay].map(iso => (
+                {avail!.slotsByDay[selectedDay].map(iso => (
                   <button
                     key={iso}
                     onClick={() => { setSelectedSlot(iso); setStep(4); }}
-                    className="rounded-[12px] border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary py-3 font-bold transition text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
+                    className="rounded-[12px] border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary py-3 font-bold motion-safe:transition text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px] min-w-[44px] active:motion-safe:scale-[0.98]"
                     data-testid={`button-slot-${iso}`}
                   >
                     {formatHeureCabinet(iso)}
@@ -483,7 +587,7 @@ export default function BookingFlow() {
           <div>
             <button
               onClick={() => setStep(3)}
-              className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-4 hover:text-primary py-1 transition"
+              className="text-sm text-muted-foreground inline-flex items-center gap-1 mb-4 hover:text-primary py-2.5 motion-safe:transition min-h-[44px] active:motion-safe:scale-[0.98]"
               data-testid="button-prev-step4"
             >
               <ArrowLeft className="h-4 w-4" /> Étape précédente
@@ -529,6 +633,7 @@ export default function BookingFlow() {
                     onChange={e => setForm({ ...form, firstName: e.target.value })}
                     placeholder="Marie"
                     className="min-h-[44px]"
+                    aria-required="true"
                     data-testid="input-firstName"
                   />
                 </div>
@@ -540,6 +645,7 @@ export default function BookingFlow() {
                     onChange={e => setForm({ ...form, lastName: e.target.value })}
                     placeholder="Dupont"
                     className="min-h-[44px]"
+                    aria-required="true"
                     data-testid="input-lastName"
                   />
                 </div>
@@ -553,6 +659,7 @@ export default function BookingFlow() {
                   onChange={e => setForm({ ...form, email: e.target.value })}
                   placeholder="marie@exemple.fr"
                   className="min-h-[44px]"
+                  aria-required="true"
                   data-testid="input-email"
                 />
               </div>
@@ -565,6 +672,7 @@ export default function BookingFlow() {
                   onChange={e => setForm({ ...form, phone: e.target.value })}
                   placeholder="06 12 34 56 78"
                   className="min-h-[44px]"
+                  aria-required="true"
                   data-testid="input-phone"
                 />
               </div>
@@ -595,7 +703,7 @@ export default function BookingFlow() {
               <Button
                 onClick={() => bookMut.mutate()}
                 disabled={bookMut.isPending || !form.firstName || !form.lastName || !form.email || !form.phone}
-                className="w-full rounded-lg py-6 font-bold min-h-[52px]"
+                className="w-full rounded-lg py-6 font-bold min-h-[52px] active:motion-safe:scale-[0.98]"
                 data-testid="button-confirm-booking"
               >
                 {bookMut.isPending ? (
