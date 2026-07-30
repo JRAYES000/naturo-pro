@@ -274,7 +274,7 @@ export default function InvoiceEditor() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl">
+      <div className="max-w-5xl pb-8 lg:pb-0">
         <PageHeader
           title={isNew ? "Nouvelle facture" : (invoice?.number ?? "")}
           subtitle={!isNew && invoice ? `Créée le ${new Date(invoice.createdAt).toLocaleDateString("fr-FR")}` : undefined}
@@ -366,43 +366,58 @@ export default function InvoiceEditor() {
                   <div className="col-span-1"></div>
                 </div>
                 {items.map((it, i) => (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-center" data-testid={`row-item-${i}`}>
+                  <div
+                    key={i}
+                    className="rounded-lg border p-3 space-y-2 sm:border-0 sm:p-0 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-center"
+                    data-testid={`row-item-${i}`}
+                  >
                     <Input
-                      className="col-span-12 sm:col-span-6"
+                      className="sm:col-span-6"
                       value={it.description}
                       onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
                       placeholder="Description"
                       data-testid={`input-item-description-${i}`}
                     />
-                    <Input
-                      className="col-span-4 sm:col-span-2 text-right"
-                      type="number"
-                      min={0}
-                      value={it.quantity}
-                      onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) } : x))}
-                      data-testid={`input-item-qty-${i}`}
-                    />
-                    <Input
-                      className="col-span-5 sm:col-span-2 text-right"
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={(it.unitPriceCents / 100).toFixed(2)}
-                      onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, unitPriceCents: Math.round(Number(e.target.value) * 100) } : x))}
-                      data-testid={`input-item-price-${i}`}
-                    />
-                    <div className="col-span-2 sm:col-span-1 text-right font-bold text-sm">
-                      {formatPrice(Math.max(0, Math.floor(it.quantity || 0)) * Math.max(0, Math.floor(it.unitPriceCents || 0)))}
+                    <div className="grid grid-cols-2 gap-2 sm:contents">
+                      <div className="sm:col-span-2">
+                        <label className="text-xs text-muted-foreground sm:hidden">Quantité</label>
+                        <Input
+                          className="text-right"
+                          type="number"
+                          min={0}
+                          value={it.quantity}
+                          onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) } : x))}
+                          data-testid={`input-item-qty-${i}`}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-xs text-muted-foreground sm:hidden">Prix unitaire</label>
+                        <Input
+                          className="text-right"
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={(it.unitPriceCents / 100).toFixed(2)}
+                          onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, unitPriceCents: Math.round(Number(e.target.value) * 100) } : x))}
+                          data-testid={`input-item-price-${i}`}
+                        />
+                      </div>
                     </div>
-                    <button
-                      className="col-span-1 h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive justify-self-end focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() => setItems(items.filter((_, j) => j !== i))}
-                      disabled={items.length <= 1}
-                      aria-label="Supprimer la ligne"
-                      data-testid={`button-remove-item-${i}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center justify-between sm:contents">
+                      <div className="text-sm sm:col-span-1 sm:text-right font-bold">
+                        <span className="text-xs text-muted-foreground font-normal sm:hidden">Total : </span>
+                        {formatPrice(Math.max(0, Math.floor(it.quantity || 0)) * Math.max(0, Math.floor(it.unitPriceCents || 0)))}
+                      </div>
+                      <button
+                        className="sm:col-span-1 sm:justify-self-end h-10 w-10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        onClick={() => setItems(items.filter((_, j) => j !== i))}
+                        disabled={items.length <= 1}
+                        aria-label="Supprimer la ligne"
+                        data-testid={`button-remove-item-${i}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <Button
@@ -520,6 +535,22 @@ export default function InvoiceEditor() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Footer sticky mobile : total + enregistrement rapide sans scroller jusqu'en bas */}
+        <div className="lg:hidden sticky bottom-0 -mx-4 px-4 py-3 border-t bg-background/95 backdrop-blur flex items-center justify-between gap-3 mt-4">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+            <p className="text-xl font-extrabold text-heading">{formatPrice(totals.total)}</p>
+          </div>
+          <Button
+            onClick={saveAll}
+            disabled={createMut.isPending || updateMut.isPending}
+            className="rounded-lg font-bold min-h-[44px]"
+            data-testid="button-save-sticky"
+          >
+            <Save className="h-4 w-4 mr-1" /> {isNew ? "Créer" : "Enregistrer"}
+          </Button>
         </div>
       </div>
     </AppLayout>
