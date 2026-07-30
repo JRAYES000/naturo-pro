@@ -132,6 +132,7 @@ export default function Solutions() {
             icon={Leaf}
             title="Aucune solution trouvée"
             description="Modifiez votre recherche ou ajoutez votre propre fiche."
+            testid="empty-solutions"
           />
         ) : (
           <ul className="grid sm:grid-cols-2 gap-4">

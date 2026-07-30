@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPrice } from "@/lib/format";
@@ -178,11 +179,7 @@ export default function Stats() {
 
         {/* KPIs */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" aria-busy="true">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="card-naturo animate-pulse h-24" />
-            ))}
-          </div>
+          <Loading variant="cards" count={4} label="Chargement des statistiques…" className="mb-6" />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div className="card-naturo" data-testid="kpi-ca-encaisse">
@@ -239,17 +236,14 @@ export default function Stats() {
           </div>
 
           {isLoading ? (
-            <div className="space-y-3" aria-busy="true">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse h-10 bg-secondary/40 rounded-lg" />
-              ))}
-            </div>
+            <Loading variant="list" count={4} label="Chargement des prestations…" />
           ) : top.length === 0 ? (
             <EmptyState
               icon={BarChart2}
               title="Aucune donnée"
               description="Aucun rendez-vous enregistré sur cette période."
               card={false}
+              testid="empty-stats"
             />
           ) : (
             <div className="space-y-3">

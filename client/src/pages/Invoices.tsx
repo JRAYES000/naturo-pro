@@ -162,6 +162,7 @@ export default function InvoicesPage() {
                 </Link>
               ) : undefined
             }
+            testid="empty-invoices"
           />
         ) : (
           <div className="card-naturo overflow-x-auto p-0">

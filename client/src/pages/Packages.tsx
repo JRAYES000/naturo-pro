@@ -210,6 +210,7 @@ export default function Packages() {
             icon={Ticket}
             title="Aucun forfait pour le moment."
             description="Cliquez sur « Nouveau forfait » pour commencer."
+            testid="empty-packages"
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

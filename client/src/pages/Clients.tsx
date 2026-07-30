@@ -5,11 +5,11 @@ import { Plus, Search, Mail, Phone, ArrowRight, Users } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client } from "@shared/schema";
@@ -50,7 +50,7 @@ export default function Clients() {
         </div>
 
         {isLoading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
+          <Loading variant="cards" count={6} label="Chargement des clients…" />
         ) : (list || []).length === 0 ? (
           <EmptyState
             icon={Users}

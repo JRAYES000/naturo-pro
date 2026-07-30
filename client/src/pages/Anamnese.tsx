@@ -19,6 +19,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -106,12 +107,12 @@ export default function AnamnesePage() {
   const [viewingResp, setViewingResp] = useState<AnamnesisResponse | null>(null);
   const [shareTplId, setShareTplId] = useState<number | null>(null);
 
-  const { data: templates = [] } = useQuery<AnamnesisTemplate[]>({
+  const { data: templates = [], isLoading: templatesLoading } = useQuery<AnamnesisTemplate[]>({
     queryKey: ["/api/anamnesis-templates"],
     queryFn: () => apiRequest("GET", "/api/anamnesis-templates").then(r => r.json()),
   });
 
-  const { data: responses = [] } = useQuery<AnamnesisResponse[]>({
+  const { data: responses = [], isLoading: responsesLoading } = useQuery<AnamnesisResponse[]>({
     queryKey: ["/api/anamnesis-responses"],
     queryFn: () => apiRequest("GET", "/api/anamnesis-responses").then(r => r.json()),
   });
@@ -178,11 +179,14 @@ export default function AnamnesePage() {
         </HelpNote>
 
         {/* Liste des modèles */}
-        {templates.length === 0 ? (
+        {templatesLoading ? (
+          <Loading variant="list" label="Chargement des modèles…" />
+        ) : templates.length === 0 ? (
           <EmptyState
             icon={ClipboardList}
             title="Aucun modèle de questionnaire"
             description="Créez votre premier modèle pour commencer à envoyer des anamnèses à vos clientes."
+            testid="empty-anamnese-templates"
           />
         ) : (
           <ul className="space-y-3 mb-10">
@@ -251,12 +255,15 @@ export default function AnamnesePage() {
         {/* Réponses reçues */}
         <div className="mt-8">
           <h2 className="text-xl font-extrabold mb-4 text-heading">Réponses reçues</h2>
-          {responses.length === 0 ? (
-            <div className="card-naturo text-center py-10">
-              <p className="text-sm text-muted-foreground">
-                Aucune réponse pour l'instant. Envoyez un lien à une cliente pour commencer.
-              </p>
-            </div>
+          {responsesLoading ? (
+            <Loading variant="list" label="Chargement des réponses…" />
+          ) : responses.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title="Aucune réponse pour l'instant"
+              description="Envoyez un lien à une cliente pour commencer à recevoir des réponses."
+              testid="empty-anamnese-responses"
+            />
           ) : (
             <ul className="space-y-3">
               {responses.map(resp => {

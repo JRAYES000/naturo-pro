@@ -13,6 +13,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,16 +96,6 @@ function StatCardSkeleton() {
         <Skeleton className="h-8 w-16" />
       </CardContent>
     </Card>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Skeleton key={i} className="h-10 w-full rounded-md" />
-      ))}
-    </div>
   );
 }
 
@@ -272,7 +263,7 @@ export default function Reminders() {
         <CardContent className="pt-4 px-0" aria-busy={logLoading}>
           {logLoading ? (
             <div className="px-6">
-              <TableSkeleton />
+              <Loading variant="list" count={5} label="Chargement des rappels…" />
             </div>
           ) : isEmpty ? (
             <EmptyState
@@ -280,7 +271,7 @@ export default function Reminders() {
               title="Aucun rappel programmé"
               description="Les rappels J-1 s'envoient automatiquement lorsque vous avez des rendez-vous à venir avec des clients ayant une adresse email."
               card={false}
-              testid="text-empty-reminders"
+              testid="empty-reminders"
               action={
                 <Button asChild variant="outline" size="sm">
                   <Link href="/app/settings" data-testid="button-configure-reminders">

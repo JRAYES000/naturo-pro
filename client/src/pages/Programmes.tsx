@@ -13,6 +13,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { Loading } from "@/components/Loading";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -470,12 +471,13 @@ export default function ProgrammesPage() {
         </HelpNote>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
+          <Loading variant="list" label="Chargement des programmes…" />
         ) : programmes.length === 0 ? (
           <EmptyState
             icon={FileText}
             title="Aucun programme"
             description="Créez votre premier programme d'hygiène de vie."
+            testid="empty-programmes"
             action={
               <Button
                 onClick={() => setEditing("new")}
