@@ -43,6 +43,33 @@ import { buildInvoiceNumber, invoiceNumberPrefix } from "./invoices";
 // Re-export db so that routes.ts can import it directly (backwards-compat)
 export { db };
 
+// ── Chantier C — types de projection pour les hot paths de storage.ts ──────────
+// listAppointments alimente GET /api/appointments (Agenda + Dashboard), GET
+// /api/stats/overview et GET /api/public/:slug/availability (tunnel public de
+// réservation, sans auth). Champs vérifiés par grep exhaustif de tous les
+// consommateurs serveur (stats.ts, reminders.ts, public.ts, appointments.ts) et
+// frontend (Agenda.tsx, Dashboard.tsx, ClientDetail.tsx, ConsultationNote.tsx,
+// Settings.tsx). Ne PAS ajouter de champ ici sans vérifier ses consommateurs.
+export type AppointmentListRow = Pick<Appointment,
+  | "id" | "userId" | "clientId" | "categoryId"
+  | "startAt" | "endAt" | "status"
+  | "clientFirstName" | "clientLastName" | "clientEmail" | "clientPhone"
+  | "notesBefore" | "location" | "googleMeetLink"
+  | "paymentStatus" | "paymentAmountCents" | "source"
+  | "reminderSent" | "reminderSentAt"
+  | "clientConfirmedAt" | "clientCancelledAt"
+>;
+
+// listAppointmentsForReminder alimente uniquement le cron de rappel J-1
+// (server/routes/helpers/reminders.ts : sendRemindersForUser + buildReminderContext).
+export type AppointmentReminderRow = Pick<Appointment,
+  | "id" | "userId" | "categoryId" | "clientId"
+  | "clientFirstName" | "clientLastName" | "clientEmail"
+  | "startAt" | "location" | "paymentStatus" | "notesBefore" | "googleMeetLink"
+  | "status" | "reminderSent" | "clientCancelledAt"
+  | "confirmToken" | "cancelToken"
+>;
+
 // ── Schéma SQLite (développement) ────────────────────────────────────────────
 //
 // Les tables ne sont plus créées ici. Ce bloc contenait ~450 lignes de
@@ -271,18 +298,31 @@ export interface IStorage {
   deleteClient(id: number): Promise<void>;
 
   // Appointments
-  listAppointments(userId: number, from?: number, to?: number): Promise<Appointment[]>;
+  // Chantier C (projection colonnes, 30/07/2026) : listAppointments alimente l'Agenda,
+  // le Dashboard, /api/stats/overview et la disponibilité publique — c'est LE hot path
+  // (audit perf : ~61ms de mapping Drizzle sur 27 colonnes × 4000 lignes vs ~10ms en SQL
+  // brut). Les consommateurs (grep exhaustif server/routes/*.ts + client/src/pages/*)
+  // n'utilisent que les 20 champs listés ci-dessous ; le retour est donc réduit à un
+  // Pick<Appointment,...> plutôt qu'un Appointment complet. Colonnes exclues, jamais lues
+  // par aucun consommateur : confirmToken, cancelToken, stripeSessionId, googleEventId,
+  // depositAmountCents, reviewEmailSentAt, createdAt.
+  listAppointments(userId: number, from?: number, to?: number): Promise<AppointmentListRow[]>;
   listAllAppointments(userId: number): Promise<Appointment[]>;
   getAppointment(id: number): Promise<Appointment | undefined>;
-  getAppointmentByGoogleEventId(userId: number, googleEventId: string): Promise<Appointment | undefined>;
-  listAppointmentsWithGoogleEventId(userId: number, from: number, to: number): Promise<Appointment[]>;
+  // Consommateur unique : server/routes/helpers/google-sync.ts (import Google Calendar).
+  // N'utilise que id/source/location/notesBefore/status sur le RDV existant.
+  getAppointmentByGoogleEventId(userId: number, googleEventId: string): Promise<Pick<Appointment, "id" | "userId" | "source" | "location" | "notesBefore" | "status"> | undefined>;
+  // Consommateur unique : google-sync.ts (réconciliation suppression). N'utilise que id/googleEventId/source.
+  listAppointmentsWithGoogleEventId(userId: number, from: number, to: number): Promise<Pick<Appointment, "id" | "googleEventId" | "source">[]>;
   getAppointmentByConfirmToken(token: string): Promise<Appointment | undefined>;
   getAppointmentByCancelToken(token: string): Promise<Appointment | undefined>;
   getAppointmentByStripeSessionId(sessionId: string): Promise<Appointment | undefined>;
   // PHASE 3.5-B — Manage token
   setCancelToken(appointmentId: number, token: string): Promise<Appointment | undefined>;
   ensureCancelToken(appointmentId: number): Promise<string>;
-  listAppointmentsForReminder(userId: number, fromMs: number, toMs: number): Promise<Appointment[]>;
+  // Consommateur unique : server/routes/helpers/reminders.ts (cron rappel J-1). Grep
+  // exhaustif de sendRemindersForUser + buildReminderContext → 16 champs sur 27.
+  listAppointmentsForReminder(userId: number, fromMs: number, toMs: number): Promise<AppointmentReminderRow[]>;
   createAppointment(data: InsertAppointment): Promise<Appointment>;
   updateAppointment(id: number, patch: Partial<Appointment>): Promise<Appointment | undefined>;
   deleteAppointment(id: number): Promise<void>;
@@ -634,11 +674,38 @@ export class DatabaseStorage implements IStorage {
    * glissants : l'agenda appelait la route sans paramètres et rapatriait TOUT
    * l'historique à chaque ouverture, pour n'en afficher qu'une semaine.
    */
-  async listAppointments(userId: number, from?: number, to?: number): Promise<Appointment[]> {
+  // Chantier C (30/07/2026) : projection — hot path #1 (Agenda, Dashboard, stats,
+  // disponibilité publique). 21 colonnes sélectionnées sur 27 ; voir AppointmentListRow
+  // pour la justification champ par champ. Colonnes exclues (jamais lues par aucun
+  // consommateur) : confirmToken, cancelToken, stripeSessionId, googleEventId,
+  // depositAmountCents, reviewEmailSentAt, createdAt.
+  async listAppointments(userId: number, from?: number, to?: number): Promise<AppointmentListRow[]> {
     const now = Date.now();
     const debut = from ?? now - 365 * 86400000;
     const fin = to ?? now + 365 * 86400000;
-    return db.select().from(appointments).where(and(
+    return db.select({
+      id: appointments.id,
+      userId: appointments.userId,
+      clientId: appointments.clientId,
+      categoryId: appointments.categoryId,
+      startAt: appointments.startAt,
+      endAt: appointments.endAt,
+      status: appointments.status,
+      clientFirstName: appointments.clientFirstName,
+      clientLastName: appointments.clientLastName,
+      clientEmail: appointments.clientEmail,
+      clientPhone: appointments.clientPhone,
+      notesBefore: appointments.notesBefore,
+      location: appointments.location,
+      googleMeetLink: appointments.googleMeetLink,
+      paymentStatus: appointments.paymentStatus,
+      paymentAmountCents: appointments.paymentAmountCents,
+      source: appointments.source,
+      reminderSent: appointments.reminderSent,
+      reminderSentAt: appointments.reminderSentAt,
+      clientConfirmedAt: appointments.clientConfirmedAt,
+      clientCancelledAt: appointments.clientCancelledAt,
+    }).from(appointments).where(and(
       eq(appointments.userId, userId),
       gte(appointments.startAt, debut),
       lte(appointments.startAt, fin),
@@ -654,10 +721,19 @@ export class DatabaseStorage implements IStorage {
     return first(db.select().from(appointments).where(eq(appointments.id, id)));
   }
 
-  async getAppointmentByGoogleEventId(userId: number, googleEventId: string): Promise<Appointment | undefined> {
+  // Chantier C : consommateur unique google-sync.ts (import Google Calendar) —
+  // n'utilise que id/source/location/notesBefore/status sur le RDV existant.
+  async getAppointmentByGoogleEventId(userId: number, googleEventId: string): Promise<Pick<Appointment, "id" | "userId" | "source" | "location" | "notesBefore" | "status"> | undefined> {
     return first(
       db
-        .select()
+        .select({
+          id: appointments.id,
+          userId: appointments.userId,
+          source: appointments.source,
+          location: appointments.location,
+          notesBefore: appointments.notesBefore,
+          status: appointments.status,
+        })
         .from(appointments)
         .where(and(eq(appointments.userId, userId), eq(appointments.googleEventId, googleEventId))),
     );
@@ -679,9 +755,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   /** RDV pour lesquels il faut envoyer un rappel J-1 (RDV du jour suivant non encore notifié). */
-  async listAppointmentsForReminder(userId: number, fromMs: number, toMs: number): Promise<Appointment[]> {
+  // Chantier C : consommateur unique server/routes/helpers/reminders.ts (cron J-1) —
+  // 17 colonnes sur 27, voir AppointmentReminderRow.
+  async listAppointmentsForReminder(userId: number, fromMs: number, toMs: number): Promise<AppointmentReminderRow[]> {
     const rows = await db
-      .select()
+      .select({
+        id: appointments.id,
+        userId: appointments.userId,
+        categoryId: appointments.categoryId,
+        clientId: appointments.clientId,
+        clientFirstName: appointments.clientFirstName,
+        clientLastName: appointments.clientLastName,
+        clientEmail: appointments.clientEmail,
+        startAt: appointments.startAt,
+        location: appointments.location,
+        paymentStatus: appointments.paymentStatus,
+        notesBefore: appointments.notesBefore,
+        googleMeetLink: appointments.googleMeetLink,
+        status: appointments.status,
+        reminderSent: appointments.reminderSent,
+        clientCancelledAt: appointments.clientCancelledAt,
+        confirmToken: appointments.confirmToken,
+        cancelToken: appointments.cancelToken,
+      })
       .from(appointments)
       .where(
         and(
@@ -691,18 +787,24 @@ export class DatabaseStorage implements IStorage {
         ),
       );
     // Filter en mémoire pour rester compatible SQLite + MySQL (booleans diffèrent)
-    return rows.filter((a: any) =>
+    return rows.filter((a: AppointmentReminderRow) =>
       !a.reminderSent
       && a.status !== "cancelled"
       && a.status !== "blocked"
       && a.clientCancelledAt == null
       && (a.clientEmail || a.clientId), // nécessite un email accessible (direct ou via client)
-    ) as Appointment[];
+    );
   }
 
-  async listAppointmentsWithGoogleEventId(userId: number, from: number, to: number): Promise<Appointment[]> {
+  // Chantier C : consommateur unique google-sync.ts (réconciliation suppression) —
+  // n'utilise que id/googleEventId/source. 3 colonnes sur 27.
+  async listAppointmentsWithGoogleEventId(userId: number, from: number, to: number): Promise<Pick<Appointment, "id" | "googleEventId" | "source">[]> {
     const rows = await db
-      .select()
+      .select({
+        id: appointments.id,
+        googleEventId: appointments.googleEventId,
+        source: appointments.source,
+      })
       .from(appointments)
       .where(
         and(
@@ -711,7 +813,7 @@ export class DatabaseStorage implements IStorage {
           lte(appointments.startAt, to),
         ),
       );
-    return rows.filter((a: any) => !!a.googleEventId) as Appointment[];
+    return rows.filter((a: { id: number; googleEventId: string | null; source: string | null }) => !!a.googleEventId);
   }
 
   async createAppointment(data: InsertAppointment): Promise<Appointment> {
