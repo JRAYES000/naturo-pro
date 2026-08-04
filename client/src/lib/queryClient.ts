@@ -11,7 +11,9 @@ async function throwIfResNotOk(res: Response) {
     } catch {
       text = (await res.text()) || res.statusText;
     }
-    throw new Error(text);
+    const err = new Error(text) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
 }
 
