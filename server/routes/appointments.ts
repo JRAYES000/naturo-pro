@@ -14,6 +14,7 @@ import { insertAppointmentSchema } from "@shared/schema-active";
 import { syncApptToGoogle } from "./helpers/google-sync";
 import { createInvoiceFromAppointment } from "./helpers/invoices";
 import { buildIcsForAppointment } from "../ics";
+import { formatRdvDate } from "../email";
 
 // Mass-assignment whitelists (Phase 3 Lot 1 — security hardening).
 // Ces schémas Zod limitent les champs modifiables via PATCH/POST, empêchant
@@ -35,6 +36,9 @@ const patchAppointmentSchema = z.object({
   paymentAmountCents: z.number().int().min(0).optional(),
   clientConfirmedAt: z.number().int().nullable().optional(),
   clientCancelledAt: z.number().int().nullable().optional(),
+  // Non persisté : indique que le praticien a déjà vu l'avertissement de conflit
+  // et veut créer/déplacer le RDV quand même (cf. trouverConflit ci-dessous).
+  force: z.boolean().optional(),
 }).strict();
 
 const noteContentSchema = z.object({
@@ -66,6 +70,37 @@ async function referencesValides(userId: number, clientId?: number | null, categ
   return true;
 }
 
+/**
+ * Détecte un chevauchement avec un RDV existant du même praticien (hors annulés,
+ * hors le RDV qu'on est en train d'éditer). Ni POST ni PATCH ne le vérifiaient :
+ * rien n'empêchait de créer/déplacer un rendez-vous en plein sur un autre.
+ *
+ * Même test d'intervalle que public.ts (`cur < e && slotEnd > s`), mais SANS la
+ * contrainte de grille de disponibilité de computeSlotsByDay : ici c'est le
+ * praticien qui gère son propre agenda et peut légitimement sortir de ses
+ * horaires déclarés — seul le double-book compte.
+ */
+export async function trouverConflit(
+  userId: number, startAt: number, endAt: number, excludeApptId?: number,
+): Promise<{ id: number; clientFirstName: string | null; clientLastName: string | null; startAt: number; endAt: number } | null> {
+  // Fenêtre large (±1 jour) comme creneauProposable : startAt seul est indexé,
+  // on filtre l'overlap précis ensuite en mémoire.
+  const fenetre = await storage.listAppointments(userId, startAt - 86400000, endAt + 86400000);
+  const conflit = fenetre.find((a: any) =>
+    a.id !== excludeApptId &&
+    a.status !== "cancelled" &&
+    startAt < a.endAt && endAt > a.startAt,
+  );
+  return conflit
+    ? { id: conflit.id, clientFirstName: conflit.clientFirstName, clientLastName: conflit.clientLastName, startAt: conflit.startAt, endAt: conflit.endAt }
+    : null;
+}
+
+function conflictMessage(c: { clientFirstName: string | null; clientLastName: string | null; startAt: number }): string {
+  const nom = `${c.clientFirstName || ""} ${c.clientLastName || ""}`.trim() || "un autre rendez-vous";
+  return `Ce créneau chevauche le rendez-vous de ${nom}, prévu le ${formatRdvDate(c.startAt)}.`;
+}
+
 export function registerAppointmentRoutes(app: Express): void {
   // ---------- APPOINTMENTS ----------
   app.get("/api/appointments", requireAuth, async (req: AuthedRequest, res) => {
@@ -77,29 +112,26 @@ export function registerAppointmentRoutes(app: Express): void {
   const recurrenceSchema = z.object({
     recurrence: z.enum(["weekly", "biweekly", "monthly"]).optional(),
     occurrences: z.number().int().min(2).max(12).optional(),
+    force: z.boolean().optional(),
   });
 
   app.post("/api/appointments", requireAuth, async (req: AuthedRequest, res) => {
     const recParsed = recurrenceSchema.safeParse(req.body);
     const recurrence = recParsed.success ? recParsed.data.recurrence : undefined;
     const occurrences = recParsed.success ? recParsed.data.occurrences : undefined;
+    const force = recParsed.success ? !!recParsed.data.force : false;
 
-    // Créer le premier rendez-vous (occurrence 0)
     const parsed = insertAppointmentSchema.safeParse({ ...req.body, userId: req.userId });
     if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
     if (!(await referencesValides(req.userId!, (parsed.data as any).clientId, (parsed.data as any).categoryId))) {
       return res.status(400).json({ message: "Client ou prestation introuvable" });
     }
-    let appt = await storage.createAppointment(parsed.data);
-    const eventId = await syncApptToGoogle("create", req.userId!, appt);
-    if (eventId) {
-      const refreshed = await storage.updateAppointment(appt.id, { googleEventId: eventId });
-      if (refreshed) appt = refreshed;
-    }
 
-    // Si récurrence demandée, créer les occurrences suivantes
+    // Construire TOUS les créneaux à créer (récurrence incluse) avant la moindre
+    // écriture : un conflit sur la 3e occurrence ne doit pas laisser les 2
+    // premières déjà créées derrière lui.
+    const occurrencesData: (typeof parsed.data)[] = [parsed.data];
     if (recurrence && occurrences && occurrences > 1) {
-      const created = [appt];
       for (let i = 1; i < occurrences; i++) {
         let offsetMs: number;
         if (recurrence === "weekly") offsetMs = i * 7 * 24 * 60 * 60 * 1000;
@@ -111,11 +143,33 @@ export function registerAppointmentRoutes(app: Express): void {
           shifted.setMonth(shifted.getMonth() + i);
           offsetMs = shifted.getTime() - base.getTime();
         }
-        const occData = {
+        occurrencesData.push({
           ...parsed.data,
           startAt: (parsed.data.startAt as number) + offsetMs,
           endAt: (parsed.data.endAt as number) + offsetMs,
-        };
+        });
+      }
+    }
+
+    if (!force) {
+      for (const occ of occurrencesData) {
+        const conflit = await trouverConflit(req.userId!, occ.startAt as number, occ.endAt as number);
+        if (conflit) {
+          return res.status(409).json({ message: conflictMessage(conflit), conflictId: conflit.id });
+        }
+      }
+    }
+
+    let appt = await storage.createAppointment(occurrencesData[0]);
+    const eventId = await syncApptToGoogle("create", req.userId!, appt);
+    if (eventId) {
+      const refreshed = await storage.updateAppointment(appt.id, { googleEventId: eventId });
+      if (refreshed) appt = refreshed;
+    }
+
+    if (occurrencesData.length > 1) {
+      const created = [appt];
+      for (const occData of occurrencesData.slice(1)) {
         let occAppt = await storage.createAppointment(occData);
         const occEventId = await syncApptToGoogle("create", req.userId!, occAppt);
         if (occEventId) {
@@ -144,8 +198,17 @@ export function registerAppointmentRoutes(app: Express): void {
     if (!(await referencesValides(req.userId!, parsed.data.clientId, parsed.data.categoryId))) {
       return res.status(400).json({ message: "Client ou prestation introuvable" });
     }
+    const { force, ...patch } = parsed.data;
+    if (!force && (patch.startAt !== undefined || patch.endAt !== undefined)) {
+      const newStart = patch.startAt ?? a.startAt;
+      const newEnd = patch.endAt ?? a.endAt;
+      const conflit = await trouverConflit(req.userId!, newStart, newEnd, id);
+      if (conflit) {
+        return res.status(409).json({ message: conflictMessage(conflit), conflictId: conflit.id });
+      }
+    }
     const wasCompleted = a.status === "completed";
-    let updated = await storage.updateAppointment(id, parsed.data as any);
+    let updated = await storage.updateAppointment(id, patch as any);
     if (!updated) return res.status(404).json({ message: "Introuvable" });
     const eventId = await syncApptToGoogle("update", req.userId!, updated);
     if (eventId && eventId !== updated.googleEventId) {

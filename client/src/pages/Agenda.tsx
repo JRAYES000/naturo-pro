@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw, Pencil } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
@@ -102,7 +102,11 @@ export default function Agenda() {
   // renvoyait un email sans passer par la demande de confirmation.
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [resendDialog, setResendDialog] = useState(false);
-  const [creating, setCreating] = useState<{ start: Date; end: Date } | null>(null);
+  const [dialogState, setDialogState] = useState<
+    | { mode: "create"; start: Date; end: Date }
+    | { mode: "edit"; appt: Appointment }
+    | null
+  >(null);
 
   const { data: appts = [], isLoading: apptsLoading } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
   const { data: cats = [], isLoading: catsLoading } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
@@ -195,7 +199,7 @@ export default function Agenda() {
                   {importGoogleMut.isPending ? "Synchronisation…" : "Synchroniser Google"}
                 </Button>
               )}
-              <Button onClick={() => setCreating({ start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-lg font-bold w-full sm:w-auto" data-testid="button-new-appointment">
+              <Button onClick={() => setDialogState({ mode: "create", start: new Date(), end: new Date(Date.now() + 60 * 60000) })} className="rounded-lg font-bold w-full sm:w-auto" data-testid="button-new-appointment">
                 <Plus className="h-4 w-4 mr-1" /> Nouveau RDV
               </Button>
             </div>
@@ -230,7 +234,7 @@ export default function Agenda() {
             style={{ height: "70vh" }}
             onSelectEvent={(e: any) => setSelectedId(e.resource?.id ?? null)}
             selectable
-            onSelectSlot={({ start, end }: any) => setCreating({ start, end })}
+            onSelectSlot={({ start, end }: any) => setDialogState({ mode: "create", start, end })}
             eventPropGetter={(event: any) => {
               const r = event.resource;
               // Imported Google events (no category) → gray
@@ -301,6 +305,20 @@ export default function Agenda() {
                   {selected.notesBefore && <p><strong>Notes :</strong> {selected.notesBefore}</p>}
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
+                  {selected.source !== "google" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-[12px]"
+                      data-testid="button-edit-appointment"
+                      onClick={() => {
+                        setDialogState({ mode: "edit", appt: selected });
+                        setSelectedId(null);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" /> Modifier
+                    </Button>
+                  )}
                   {selected.clientId && (
                     <Link href={`/app/notes/${selected.id}`}>
                       <Button size="sm" className="rounded-[12px]" data-testid="button-open-note"><FileText className="h-4 w-4 mr-1" /> Note de consultation</Button>
@@ -393,19 +411,25 @@ export default function Agenda() {
         </DialogContent>
       </Dialog>
 
-      <NewAppointmentDialog
-        open={!!creating}
-        initial={creating}
+      <AppointmentDialog
+        open={!!dialogState}
+        dialogState={dialogState}
         cats={cats}
         clients={clients}
-        onClose={() => setCreating(null)}
+        onClose={() => setDialogState(null)}
       />
     </AppLayout>
   );
 }
 
-function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
+const STATUS_LABELS: Record<string, string> = {
+  confirmed: "Confirmé", completed: "Terminé", cancelled: "Annulé", blocked: "Bloqué",
+};
+
+function AppointmentDialog({ open, dialogState, cats, clients, onClose }: any) {
   const { toast } = useToast();
+  const confirm = useConfirm();
+  const editing: Appointment | null = dialogState?.mode === "edit" ? dialogState.appt : null;
   const [categoryId, setCategoryId] = useState<string>("");
   const [clientId, setClientId] = useState<string>("");
   const [firstName, setFirstName] = useState("");
@@ -414,24 +438,46 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [status, setStatus] = useState<string>("confirmed");
+  const [location, setLocation] = useState("");
+  const [notes, setNotes] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<string>("unpaid");
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [recurrence, setRecurrence] = useState<string>("none");
   const [occurrences, setOccurrences] = useState<string>("2");
 
-  const initialDate = initial?.start ? new Date(initial.start) : new Date();
+  // Pré-remplissage à l'ouverture (création OU édition), une seule fois : `date`
+  // vide sert de sentinelle, remise à "" par reset() à la fermeture.
   if (open && !date) {
-    // Date LOCALE, pas UTC. `toISOString().slice(0,10)` renvoyait le jour en UTC :
-    // en France l'été (UTC+2), cliquer la case du 28 dans la vue Mois pré-remplissait
-    // le 27 — le rendez-vous partait un jour trop tôt, email et Google Agenda compris.
-    // L'heure, elle, venait déjà de toTimeString() (locale) : les deux étaient incohérents.
     const p2 = (n: number) => String(n).padStart(2, "0");
-    setDate(`${initialDate.getFullYear()}-${p2(initialDate.getMonth() + 1)}-${p2(initialDate.getDate())}`);
-    setTime(`${p2(initialDate.getHours())}:${p2(initialDate.getMinutes())}`);
+    if (editing) {
+      setCategoryId(editing.categoryId ? String(editing.categoryId) : "");
+      setClientId(editing.clientId ? String(editing.clientId) : "");
+      setFirstName(editing.clientFirstName || "");
+      setLastName(editing.clientLastName || "");
+      setEmail(editing.clientEmail || "");
+      setPhone(editing.clientPhone || "");
+      const d = new Date(editing.startAt);
+      setDate(`${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`);
+      setTime(`${p2(d.getHours())}:${p2(d.getMinutes())}`);
+      setStatus(editing.status || "confirmed");
+      setLocation(editing.location || "");
+      setNotes(editing.notesBefore || "");
+      setPaymentStatus(editing.paymentStatus || "unpaid");
+      setPaymentAmount(editing.paymentAmountCents ? String(editing.paymentAmountCents / 100) : "");
+    } else if (dialogState?.mode === "create") {
+      // Date LOCALE, pas UTC. `toISOString().slice(0,10)` renvoyait le jour en UTC :
+      // en France l'été (UTC+2), cliquer la case du 28 dans la vue Mois pré-remplissait
+      // le 27 — le rendez-vous partait un jour trop tôt, email et Google Agenda compris.
+      // L'heure, elle, venait déjà de toTimeString() (locale) : les deux étaient incohérents.
+      const initialDate = new Date(dialogState.start);
+      setDate(`${initialDate.getFullYear()}-${p2(initialDate.getMonth() + 1)}-${p2(initialDate.getDate())}`);
+      setTime(`${p2(initialDate.getHours())}:${p2(initialDate.getMinutes())}`);
+    }
   }
 
-  const createMut = useMutation({
-    mutationFn: async () => {
+  const saveMut = useMutation({
+    mutationFn: async (force?: boolean) => {
       const cat = cats.find((c: AppointmentCategory) => c.id === Number(categoryId));
       if (!cat) throw new Error("Choisissez une prestation");
       const start = new Date(`${date}T${time}`);
@@ -439,38 +485,62 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
       const endAt = startAt + cat.durationMinutes * 60000;
       const paymentAmountCents = paymentAmount ? Math.round(parseFloat(paymentAmount.replace(",", ".")) * 100) : 0;
       let payload: any = {
-        categoryId: cat.id, startAt, endAt, status: "confirmed",
-        location: cat.location, notesBefore: null,
+        categoryId: cat.id, startAt, endAt,
+        location: location || cat.location, notesBefore: notes || null,
         paymentStatus, paymentAmountCents,
-        source: "manual",
+        status: editing ? status : "confirmed",
       };
+      if (!editing) payload.source = "manual";
       if (clientId) {
         const c = clients.find((x: Client) => x.id === Number(clientId));
         payload = { ...payload, clientId: c.id, clientFirstName: c.firstName, clientLastName: c.lastName, clientEmail: c.email, clientPhone: c.phone };
       } else {
         payload = { ...payload, clientId: null, clientFirstName: firstName, clientLastName: lastName, clientEmail: email, clientPhone: phone };
       }
-      // Récurrence : ajouter les paramètres si une fréquence est choisie
-      if (recurrence !== "none") {
+      // Récurrence : uniquement à la création, ajouter les paramètres si une fréquence est choisie
+      if (!editing && recurrence !== "none") {
         payload.recurrence = recurrence;
         payload.occurrences = Number(occurrences);
       }
-      await apiRequest("POST", "/api/appointments", payload);
+      if (force) payload.force = true;
+      if (editing) {
+        await apiRequest("PATCH", `/api/appointments/${editing.id}`, payload);
+      } else {
+        await apiRequest("POST", "/api/appointments", payload);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-      const nb = recurrence !== "none" ? Number(occurrences) : 1;
-      toast({ title: nb > 1 ? `${nb} rendez-vous créés` : "Rendez-vous créé", variant: "success" });
+      const nb = !editing && recurrence !== "none" ? Number(occurrences) : 1;
+      toast({ title: editing ? "Rendez-vous modifié" : nb > 1 ? `${nb} rendez-vous créés` : "Rendez-vous créé", variant: "success" });
       reset(); onClose();
     },
-    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: async (e: any) => {
+      // 409 = créneau en conflit avec un autre RDV (cf. trouverConflit côté serveur) :
+      // on prévient plutôt que d'interdire, le praticien reste juge de son agenda.
+      if (e?.status === 409) {
+        const proceed = await confirm({
+          title: "Conflit d'horaire",
+          description: `${e.message} Continuer quand même ?`,
+          confirmLabel: "Continuer quand même",
+          cancelLabel: "Annuler",
+        });
+        if (proceed) saveMut.mutate(true);
+        return;
+      }
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    },
   });
-  function reset() { setCategoryId(""); setClientId(""); setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setDate(""); setTime(""); setPaymentStatus("unpaid"); setPaymentAmount(""); setRecurrence("none"); setOccurrences("2"); }
+  function reset() {
+    setCategoryId(""); setClientId(""); setFirstName(""); setLastName(""); setEmail(""); setPhone("");
+    setDate(""); setTime(""); setStatus("confirmed"); setLocation(""); setNotes("");
+    setPaymentStatus("unpaid"); setPaymentAmount(""); setRecurrence("none"); setOccurrences("2");
+  }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nouveau rendez-vous</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Modifier le rendez-vous" : "Nouveau rendez-vous"}</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
           <div>
             <Label>Prestation</Label>
@@ -498,6 +568,19 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
               <div><Label>Téléphone</Label><Input value={phone} onChange={e => setPhone(e.target.value)} data-testid="input-clientPhone" /></div>
             </div>
           )}
+          {editing && (
+            <div>
+              <Label>Statut</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger data-testid="select-status"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div><Label>Lieu</Label><Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Laisser vide pour reprendre celui de la prestation" data-testid="input-location" /></div>
+          <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} data-testid="input-notes" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Paiement</Label>
@@ -523,36 +606,42 @@ function NewAppointmentDialog({ open, initial, cats, clients, onClose }: any) {
               />
             </div>
           </div>
-          {/* Récurrence */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Répéter</Label>
-              <Select value={recurrence} onValueChange={setRecurrence}>
-                <SelectTrigger data-testid="select-recurrence"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Aucune</SelectItem>
-                  <SelectItem value="weekly">Chaque semaine</SelectItem>
-                  <SelectItem value="biweekly">Toutes les 2 semaines</SelectItem>
-                  <SelectItem value="monthly">Chaque mois</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {recurrence !== "none" && (
+          {/* Récurrence : uniquement à la création d'un nouveau RDV */}
+          {!editing && (
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Nombre de séances</Label>
-                <Select value={occurrences} onValueChange={setOccurrences}>
-                  <SelectTrigger data-testid="select-occurrences"><SelectValue /></SelectTrigger>
+                <Label>Répéter</Label>
+                <Select value={recurrence} onValueChange={setRecurrence}>
+                  <SelectTrigger data-testid="select-recurrence"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
-                      <SelectItem key={n} value={String(n)}>{n} séances</SelectItem>
-                    ))}
+                    <SelectItem value="none">Aucune</SelectItem>
+                    <SelectItem value="weekly">Chaque semaine</SelectItem>
+                    <SelectItem value="biweekly">Toutes les 2 semaines</SelectItem>
+                    <SelectItem value="monthly">Chaque mois</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            )}
-          </div>
-          <Button onClick={() => createMut.mutate()} disabled={createMut.isPending} className="w-full rounded-lg py-5 font-bold" data-testid="button-create-appointment">
-            {createMut.isPending ? "Création…" : recurrence !== "none" ? `Créer ${occurrences} rendez-vous` : "Créer le rendez-vous"}
+              {recurrence !== "none" && (
+                <div>
+                  <Label>Nombre de séances</Label>
+                  <Select value={occurrences} onValueChange={setOccurrences}>
+                    <SelectTrigger data-testid="select-occurrences"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
+                        <SelectItem key={n} value={String(n)}>{n} séances</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          <Button onClick={() => saveMut.mutate(false)} disabled={saveMut.isPending} className="w-full rounded-lg py-5 font-bold" data-testid="button-create-appointment">
+            {saveMut.isPending
+              ? (editing ? "Enregistrement…" : "Création…")
+              : editing
+                ? "Enregistrer les modifications"
+                : recurrence !== "none" ? `Créer ${occurrences} rendez-vous` : "Créer le rendez-vous"}
           </Button>
         </div>
       </DialogContent>
