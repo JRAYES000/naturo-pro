@@ -219,12 +219,18 @@ let slug, tokenGestion;
   note(jours.length > 0, "créneaux proposés", `${jours.length} jours`);
   if (!jours.length) { console.log("  Arret : aucun creneau, la suite du parcours en depend."); process.exit(1); }
 
-  const heures = jours.length ? av.slotsByDay[jours[0]].map((i) =>
-    new Date(i).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })) : [];
-  note(heures[0] === "09:00", "premier créneau à l'heure saisie (09:00 Paris)", heures[0]);
+  // jours[0] peut être aujourd'hui, déjà entamé : les créneaux du matin sont filtrés
+  // et « premier créneau à 09:00 » échoue selon l'heure à laquelle la CI tourne (vu
+  // le 04/08, un mardi, à 13h24 Paris → 15:30). On teste sur le premier jour entier.
+  const aujourdhui = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+  const jour = jours.find((j) => j > aujourdhui) ?? jours[0];
+
+  const heures = av.slotsByDay[jour].map((i) =>
+    new Date(i).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }));
+  note(heures[0] === "09:00", "premier créneau à l'heure saisie (09:00 Paris)", `${jour} ${heures[0]}`);
   note(jours.every((j) => [2, 4].includes(new Date(j + "T12:00:00Z").getUTCDay())), "uniquement les jours d'ouverture");
 
-  const creneau = new Date(av.slotsByDay[jours[0]][0]).getTime();
+  const creneau = new Date(av.slotsByDay[jour][0]).getTime();
   const resa = await fetch(`${B}/api/public/${slug}/book`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ categoryId: cat.id, startAt: creneau, firstName: "Léa", lastName: "Bernard",
