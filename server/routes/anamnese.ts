@@ -45,6 +45,22 @@ const submitAnswersSchema = z.object({
   answers: z.record(z.union([z.string(), z.array(z.string()), z.number()])),
 });
 
+// Miroir de isAnswerEmpty côté client (AnamnesePublic.tsx) : le serveur ne peut
+// pas faire confiance à la validation du navigateur, un POST direct pouvait
+// jusqu'ici soumettre des réponses vides malgré des questions "required".
+function isAnswerEmpty(ans: string | string[] | number | undefined): boolean {
+  return ans === undefined || ans === "" || (Array.isArray(ans) && ans.length === 0);
+}
+
+export function findMissingRequiredAnswers(
+  questions: { id: string; required?: boolean }[],
+  answers: Record<string, string | string[] | number>,
+): string[] {
+  return questions
+    .filter(q => q.required && isAnswerEmpty(answers[q.id]))
+    .map(q => q.id);
+}
+
 // ── Enregistrement des routes ─────────────────────────────────────────────────
 
 export function registerAnamneseRoutes(app: Express): void {
@@ -149,6 +165,20 @@ export function registerAnamneseRoutes(app: Express): void {
     if (resp.submittedAt) return res.status(410).json({ message: "Ce questionnaire a déjà été soumis." });
     const parsed = submitAnswersSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
+
+    if (resp.templateId) {
+      const tpl = await storage.getAnamnesisTemplate(resp.templateId);
+      let questions: { id: string; required?: boolean }[] = [];
+      try { questions = JSON.parse(tpl?.questions || "[]"); } catch { questions = []; }
+      const missingIds = findMissingRequiredAnswers(questions, parsed.data.answers);
+      if (missingIds.length > 0) {
+        return res.status(400).json({
+          message: "Certaines réponses obligatoires sont manquantes",
+          missingQuestionIds: missingIds,
+        });
+      }
+    }
+
     const updated = await storage.updateAnamnesisResponse(resp.id, {
       answers: JSON.stringify(parsed.data.answers),
       submittedAt: Date.now(),

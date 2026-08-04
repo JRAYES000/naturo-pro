@@ -34,7 +34,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { AnamnesisTemplate, AnamnesisResponse } from "@shared/schema";
+import type { AnamnesisTemplate, AnamnesisResponse, Client } from "@shared/schema";
 
 // ─── Types locaux ─────────────────────────────────────────────────────────────
 
@@ -54,6 +54,12 @@ function parseQuestions(raw: string | null | undefined): Question[] {
 
 function parseAnswers(raw: string | null | undefined): Record<string, string | string[] | number> {
   try { return JSON.parse(raw || "{}"); } catch { return {}; }
+}
+
+function clientName(clients: Client[], clientId: number | null): string | null {
+  if (clientId === null) return null;
+  const c = clients.find(cl => cl.id === clientId);
+  return c ? `${c.firstName} ${c.lastName}` : `#${clientId}`;
 }
 
 // Palette de pastels (classes Tailwind complètes pour la détection au build).
@@ -115,6 +121,11 @@ export default function AnamnesePage() {
   const { data: responses = [], isLoading: responsesLoading } = useQuery<AnamnesisResponse[]>({
     queryKey: ["/api/anamnesis-responses"],
     queryFn: () => apiRequest("GET", "/api/anamnesis-responses").then(r => r.json()),
+  });
+
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    queryFn: () => apiRequest("GET", "/api/clients").then(r => r.json()),
   });
 
   const delMut = useMutation({
@@ -271,8 +282,11 @@ export default function AnamnesePage() {
                 return (
                   <li key={resp.id} className="card-naturo flex items-center justify-between gap-3" data-testid={`response-${resp.id}`}>
                     <div>
-                      <p className="font-semibold text-sm">{tpl?.name ?? "Questionnaire"}</p>
+                      <p className="font-semibold text-sm">
+                        {clientName(clients, resp.clientId) ?? tpl?.name ?? "Questionnaire"}
+                      </p>
                       <p className="text-xs text-muted-foreground">
+                        {clientName(clients, resp.clientId) && `${tpl?.name ?? "Questionnaire"} — `}
                         {resp.submittedAt
                           ? `Soumis le ${new Date(resp.submittedAt).toLocaleDateString("fr-FR")}`
                           : "En attente de réponse"}
@@ -310,6 +324,7 @@ export default function AnamnesePage() {
       <ShareDialog
         open={shareTplId !== null}
         templateId={shareTplId}
+        clients={clients}
         onClose={() => setShareTplId(null)}
       />
       <ResponseViewDialog
@@ -598,20 +613,25 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
 
 // ─── Dialog : partage d'un lien ───────────────────────────────────────────────
 
-function ShareDialog({ open, templateId, onClose }: {
+function ShareDialog({ open, templateId, clients, onClose }: {
   open: boolean;
   templateId: number | null;
+  clients: Client[];
   onClose: () => void;
 }) {
   const { toast } = useToast();
   const [link, setLink] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
+  const [clientId, setClientId] = useState<string>("");
 
-  if (!open && generated) { setGenerated(false); setLink(null); }
+  if (!open && generated) { setGenerated(false); setLink(null); setClientId(""); }
 
   const genMut = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest("POST", "/api/anamnesis-responses", { templateId });
+      const r = await apiRequest("POST", "/api/anamnesis-responses", {
+        templateId,
+        clientId: clientId ? Number(clientId) : undefined,
+      });
       return r.json();
     },
     onSuccess: (data: any) => {
@@ -641,6 +661,24 @@ function ShareDialog({ open, templateId, onClose }: {
                 Cliquez sur le bouton ci-dessous pour générer un lien unique à envoyer à votre cliente.
                 Elle pourra remplir le questionnaire depuis n'importe quel appareil.
               </p>
+              <div>
+                <Label className="text-xs mb-1.5 block">Associer à une cliente (optionnel)</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger data-testid="select-share-client">
+                    <SelectValue placeholder="Aucune — lien générique" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.firstName} {c.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Les réponses seront rattachées à cette fiche cliente dans la liste ci-dessous.
+                </p>
+              </div>
               <Button
                 onClick={() => genMut.mutate()}
                 disabled={genMut.isPending}
