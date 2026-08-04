@@ -56,8 +56,9 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref }: Book
       </p>
       <p className="text-sm text-muted-foreground mb-8 flex items-center justify-center gap-1.5">
         <Mail className="h-3.5 w-3.5 shrink-0" />
-        Une confirmation a été envoyée à{" "}
+        Vous recevrez une confirmation par email à{" "}
         <span className="font-bold text-foreground" data-testid="text-confirmation-email">{email}</span>
+        , si votre praticienne a activé l'envoi automatique
       </p>
 
       {/* Recap card */}
