@@ -235,23 +235,37 @@ export default function InvoiceEditor() {
     onError: (e: any) => toast({ title: "Erreur d'envoi", description: e.message, variant: "destructive" }),
   });
 
+  // Une fois émise (statut ≠ draft), la facture est légalement figée côté serveur sur
+  // le client et les lignes (voir server/routes/invoices.ts, `champsFiges`) : le PDF déjà
+  // détenu par la cliente ferait foi contre un contenu que l'app changerait après coup.
+  const isLocked = !isNew && invoice?.status !== "draft";
+
   function saveAll() {
     if (isNew) {
       createMut.mutate();
       return;
     }
+    // Champs toujours modifiables, quel que soit le statut.
     const patch: any = {
-      clientFirstName, clientLastName, clientEmail,
-      clientAddress: clientAddress || null,
-      clientPostalCode: clientPostalCode || null,
-      clientCity: clientCity || null,
       dueDate: fromDateInputValue(dueDate),
       notes: notes || null,
-      items: items.filter((i) => i.description.trim()),
       status,
       paymentMethod: paymentMethod || null,
       paidAt: fromDateInputValue(paidAt),
     };
+    // Client et lignes : uniquement sur une facture encore en brouillon. Les inclure
+    // systématiquement (ancien comportement) déclenchait un refus (409) du serveur dès
+    // la moindre modification sur une facture déjà envoyée — y compris pour un simple
+    // changement de mode de paiement sans rapport avec le client ou les lignes.
+    if (!isLocked) {
+      patch.clientFirstName = clientFirstName;
+      patch.clientLastName = clientLastName;
+      patch.clientEmail = clientEmail;
+      patch.clientAddress = clientAddress || null;
+      patch.clientPostalCode = clientPostalCode || null;
+      patch.clientCity = clientCity || null;
+      patch.items = items.filter((i) => i.description.trim());
+    }
     updateMut.mutate(patch);
   }
 
@@ -304,6 +318,13 @@ export default function InvoiceEditor() {
           ) : undefined}
         />
 
+        {isLocked && (
+          <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3">
+            Cette facture est {invoice?.status === "paid" ? "payée" : "émise"} : le client et les lignes ne sont plus modifiables
+            (le PDF déjà transmis doit rester fidèle). Le statut, le mode de paiement, l'échéance et les notes restent modifiables.
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Colonne gauche : client + lignes + dates */}
           <div className="lg:col-span-2 space-y-4">
@@ -330,27 +351,27 @@ export default function InvoiceEditor() {
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Prénom</Label>
-                  <Input value={clientFirstName} onChange={(e) => setClientFirstName(e.target.value)} data-testid="input-client-firstname" />
+                  <Input value={clientFirstName} onChange={(e) => setClientFirstName(e.target.value)} disabled={isLocked} data-testid="input-client-firstname" />
                 </div>
                 <div>
                   <Label>Nom</Label>
-                  <Input value={clientLastName} onChange={(e) => setClientLastName(e.target.value)} data-testid="input-client-lastname" />
+                  <Input value={clientLastName} onChange={(e) => setClientLastName(e.target.value)} disabled={isLocked} data-testid="input-client-lastname" />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Email</Label>
-                  <Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} data-testid="input-client-email" />
+                  <Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} disabled={isLocked} data-testid="input-client-email" />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Adresse</Label>
-                  <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} data-testid="input-client-address" />
+                  <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} disabled={isLocked} data-testid="input-client-address" />
                 </div>
                 <div>
                   <Label>Code postal</Label>
-                  <Input value={clientPostalCode} onChange={(e) => setClientPostalCode(e.target.value)} data-testid="input-client-postal" />
+                  <Input value={clientPostalCode} onChange={(e) => setClientPostalCode(e.target.value)} disabled={isLocked} data-testid="input-client-postal" />
                 </div>
                 <div>
                   <Label>Ville</Label>
-                  <Input value={clientCity} onChange={(e) => setClientCity(e.target.value)} data-testid="input-client-city" />
+                  <Input value={clientCity} onChange={(e) => setClientCity(e.target.value)} disabled={isLocked} data-testid="input-client-city" />
                 </div>
               </div>
             </div>
@@ -376,6 +397,7 @@ export default function InvoiceEditor() {
                       value={it.description}
                       onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
                       placeholder="Description"
+                      disabled={isLocked}
                       data-testid={`input-item-description-${i}`}
                     />
                     <div className="grid grid-cols-2 gap-2 sm:contents">
@@ -387,6 +409,7 @@ export default function InvoiceEditor() {
                           min={0}
                           value={it.quantity}
                           onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) } : x))}
+                          disabled={isLocked}
                           data-testid={`input-item-qty-${i}`}
                         />
                       </div>
@@ -399,6 +422,7 @@ export default function InvoiceEditor() {
                           step={0.01}
                           value={(it.unitPriceCents / 100).toFixed(2)}
                           onChange={(e) => setItems(items.map((x, j) => j === i ? { ...x, unitPriceCents: Math.round(Number(e.target.value) * 100) } : x))}
+                          disabled={isLocked}
                           data-testid={`input-item-price-${i}`}
                         />
                       </div>
@@ -409,9 +433,9 @@ export default function InvoiceEditor() {
                         {formatPrice(Math.max(0, Math.floor(it.quantity || 0)) * Math.max(0, Math.floor(it.unitPriceCents || 0)))}
                       </div>
                       <button
-                        className="sm:col-span-1 sm:justify-self-end h-10 w-10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="sm:col-span-1 sm:justify-self-end h-10 w-10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
                         onClick={() => setItems(items.filter((_, j) => j !== i))}
-                        disabled={items.length <= 1}
+                        disabled={items.length <= 1 || isLocked}
                         aria-label="Supprimer la ligne"
                         data-testid={`button-remove-item-${i}`}
                       >
@@ -425,6 +449,7 @@ export default function InvoiceEditor() {
                   size="sm"
                   onClick={() => setItems([...items, { description: "", quantity: 1, unitPriceCents: 0 }])}
                   className="text-primary font-bold"
+                  disabled={isLocked}
                   data-testid="button-add-item"
                 >
                   <Plus className="h-4 w-4 mr-1" /> Ajouter une ligne
