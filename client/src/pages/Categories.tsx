@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatPrice, durationLabel } from "@/lib/format";
@@ -104,6 +106,9 @@ export default function CategoriesPage() {
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full" style={{ background: c.color || "#186749" }} />
                     <h3 className="font-extrabold">{c.name}</h3>
+                    {c.isActive
+                      ? <Badge className="bg-accent/30 text-primary border-0 text-xs">Actif</Badge>
+                      : <Badge variant="secondary" className="text-xs">Inactif</Badge>}
                   </div>
                   <div className="flex gap-1">
                     <button aria-label="Modifier la prestation" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={() => setEditing(c)} data-testid={`button-edit-${c.id}`}><Pencil className="h-4 w-4" /></button>
@@ -142,8 +147,13 @@ function CategoryDialog({ open, editing, onClose }: any) {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (editing === "new") await apiRequest("POST", "/api/categories", data);
-      else await apiRequest("PATCH", `/api/categories/${editing.id}`, data);
+      // Le PATCH serveur est strict (rejette toute clé inconnue) : n'envoyer que les
+      // champs réellement éditables, pas l'objet `data` complet (qui porte id/userId
+      // en mode édition puisqu'il est initialisé depuis la catégorie existante).
+      const { name, description, durationMinutes, priceCents, color, isActive, location } = data;
+      const payload = { name, description, durationMinutes, priceCents, color, isActive, location };
+      if (editing === "new") await apiRequest("POST", "/api/categories", payload);
+      else await apiRequest("PATCH", `/api/categories/${editing.id}`, payload);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/categories"] }); toast({ title: "Enregistré", variant: "success" }); setData(null); onClose(); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -175,6 +185,13 @@ function CategoryDialog({ open, editing, onClose }: any) {
               <div><Label>Couleur</Label><Input type="color" value={data.color} onChange={e => setData({ ...data, color: e.target.value })} className="h-10 p-1" data-testid="input-color" /></div>
             </div>
             <div><Label>Description</Label><Textarea rows={2} value={data.description || ""} onChange={e => setData({ ...data, description: e.target.value })} data-testid="input-description" /></div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-secondary">
+              <div>
+                <p className="font-bold text-sm">Prestation active</p>
+                <p className="text-xs text-muted-foreground">Désactivez pour la retirer de la page de réservation en ligne, sans effacer son historique.</p>
+              </div>
+              <Switch checked={!!data.isActive} onCheckedChange={v => setData({ ...data, isActive: v })} data-testid="switch-active" />
+            </div>
             <Button onClick={() => mut.mutate()} disabled={mut.isPending || !data.name} className="w-full rounded-lg py-5 font-bold" data-testid="button-save-category">
               {mut.isPending ? "Enregistrement…" : "Enregistrer"}
             </Button>
