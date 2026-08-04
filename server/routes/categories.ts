@@ -12,8 +12,9 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { insertCategorySchema } from "@shared/schema-active";
 
 // Limite les champs modifiables via PATCH, empêchant un attaquant de transférer
-// une ressource vers un autre user via {userId:X}.
-const patchCategorySchema = z.object({
+// une ressource vers un autre user via {userId:X}. Exporté pour test (categories.test.ts) :
+// le client ne doit jamais envoyer id/userId dans le corps d'un PATCH, ce schéma les rejette.
+export const patchCategorySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().nullable().optional(),
   durationMinutes: z.number().int().positive().optional(),
