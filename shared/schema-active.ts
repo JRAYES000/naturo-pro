@@ -53,6 +53,7 @@ export const insertUserSchema = activeSchema.insertUserSchema;
 export const insertCategorySchema = activeSchema.insertCategorySchema;
 export const insertAvailabilitySchema = activeSchema.insertAvailabilitySchema;
 export const insertClientSchema = activeSchema.insertClientSchema;
+export const clientEmailSchema = activeSchema.clientEmailSchema;
 export const insertAppointmentSchema = activeSchema.insertAppointmentSchema;
 export const insertNoteSchema = activeSchema.insertNoteSchema;
 export const insertInvoiceSchema = activeSchema.insertInvoiceSchema;

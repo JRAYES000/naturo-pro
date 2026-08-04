@@ -11,13 +11,15 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
-import { insertClientSchema } from "@shared/schema-active";
+import { insertClientSchema, clientEmailSchema } from "@shared/schema-active";
 
 // Limite les champs modifiables via PATCH (empêche le transfert via {userId:X}).
+// email réutilise clientEmailSchema (shared/schema.ts) — même règle qu'à la création,
+// pour ne plus jamais diverger entre POST et PATCH.
 const patchClientSchema = z.object({
   firstName: z.string().min(1).max(255).optional(),
   lastName: z.string().min(1).max(255).optional(),
-  email: z.string().email().nullable().optional().or(z.literal("")),
+  email: clientEmailSchema,
   phone: z.string().max(50).nullable().optional(),
   dateOfBirth: z.string().max(20).nullable().optional(),
   address: z.string().nullable().optional(),
