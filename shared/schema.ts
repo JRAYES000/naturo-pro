@@ -462,7 +462,12 @@ export const kbChunks = sqliteTable("kb_chunks", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
 export const insertAvailabilitySchema = createInsertSchema(availabilitySlots).omit({ id: true });
-export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, userId: true });
+// Règle unique pour le champ email client, réutilisée par insertClientSchema ci-dessous
+// et par patchClientSchema (server/routes/clients.ts) — évite la divergence qui rendait
+// une fiche irrécupérable : un email invalide accepté à la création puis refusé à la
+// moindre modification ultérieure, avec la fiche bloquée entre les deux.
+export const clientEmailSchema = z.string().email().nullable().optional().or(z.literal(""));
+export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, userId: true }).extend({ email: clientEmailSchema });
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true });
 export const insertNoteSchema = createInsertSchema(consultationNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true });
