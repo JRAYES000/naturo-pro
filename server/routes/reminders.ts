@@ -19,6 +19,7 @@ import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { renderReminderEmail, sendEmail, formatRdvDate } from "../email";
 import { getEmailConfigForUser } from "./helpers/email-sending";
+import { getRemindersActiveState } from "./helpers/reminders";
 import { genToken } from "./helpers/tokens";
 
 const APP_URL = process.env.APP_URL || "https://app.ecole-naturo.fr";
@@ -94,6 +95,12 @@ export function registerReminderRoutes(app: Express): void {
       const userId = req.userId!;
       const now = Date.now();
 
+      // État réel du système (réglage + config email) : sans ça, la page affichait
+      // les mêmes chiffres que les rappels soient actifs ou non, y compris un
+      // "Prochain envoi : Aujourd'hui" qui ne se produira jamais.
+      const user = await storage.getUserById(userId);
+      const { active, reason } = user ? getRemindersActiveState(user) : { active: false, reason: "no-email-config" as const };
+
       // J-7 à J+30 pour les compteurs courants
       const fromTs = now - 7 * 24 * 60 * 60 * 1000;
       const toTs   = now + 30 * 24 * 60 * 60 * 1000;
@@ -133,6 +140,8 @@ export function registerReminderRoutes(app: Express): void {
         sentTotal,
         pendingCount,
         nextSendAt,
+        active,
+        reason,
       });
     } catch (e: any) {
       console.error("[reminders/stats]", e);
