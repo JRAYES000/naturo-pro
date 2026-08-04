@@ -46,6 +46,8 @@ interface ReminderStats {
   sentTotal: number;
   pendingCount: number;
   nextSendAt: number | null;
+  active: boolean;
+  reason: "disabled" | "no-email-config" | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -159,14 +161,20 @@ export default function Reminders() {
     queryFn: () => apiRequest("GET", "/api/reminders/log").then((r) => r.json()),
   });
 
-  // Calcule le libellé du prochain envoi
+  // Calcule le libellé du prochain envoi — n'a de sens que si le système est actif :
+  // sinon aucun de ces RDV en attente ne recevra de rappel automatique.
   const nextSendLabel: string = (() => {
-    if (!stats?.nextSendAt) return "—";
+    if (!stats?.active || !stats?.nextSendAt) return "—";
     const d = new Date(stats.nextSendAt);
     const now = new Date();
     if (d < now) return "Aujourd'hui";
     return fmtDateShort(stats.nextSendAt);
   })();
+
+  const inactiveReasonLabel: string =
+    stats?.reason === "disabled"
+      ? "réglage « Rappels automatiques J-1 » désactivé"
+      : "configuration email manquante (clé Resend + adresse expéditeur)";
 
   const isEmpty = !logLoading && (!log || log.length === 0);
 
@@ -185,6 +193,26 @@ export default function Reminders() {
           </Button>
         }
       />
+
+      {/* ── Bandeau d'état réel : sans lui, les statistiques ci-dessous restaient
+          identiques que les rappels soient actifs ou explicitement désactivés. ── */}
+      {!statsLoading && stats && (
+        stats.active ? (
+          <div className="mb-4 flex items-center gap-2 text-sm bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-4 py-3" data-testid="banner-reminders-active">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span><strong>Rappels actifs</strong> — les rendez-vous à venir recevront bien un rappel automatique la veille.</span>
+          </div>
+        ) : (
+          <div className="mb-4 flex items-center gap-2 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3" data-testid="banner-reminders-inactive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>
+              <strong>Rappels inactifs</strong> — {inactiveReasonLabel}. Les rendez-vous ci-dessous ne recevront aucun rappel
+              automatique tant que ce n'est pas résolu dans{" "}
+              <Link href="/app/settings" className="underline font-semibold" data-testid="link-banner-settings">Paramètres</Link>.
+            </span>
+          </div>
+        )
+      )}
 
       <HelpNote>
         <p>
@@ -244,9 +272,9 @@ export default function Reminders() {
             />
             <StatCard
               title="Prochain envoi"
-              value={nextSendLabel}
+              value={stats?.active === false ? "Inactif" : nextSendLabel}
               icon={AlertCircle}
-              iconColor="text-[#17EC9B]"
+              iconColor={stats?.active === false ? "text-red-500" : "text-[#17EC9B]"}
               data-testid="text-stat-next-send"
             />
           </>

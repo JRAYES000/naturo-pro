@@ -12,8 +12,30 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TZ, getLocalHour, getLocalDayKey, getLocalDayBounds } from "./reminders";
+import { TZ, getLocalHour, getLocalDayKey, getLocalDayBounds, getRemindersActiveState } from "./reminders";
 import { zonedParts } from "../../timezone";
+
+/**
+ * GET /api/reminders/stats affichait les mêmes chiffres ("Prochain envoi : Aujourd'hui")
+ * que le réglage "Rappels automatiques J-1" soit activé ou explicitement désactivé, et
+ * que la configuration email existe ou non — testé en direct, aucune différence. Ces
+ * tests verrouillent que getRemindersActiveState (utilisé à la fois par l'affichage et
+ * par le déclencheur réel sendRemindersForUser) reflète bien les deux causes possibles.
+ */
+test("getRemindersActiveState — réglage désactivé prime, même avec une config email valide", () => {
+  const r = getRemindersActiveState({ emailRemindersEnabled: false, resendApiKey: "re_x", emailFromAddress: "a@b.fr" });
+  assert.deepEqual(r, { active: false, reason: "disabled" });
+});
+
+test("getRemindersActiveState — réglage activé mais config email absente", () => {
+  const r = getRemindersActiveState({ emailRemindersEnabled: true, resendApiKey: null, emailFromAddress: null });
+  assert.deepEqual(r, { active: false, reason: "no-email-config" });
+});
+
+test("getRemindersActiveState — actif seulement si le réglage ET la config sont réunis", () => {
+  const r = getRemindersActiveState({ emailRemindersEnabled: true, resendApiKey: "re_x", emailFromAddress: "a@b.fr" });
+  assert.deepEqual(r, { active: true, reason: null });
+});
 
 test("TZ — les crons suivent le fuseau des praticiens", () => {
   assert.equal(TZ, "Europe/Paris");

@@ -73,17 +73,36 @@ export async function buildReminderContext(appt: any, user: any) {
   return { cat, clientFirstName, clientLastName, clientEmail, user };
 }
 
+export interface RemindersActiveState {
+  active: boolean;
+  reason: "disabled" | "no-email-config" | null;
+}
+
+/**
+ * État réel du système de rappels J-1 pour un praticien : actif seulement si le
+ * réglage est activé ET qu'une configuration email valide existe. Centralisé ici
+ * pour que le déclencheur réel (sendRemindersForUser, plus bas) et l'affichage
+ * (GET /api/reminders/stats) ne puissent jamais diverger — c'est exactement cette
+ * divergence qui faisait afficher un tableau de bord "Prochain envoi : Aujourd'hui"
+ * identique que les rappels soient actifs ou explicitement désactivés.
+ */
+export function getRemindersActiveState(user: any): RemindersActiveState {
+  // Réglage « Rappels automatiques J-1 » : il était enregistré et affiché, mais AUCUN
+  // code ne le lisait — la praticienne pouvait le couper, les rappels partaient quand même.
+  if (user.emailRemindersEnabled === false) return { active: false, reason: "disabled" };
+  if (!getEmailConfigForUser(user)) return { active: false, reason: "no-email-config" };
+  return { active: true, reason: null };
+}
+
 /**
  * Envoie les rappels J-1 pour un user donné. Idempotent via reminderSent flag.
  * Renvoie { sent, skipped, errors } pour observability.
  */
 export async function sendRemindersForUser(user: any): Promise<{ sent: number; skipped: number; errors: number; details: any[] }> {
   const out = { sent: 0, skipped: 0, errors: 0, details: [] as any[] };
-  // Réglage « Rappels automatiques J-1 » : il était enregistré et affiché, mais AUCUN
-  // code ne le lisait — la praticienne pouvait le couper, les rappels partaient quand même.
-  if (user.emailRemindersEnabled === false) { out.skipped++; return out; }
-  const cfg = getEmailConfigForUser(user);
-  if (!cfg) { out.skipped++; return out; }
+  const state = getRemindersActiveState(user);
+  if (!state.active) { out.skipped++; return out; }
+  const cfg = getEmailConfigForUser(user)!; // non-null : state.active vient de le vérifier
 
   const { from, to } = getLocalDayBounds(1);
   const appts = await storage.listAppointmentsForReminder(user.id, from, to);
