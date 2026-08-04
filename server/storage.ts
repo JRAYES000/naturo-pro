@@ -406,6 +406,7 @@ export interface IStorage {
   getPackage(id: number): Promise<Package | undefined>;
   createPackage(data: InsertPackage & { userId: number }): Promise<Package>;
   updatePackage(id: number, patch: Partial<Package>): Promise<Package | undefined>;
+  usePackageSession(id: number, userId: number): Promise<Package | null>;
   deletePackage(id: number): Promise<void>;
 
   // Assistant IA — discussions
@@ -1307,6 +1308,29 @@ export class DatabaseStorage implements IStorage {
 
   async updatePackage(id: number, patch: Partial<Package>): Promise<Package | undefined> {
     return dbUpdateReturning<Package>(packages, id, { ...patch, updatedAt: Date.now() });
+  }
+
+  /**
+   * Consomme une séance d'un forfait. Lire usedSessions puis renvoyer +1 depuis le
+   * client (ancien comportement) perdait des séances sous usage concurrent : deux
+   * "Utiliser une séance" quasi simultanées partaient de la même valeur de départ,
+   * une des deux consommations disparaissait silencieusement. Même famille de
+   * problème que la numérotation de facture (lire + incrémenter doivent former un
+   * tout indivisible) — même solution : sérialiser par praticien.
+   * Renvoie `null` si le forfait n'existe pas, n'appartient pas à ce praticien, ou
+   * est déjà épuisé (rien à décrémenter).
+   */
+  async usePackageSession(id: number, userId: number): Promise<Package | null> {
+    return serialiserParUser(userId, async () => {
+      const pkg = await this.getPackage(id);
+      if (!pkg || pkg.userId !== userId) return null;
+      if (pkg.usedSessions >= pkg.totalSessions) return null;
+      const updated = await dbUpdateReturning<Package>(packages, id, {
+        usedSessions: pkg.usedSessions + 1,
+        updatedAt: Date.now(),
+      } as any);
+      return updated ?? null;
+    });
   }
 
   async deletePackage(id: number): Promise<void> {

@@ -137,10 +137,12 @@ export default function Packages() {
   });
 
   const useMut = useMutation({
+    // Incrément calculé et vérifié côté serveur (voir POST /api/packages/:id/use-session) :
+    // envoyer `usedSessions + 1` calculé ici perdait des séances en cas d'usage
+    // concurrent (deux appareils, double-clic), le serveur ne connaissait alors que
+    // la valeur envoyée, jamais la vraie valeur au moment de l'écriture.
     mutationFn: (pkg: Package) =>
-      apiRequest("PATCH", `/api/packages/${pkg.id}`, {
-        usedSessions: pkg.usedSessions + 1,
-      }).then((r) => r.json()),
+      apiRequest("POST", `/api/packages/${pkg.id}/use-session`, {}).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
       toast({ title: "Séance enregistrée", variant: "success" });

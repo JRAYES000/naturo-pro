@@ -34,8 +34,29 @@ export function registerPackageRoutes(app: Express): void {
   app.post("/api/packages", requireAuth, async (req: AuthedRequest, res) => {
     const parsed = insertPackageSchema.safeParse({ ...req.body, userId: req.userId });
     if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
-    const pkg = await storage.createPackage({ ...parsed.data, userId: req.userId! });
+    const data = { ...parsed.data };
+    // Le client doit appartenir à ce praticien (même contrôle que sur GET/PATCH/DELETE
+    // ci-dessous, absent ici jusqu'alors : un clientId inexistant ou d'une autre
+    // praticienne était accepté sans erreur).
+    const client = await storage.getClient(data.clientId);
+    if (!client || client.userId !== req.userId) return res.status(400).json({ message: "Client invalide" });
+    // Même plafond qu'en modification (PATCH ci-dessous) : usedSessions ne doit
+    // jamais dépasser totalSessions, y compris à la création.
+    if (data.usedSessions !== undefined) {
+      data.usedSessions = Math.min(data.usedSessions, data.totalSessions);
+    }
+    const pkg = await storage.createPackage({ ...data, userId: req.userId! });
     res.json(pkg);
+  });
+
+  // Consomme une séance — incrément atomique côté serveur (voir usePackageSession).
+  app.post("/api/packages/:id/use-session", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const pkg = await storage.getPackage(id);
+    if (!pkg || pkg.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    const updated = await storage.usePackageSession(id, req.userId!);
+    if (!updated) return res.status(409).json({ message: "Ce forfait est déjà épuisé." });
+    res.json(updated);
   });
 
   // Mise à jour partielle (y compris incrément usedSessions)
