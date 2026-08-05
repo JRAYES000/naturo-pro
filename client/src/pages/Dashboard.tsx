@@ -198,7 +198,7 @@ export default function Dashboard() {
               </div>
             </Link>
             {user && (
-              <a href={`/#/p/${user.slug}`} target="_blank" rel="noreferrer" className="card-naturo block hover:-translate-y-0.5 transition" data-testid="quick-public">
+              <a href={`/p/${user.slug}`} target="_blank" rel="noreferrer" className="card-naturo block hover:-translate-y-0.5 transition" data-testid="quick-public">
                 <div className="flex items-start gap-3">
                   <div className="h-10 w-10 rounded-lg bg-accent/30 flex items-center justify-center text-primary"><Globe className="h-5 w-5" /></div>
                   <div>

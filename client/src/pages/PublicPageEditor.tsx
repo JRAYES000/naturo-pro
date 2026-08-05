@@ -125,7 +125,7 @@ export default function PublicPageEditor() {
           subtitle="Personnalisez votre page de réservation en ligne."
           icon={Globe}
           actions={user && (
-            <a href={`/#/p/${user.slug}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-primary inline-flex items-center gap-1 hover:underline" data-testid="link-preview-public">
+            <a href={`/p/${user.slug}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-primary inline-flex items-center gap-1 hover:underline" data-testid="link-preview-public">
               Aperçu <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}

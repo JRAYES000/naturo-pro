@@ -55,8 +55,10 @@ export function tenantPublicUrl(slug: string): string {
 
 /**
  * URL publique en mode PATH-BASED (fonctionne sans wildcard DNS/SSL).
- * Format : `https://{base}/#/p/{slug}`. Utilise le hash routing existant.
+ * Format : `https://{base}/p/{slug}` — chemin propre, servi par le serveur
+ * (voir server/static.ts) et redirigé vers la route hash côté client pour
+ * les visiteurs humains sans JS de routage.
  */
 export function tenantPathUrl(slug: string): string {
-  return `https://${baseDomain()}/#/p/${slug}`;
+  return `https://${baseDomain()}/p/${slug}`;
 }

@@ -268,6 +268,7 @@ export interface IStorage {
   countUsers(): Promise<number>;
   listUsersWithGoogleToken(): Promise<User[]>;
   listUsersWithEmailConfig(): Promise<User[]>;
+  listPublicPagesForSitemap(): Promise<{ slug: string; createdAt: number }[]>;
   // Phase 3 Lot 4 — admin
   listAllUsers(): Promise<User[]>;
   countAppointmentsForUser(userId: number): Promise<number>;
@@ -508,6 +509,13 @@ export class DatabaseStorage implements IStorage {
   async listUsersWithEmailConfig(): Promise<User[]> {
     const rows = await db.select().from(users);
     return rows.filter((u: any) => !!u.resendApiKey && !!u.emailFromAddress) as User[];
+  }
+
+  async listPublicPagesForSitemap(): Promise<{ slug: string; createdAt: number }[]> {
+    return await db
+      .select({ slug: users.slug, createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.publicPageEnabled, true));
   }
 
   // Phase 3 Lot 4 — admin

@@ -4,7 +4,7 @@ import type { Request } from 'express';
 import helmet from "helmet";
 import compression from "compression";
 import { registerRoutes } from "./routes/index";
-import { serveStatic } from "./static";
+import { serveStatic, registerSeoRoutes } from "./static";
 import { createServer } from "node:http";
 import { seedIfEmpty } from "./seed";
 import { seedNaturalSolutions } from "./solutions-seed";
@@ -148,6 +148,11 @@ app.use((req, res, next) => {
   await seedIfEmpty();
   await seedNaturalSolutions();
   await registerRoutes(httpServer, app);
+
+  // Routes SEO (sitemap.xml, robots.txt, pré-rendu crawler /p/:slug) : enregistrées
+  // ici, AVANT la bifurcation dev/prod ci-dessous, pour être disponibles dans les
+  // deux environnements (setupVite ne les connaît pas — voir server/static.ts).
+  registerSeoRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

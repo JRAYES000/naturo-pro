@@ -162,7 +162,7 @@ function SidebarFooter({
       )}
       {user && (
         <a
-          href={`/#/p/${user.slug}`}
+          href={`/p/${user.slug}`}
           target="_blank"
           rel="noreferrer"
           onClick={onNavigate}
