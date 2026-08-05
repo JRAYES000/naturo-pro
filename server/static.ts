@@ -30,6 +30,8 @@ function buildSeoHead(naturo: { name: string; bio?: string | null; photoUrl?: st
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(desc)}" />`,
     `<meta property="og:type" content="profile" />`,
+    `<meta property="og:site_name" content="Naturo Pro" />`,
+    `<meta property="og:locale" content="fr_FR" />`,
     `<meta property="og:title" content="${esc(title)}" />`,
     `<meta property="og:description" content="${esc(desc)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
@@ -97,13 +99,22 @@ export function buildRobotsTxt(base: string): string {
 }
 
 /**
- * Injecte un head SEO dans un document HTML : remplace le <title> et la
- * <meta description> statique qui le suit par le head enrichi (title, meta
- * description, Open Graph).
+ * Injecte un head SEO dans un document HTML : retire le <title>, la meta
+ * description et TOUTES les balises Open Graph / Twitter Card statiques de
+ * client/index.html (Action 12 du LOT 2), puis injecte le head enrichi
+ * juste après <head>. Un simple remplacement de <title> + description ne
+ * suffit plus depuis l'ajout des balises OG/Twitter à index.html : sans ce
+ * nettoyage, les deux jeux de balises coexistaient (doublon détecté en test
+ * réel sur /p/:slug avant cette correction).
  */
 export function applySeoHead(html: string, seoHead: string): string {
   // [\s\S] au lieu du flag /s (dotAll) — évite TS1501 sur target < es2018.
-  return html.replace(/<title>[\s\S]*?<\/title>\s*<meta name="description"[^>]*\/?>/, seoHead);
+  const cleaned = html
+    .replace(/<title>[\s\S]*?<\/title>/, "")
+    .replace(/<meta name="description"[^>]*\/?>/g, "")
+    .replace(/<meta property="og:[^"]*"[^>]*\/?>/g, "")
+    .replace(/<meta name="twitter:[^"]*"[^>]*\/?>/g, "");
+  return cleaned.replace(/<head>/, `<head>\n    ${seoHead}`);
 }
 
 /**
@@ -174,6 +185,18 @@ export function serveStatic(app: Express) {
   }
 
   const indexPath = path.resolve(distPath, "index.html");
+
+  // Assets Vite (JS/CSS) : le nom de fichier contient un hash de contenu
+  // (index-D4YqlVjJ.js, vendor-react-J4kObT73.js…) — un changement de contenu
+  // produit toujours un nouveau nom. Cache long-terme sûr par construction,
+  // monté AVANT le static général pour ne s'appliquer qu'à /assets. index.html,
+  // favicon.svg, naturobot.jpg et les polices n'ont pas de hash dans leur nom :
+  // ils restent volontairement sur le comportement par défaut ci-dessous
+  // (max-age=0), servi par express.static(distPath) sans option.
+  app.use("/assets", express.static(path.resolve(distPath, "assets"), {
+    maxAge: "1y",
+    immutable: true,
+  }));
 
   app.use(express.static(distPath));
 

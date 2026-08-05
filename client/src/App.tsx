@@ -4,7 +4,6 @@ import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 import { ConfirmProvider } from "@/hooks/use-confirm";
 import { Loading } from "@/components/Loading";
@@ -120,21 +119,19 @@ function AppRouter() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router hook={useHashLocation}>
-          <AuthProvider>
-            <ConfirmProvider>
-              {/* Suspense enveloppe le router : pendant le download d'un chunk
-                  de page, on affiche le composant Loading unifié (aria-busy,
-                  cohérent avec le reste des états de chargement de l'app). */}
-              <Suspense fallback={<Loading label="Chargement…" />}>
-                <AppRouter />
-              </Suspense>
-            </ConfirmProvider>
-          </AuthProvider>
-        </Router>
-      </TooltipProvider>
+      <Toaster />
+      <Router hook={useHashLocation}>
+        <AuthProvider>
+          <ConfirmProvider>
+            {/* Suspense enveloppe le router : pendant le download d'un chunk
+                de page, on affiche le composant Loading unifié (aria-busy,
+                cohérent avec le reste des états de chargement de l'app). */}
+            <Suspense fallback={<Loading label="Chargement…" />}>
+              <AppRouter />
+            </Suspense>
+          </ConfirmProvider>
+        </AuthProvider>
+      </Router>
     </QueryClientProvider>
   );
 }

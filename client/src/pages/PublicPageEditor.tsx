@@ -26,6 +26,41 @@ const SPECIALTY_SUGGESTIONS = [
 const DEFAULT_PRIMARY = "#186749";
 const DEFAULT_ACCENT = "#17EC9B";
 
+/**
+ * Redimensionne et compresse une image côté client avant envoi — 1200px de
+ * large maximum, JPEG qualité 80. Évite les photos non compressées (plusieurs
+ * Mo) qui pénalisaient le poids de la page publique (LCP) et de l'aperçu
+ * Open Graph. API Canvas native du navigateur, aucune dépendance ajoutée.
+ *
+ * Chargement du fichier source via FileReader (data:), pas
+ * URL.createObjectURL (blob:) : la CSP img-src du serveur (server/index.ts)
+ * autorise "data:" mais pas "blob:" — testé en conditions réelles, la version
+ * blob: échouait silencieusement (img.onerror) sans cette contrainte.
+ */
+function resizeImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 1200;
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas non disponible"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = () => reject(new Error("Image invalide"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("Fichier illisible"));
+    reader.readAsDataURL(file);
+  });
+}
+
 /** Parse défensif des spécialités stockées (JSON array en DB). Ne plante jamais. */
 function parseSpecialties(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
@@ -264,17 +299,23 @@ export default function PublicPageEditor() {
                       accept="image/png,image/jpeg,image/webp"
                       className="hidden"
                       data-testid="input-photo-file"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 1024 * 1024) {
-                          toast({ title: "Image trop lourde", description: "Maximum 1 Mo. Compressez l'image et réessayez.", variant: "destructive" });
+                        // Garde-fou large : le fichier d'origine n'a plus besoin d'être déjà
+                        // compressé (resizeImageFile s'en charge) — seuil élevé pour éviter
+                        // uniquement un cas dégénéré qui ferait ramer le navigateur.
+                        if (file.size > 15 * 1024 * 1024) {
+                          toast({ title: "Image trop lourde", description: "Maximum 15 Mo pour le fichier d'origine.", variant: "destructive" });
                           e.target.value = "";
                           return;
                         }
-                        const reader = new FileReader();
-                        reader.onload = () => setDraft({ ...draft, photoUrl: reader.result as string });
-                        reader.readAsDataURL(file);
+                        try {
+                          const compressed = await resizeImageFile(file);
+                          setDraft({ ...draft, photoUrl: compressed });
+                        } catch {
+                          toast({ title: "Image invalide", description: "Ce fichier ne peut pas être utilisé comme photo.", variant: "destructive" });
+                        }
                         e.target.value = "";
                       }}
                     />

@@ -53,15 +53,51 @@ const WHY = [
 ];
 
 const FAQ = [
-  { q: "Qu'est-ce que Naturo Pro ?", a: "Naturo Pro est un logiciel tout-en-un pour gérer votre cabinet de naturopathie : agenda, réservation en ligne, dossiers clients, anamnèses, notes de consultation, programmes d'hygiène de vie, facturation et statistiques, au même endroit." },
-  { q: "Comment fonctionne l'essai gratuit ?", a: "Vous créez votre compte et profitez d'un essai gratuit, sans carte bancaire. Vous pouvez tester l'ensemble des fonctionnalités et configurer votre cabinet à votre rythme." },
-  { q: "Mes données et celles de mes clients sont-elles sécurisées ?", a: "Oui. L'accès est protégé par mot de passe et chaque praticien ne voit que ses propres données. Conformément au RGPD, vous pouvez à tout moment exporter l'intégralité de vos données ou supprimer définitivement votre compte." },
-  { q: "Mes clients peuvent-ils réserver en ligne ?", a: "Oui. Chaque praticien dispose d'une page publique personnalisable où ses clients réservent en autonomie, selon les disponibilités que vous définissez. Ils peuvent aussi annuler ou reporter leur rendez-vous via un lien sécurisé." },
-  { q: "Les consultations à distance sont-elles gérées ?", a: "Oui. En connectant votre compte Google, un lien Google Meet est généré automatiquement pour vos rendez-vous en visio et transmis au client dans l'email de confirmation." },
-  { q: "Puis-je éditer des factures conformes ?", a: "Oui : factures PDF personnalisées avec votre logo, votre SIRET, la TVA si vous y êtes assujetti et une numérotation automatique. Vous pouvez les envoyer par email et exporter votre journal des recettes au format CSV." },
-  { q: "Naturo Pro fonctionne-t-il sur mobile ?", a: "Oui. L'application s'utilise depuis votre navigateur, sur ordinateur, tablette ou smartphone. Aucune installation n'est nécessaire." },
-  { q: "Puis-je résilier et supprimer mon compte ?", a: "À tout moment, directement depuis vos paramètres. La suppression est définitive et efface l'ensemble de vos données." },
+  { q: "Qu'est-ce que Naturo Pro ?", a: "Naturo Pro est un logiciel tout-en-un conçu pour les naturopathes, qui réunit en un seul endroit l'agenda et la réservation en ligne, les dossiers clients, les anamnèses, les notes de consultation, les programmes d'hygiène de vie, la facturation et les statistiques de votre cabinet." },
+  { q: "Comment fonctionne l'essai gratuit ?", a: "L'essai gratuit de Naturo Pro vous permet de créer votre compte et de tester l'ensemble des fonctionnalités du logiciel sans engagement et sans carte bancaire, le temps de configurer votre cabinet et votre page de réservation en ligne à votre propre rythme." },
+  { q: "Mes données et celles de mes clients sont-elles sécurisées ?", a: "Oui : l'accès à Naturo Pro est protégé par mot de passe et chaque praticien ne peut consulter que ses propres données, jamais celles des autres cabinets, et l'application respecte le RGPD avec la possibilité d'exporter ou de supprimer vos données à tout moment." },
+  { q: "Mes clients peuvent-ils réserver en ligne ?", a: "Oui : chaque praticien dispose d'une page publique personnalisable où ses clients choisissent une prestation et réservent en autonomie un rendez-vous, selon les disponibilités que vous définissez vous-même, sans avoir besoin de créer de compte ; ils peuvent ensuite annuler ou reporter leur rendez-vous à tout moment via un lien sécurisé reçu par email." },
+  { q: "Les consultations à distance sont-elles gérées ?", a: "Oui : en connectant votre compte Google à Naturo Pro, un lien de visioconférence Google Meet est généré automatiquement pour chaque rendez-vous en visio et transmis directement à votre client dans l'email de confirmation, sans aucune manipulation supplémentaire de votre part ni jonglage entre plusieurs outils." },
+  { q: "Puis-je éditer des factures conformes ?", a: "Oui : Naturo Pro génère des factures PDF personnalisées avec votre logo, votre SIRET et la TVA si vous y êtes assujetti, avec une numérotation automatique conforme, que vous pouvez envoyer par email à vos clients et intégrer à votre comptabilité via un export CSV de votre journal des recettes." },
+  { q: "Naturo Pro fonctionne-t-il sur mobile ?", a: "Oui : Naturo Pro fonctionne directement depuis le navigateur de votre ordinateur, de votre tablette ou de votre smartphone, sans aucune installation ni application à télécharger, ce qui vous permet de consulter votre agenda et vos dossiers clients où que vous soyez." },
+  { q: "Puis-je résilier et supprimer mon compte ?", a: "Oui : vous pouvez résilier et supprimer votre compte Naturo Pro à tout moment, directement depuis la page de vos paramètres, sans avoir à contacter le support ni à justifier votre décision ; la suppression est définitive et efface l'ensemble de vos données, conformément au RGPD, sans conservation ultérieure." },
 ];
+
+/**
+ * Généré depuis FAQ (même tableau que l'affichage, juste au-dessus) : le JSON-LD
+ * ne peut jamais diverger du contenu visible, puisque c'est littéralement la
+ * même donnée source, pas une copie à tenir synchronisée à la main.
+ */
+const FAQ_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.a,
+    },
+  })),
+};
+
+/**
+ * Description identique à la meta description de client/index.html (pas une
+ * nouvelle rédaction) — à garder synchronisée manuellement si l'une des deux
+ * change, un fichier HTML statique n'étant pas importable ici.
+ *
+ * Volontairement sans "offers" (pas de grille tarifaire publiée) ni
+ * "aggregateRating" (aucun système de note interne à Naturo Pro n'existe).
+ */
+const SOFTWARE_APPLICATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Naturo Pro",
+  applicationCategory: "BusinessApplication",
+  description: "Le logiciel tout-en-un pour naturopathes : agenda, dossiers clients, page publique de réservation, et gestion en ligne.",
+  operatingSystem: "Web",
+  url: "https://app.ecole-naturo.fr/",
+};
 
 function SectionHeading({ eyebrow, title, lead }: { eyebrow: string; title: string; lead?: string }) {
   return (
@@ -100,6 +136,10 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_APPLICATION_JSON_LD) }}
+      />
       {/* Header */}
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -219,6 +259,10 @@ export default function Landing() {
 
       {/* FAQ — liste à filets */}
       <section id="faq" className="py-14 lg:py-20 scroll-mt-20">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }}
+        />
         <div className="max-w-3xl mx-auto px-6">
           <SectionHeading
             eyebrow="FAQ"

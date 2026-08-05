@@ -41,21 +41,23 @@ export default defineConfig({
     // Le chunk généré faisait 482 octets (tree-shaké à vide) mais coûtait quand
     // même un modulepreload sur chaque page. chart.tsx a été supprimé et
     // recharts retiré de package.json.
+    //
+    // vendor-radix a été retiré pour la même raison (LOT 2, Action 15) : il
+    // regroupait 7 primitives (dialog, dropdown-menu, popover, select, tabs,
+    // toast, tooltip) en un seul chunk préchargé sur TOUTES les pages, alors
+    // que seul `toast` est réellement utilisé par les routes publiques
+    // (Login, BookingFlow, via useToast). `tooltip` n'est utilisé que par
+    // components/ui/sidebar.tsx (déjà auto-suffisant, son propre
+    // TooltipProvider) — jamais monté hors des pages authentifiées, déjà
+    // lazy-loadées. dialog/dropdown-menu/popover/select/tabs ne sont utilisés
+    // que par des pages authentifiées, elles aussi lazy. Sans entrée manuelle,
+    // Rollup co-localise chaque primitive avec les chunks qui l'importent
+    // réellement, au lieu de forcer un préchargement fantôme sur le public.
     rollupOptions: {
       output: {
         manualChunks: {
           // Runtime React + query : partagé par TOUTES les pages.
           "vendor-react": ["react", "react-dom", "wouter", "@tanstack/react-query"],
-          // Primitives Radix : utilisées partout mais mises à jour rarement.
-          "vendor-radix": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-select",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-toast",
-            "@radix-ui/react-tooltip",
-          ],
         },
       },
     },

@@ -6,6 +6,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Naturo Pro — Le logiciel des naturopathes</title>
     <meta name="description" content="Le logiciel tout-en-un pour naturopathes : agenda, dossiers clients, page publique de réservation, et gestion en ligne." />
+    <!-- Pas de og:image / twitter:image : aucune image dédiée (1200×630) n'existe
+         dans le projet. favicon.svg n'est pas fiable en aperçu social, naturobot.jpg
+         est l'avatar du chatbot (Chat.tsx), pas une image représentative du produit.
+         Comportement cohérent avec buildSeoHead (server/static.ts), qui omet aussi
+         og:image quand aucune photo valide n'est disponible. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Naturo Pro — Le logiciel des naturopathes" />
+    <meta property="og:description" content="Le logiciel tout-en-un pour naturopathes : agenda, dossiers clients, page publique de réservation, et gestion en ligne." />
+    <meta property="og:url" content="https://app.ecole-naturo.fr/" />
+    <meta property="og:site_name" content="Naturo Pro" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Naturo Pro — Le logiciel des naturopathes" />
+    <meta name="twitter:description" content="Le logiciel tout-en-un pour naturopathes : agenda, dossiers clients, page publique de réservation, et gestion en ligne." />
     <link rel="preload" href="/fonts/nunito-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/nunito-700.woff2" as="font" type="font/woff2" crossorigin />
   </head>
