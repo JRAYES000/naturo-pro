@@ -5,6 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "node:fs";
 import path from "node:path";
 import { nanoid } from "nanoid";
+import { applySeoHead } from "./static";
 
 const viteLogger = createLogger();
 
@@ -48,6 +49,13 @@ export async function setupVite(server: Server, app: Express) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
+      // /p/:slug (server/static.ts) a déjà résolu le head SEO du praticien et l'a
+      // déposé dans res.locals — on l'injecte ici, AVANT transformIndexHtml, pour
+      // que le HTML final ait à la fois le head SEO et le runtime Vite/React
+      // Refresh (sans lequel React ne se monte pas en dev).
+      if (res.locals.seoHead) {
+        template = applySeoHead(template, res.locals.seoHead);
+      }
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

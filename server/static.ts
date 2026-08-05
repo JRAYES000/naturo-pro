@@ -97,6 +97,16 @@ export function buildRobotsTxt(base: string): string {
 }
 
 /**
+ * Injecte un head SEO dans un document HTML : remplace le <title> et la
+ * <meta description> statique qui le suit par le head enrichi (title, meta
+ * description, Open Graph).
+ */
+export function applySeoHead(html: string, seoHead: string): string {
+  // [\s\S] au lieu du flag /s (dotAll) — évite TS1501 sur target < es2018.
+  return html.replace(/<title>[\s\S]*?<\/title>\s*<meta name="description"[^>]*\/?>/, seoHead);
+}
+
+/**
  * Enregistre les routes SEO (sitemap, robots.txt, pré-rendu crawler /p/:slug).
  * Appelée AVANT la bifurcation dev/prod dans server/index.ts : ces routes doivent
  * être testables via `npm run dev` (setupVite ne les connaît pas) et pas seulement
@@ -104,17 +114,12 @@ export function buildRobotsTxt(base: string): string {
  * invisibles en dev (setupVite prend la main avant que serveStatic() soit appelé).
  */
 export function registerSeoRoutes(app: Express) {
-  // En prod, l'esbuild bundle en CJS : __dirname est défini nativement, sur dist/
-  // → dist/public/index.html (build final). En dev, tsx exécute en ESM réel :
-  // __dirname n'existe pas (cf. server/db.ts, server/google.ts pour le même
-  // compat dual ESM/CJS), donc import.meta.dirname → on lit le index.html source
-  // de Vite directement (suffisant pour le head SEO ; le HMR/transform Vite ne
-  // concerne que l'expérience humaine, gérée par setupVite en aval, jamais par
-  // cette route réservée aux crawlers).
+  // Utilisé uniquement en prod (bundle esbuild CJS, __dirname défini nativement).
+  // Ne pas évaluer __dirname en dev : tsx exécute en ESM réel, où __dirname
+  // n'existe pas (cf. server/db.ts, server/google.ts pour le même compat dual
+  // ESM/CJS) — la branche dev ci-dessous ne s'en sert jamais.
   const indexPath =
-    process.env.NODE_ENV === "production"
-      ? path.resolve(__dirname, "public", "index.html")
-      : path.resolve(import.meta.dirname, "..", "client", "index.html");
+    process.env.NODE_ENV === "production" ? path.resolve(__dirname, "public", "index.html") : "";
 
   // ── sitemap.xml : accueil + pages praticiens actives ─────────────────────────
   app.get("/sitemap.xml", async (_req, res) => {
@@ -140,15 +145,19 @@ export function registerSeoRoutes(app: Express) {
     try {
       const u = await storage.getUserBySlug(req.params.slug);
       if (!u || !u.publicPageEnabled) return next();
-      let html = fs.readFileSync(indexPath, "utf-8");
       const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol;
       const url = `${proto}://${req.headers.host}/p/${u.slug}`;
       const seoHead = buildSeoHead(u as any, url);
-      // Remplace le <title> existant ET la <meta description> statique qui le
-      // suit (client/index.html) par le head enrichi — sinon les deux meta
-      // description coexistent dans le HTML final (la voulue + la générique).
-      // [\s\S] au lieu du flag /s (dotAll) — évite TS1501 sur target < es2018.
-      html = html.replace(/<title>[\s\S]*?<\/title>\s*<meta name="description"[^>]*\/?>/, seoHead);
+      if (process.env.NODE_ENV !== "production") {
+        // Dev : le HTML doit passer par vite.transformIndexHtml (setupVite, en
+        // aval) pour que le runtime React Refresh soit injecté — sans lui, React
+        // ne se monte pas du tout ("#root" reste vide). On ne fait donc QUE
+        // transmettre le head déjà calculé, via res.locals ; c'est le catch-all
+        // de server/vite.ts qui l'injecte réellement dans le HTML transformé.
+        res.locals.seoHead = seoHead;
+        return next();
+      }
+      const html = applySeoHead(fs.readFileSync(indexPath, "utf-8"), seoHead);
       res.set("Content-Type", "text/html; charset=utf-8").send(html);
     } catch {
       next(); // en cas d'erreur, on retombe sur le SPA standard
