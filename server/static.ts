@@ -15,19 +15,87 @@ export function esc(s: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Parse défensif des spécialités stockées en JSON texte. Ne plante jamais. */
+function parseSpecialtiesForSeo(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((s): s is string => typeof s === "string" && s.trim().length > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Construit la meta description serveur : Nom praticien / Ville / Métier /
+ * Spécialités, dans une fourchette stricte de 140 à 160 caractères (LOT 0,
+ * Action 7 — corrige l'ancienne version qui recopiait la bio libre de la
+ * praticienne telle quelle, sans contrôle de longueur ni structure garantie).
+ * Fallback géré explicitement pour ville absente et spécialités vides : la
+ * description reste toujours cohérente et dans la fourchette de longueur.
+ */
+export function buildMetaDescription(naturo: { name: string; city?: string | null; specialties?: string | null }): string {
+  const specialties = parseSpecialtiesForSeo(naturo.specialties).slice(0, 4);
+  const name = naturo.name.trim();
+  const city = naturo.city?.trim();
+
+  const core = `${name} — Naturopathe${city ? ` à ${city}` : ""}.`;
+  // Assez longue pour amener même le nom le plus court au-delà de 140
+  // caractères une fois ajoutée ; l'étape de troncature qui suit ramène
+  // ensuite systématiquement le résultat à 160 caractères maximum.
+  const filler = " Elle vous propose un accompagnement personnalisé, à l'écoute de vos besoins, pour retrouver équilibre et bien-être au quotidien.";
+
+  const withSpecialties = (list: string[]) =>
+    core + (list.length > 0 ? ` Spécialités : ${list.join(", ")}.` : "");
+
+  // Trop long : retirer des spécialités une à une avant de tronquer le texte.
+  let desc = withSpecialties(specialties);
+  const local = [...specialties];
+  while (desc.length > 160 && local.length > 0) {
+    local.pop();
+    desc = withSpecialties(local);
+  }
+
+  // Trop court : compléter avec une relance générique, toujours vraie (chaque
+  // praticienne active dispose d'une page de réservation).
+  if (desc.length < 140) desc += filler;
+
+  // Garde-fou final, quelle que soit la branche empruntée ci-dessus : jamais
+  // plus de 160 caractères.
+  if (desc.length > 160) {
+    desc = desc.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+  }
+
+  return desc;
+}
+
 /**
  * Construit le <head> SEO d'une praticienne pour les crawlers : title, meta
  * description et Open Graph (aperçu de partage avec nom, bio, photo).
  * Injecté dans le index.html servi UNIQUEMENT aux bots sur /p/:slug — les
  * humains gardent le SPA hash-routing inchangé.
  */
-function buildSeoHead(naturo: { name: string; bio?: string | null; photoUrl?: string | null; city?: string | null; slug: string }, url: string): string {
+function buildSeoHead(naturo: { name: string; bio?: string | null; photoUrl?: string | null; city?: string | null; slug: string; specialties?: string | null }, url: string): string {
   const title = `${naturo.name} — Naturopathe${naturo.city ? ` à ${naturo.city}` : ""} | Naturo Pro`;
+  // TEMPORAIRE (06/08) : la réécriture Action 7 (buildMetaDescription) est codée
+  // et testée mais pas encore autorisée au déploiement — ancienne logique
+  // conservée ici pour isoler uniquement le correctif preconnect (LCP) de ce
+  // déploiement. Ne pas committer cet état intermédiaire tel quel.
   const descRaw = naturo.bio?.trim() || `Prenez rendez-vous avec ${naturo.name}, naturopathe${naturo.city ? ` à ${naturo.city}` : ""}. Consultation, accompagnement naturel et bien-être.`;
   const desc = descRaw.slice(0, 300);
   const img = naturo.photoUrl && /^https?:\/\//.test(naturo.photoUrl) ? naturo.photoUrl : "";
+  // Piste LCP (investigation du 06/08, page praticien à photo externe non
+  // uploadée, ex. Unsplash) : préconnecter au CDN de la photo dès le <head>
+  // pour paralléliser l'ouverture TCP/TLS avec le reste du chargement, plutôt
+  // que de la découvrir seulement une fois le <img> atteint côté client.
+  // N'agit pas sur les photos uploadées (stockées en data: URL, même origine).
+  let imgOrigin = "";
+  if (img) {
+    try { imgOrigin = new URL(img).origin; } catch { /* URL malformée : pas de preconnect */ }
+  }
   return [
     `<title>${esc(title)}</title>`,
+    imgOrigin ? `<link rel="preconnect" href="${esc(imgOrigin)}" crossorigin />` : "",
     `<meta name="description" content="${esc(desc)}" />`,
     `<meta property="og:type" content="profile" />`,
     `<meta property="og:site_name" content="Naturo Pro" />`,
