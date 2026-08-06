@@ -77,12 +77,7 @@ export function buildMetaDescription(naturo: { name: string; city?: string | nul
  */
 function buildSeoHead(naturo: { name: string; bio?: string | null; photoUrl?: string | null; city?: string | null; slug: string; specialties?: string | null }, url: string): string {
   const title = `${naturo.name} — Naturopathe${naturo.city ? ` à ${naturo.city}` : ""} | Naturo Pro`;
-  // TEMPORAIRE (06/08) : la réécriture Action 7 (buildMetaDescription) est codée
-  // et testée mais pas encore autorisée au déploiement — ancienne logique
-  // conservée ici pour isoler uniquement le correctif preconnect (LCP) de ce
-  // déploiement. Ne pas committer cet état intermédiaire tel quel.
-  const descRaw = naturo.bio?.trim() || `Prenez rendez-vous avec ${naturo.name}, naturopathe${naturo.city ? ` à ${naturo.city}` : ""}. Consultation, accompagnement naturel et bien-être.`;
-  const desc = descRaw.slice(0, 300);
+  const desc = buildMetaDescription(naturo);
   const img = naturo.photoUrl && /^https?:\/\//.test(naturo.photoUrl) ? naturo.photoUrl : "";
   // Piste LCP (investigation du 06/08, page praticien à photo externe non
   // uploadée, ex. Unsplash) : préconnecter au CDN de la photo dès le <head>
