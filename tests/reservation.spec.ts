@@ -51,7 +51,12 @@ test.describe("URL partagée sans hash", () => {
   test("mène à la page de la praticienne, pas à la page d'accueil", async ({ page }) => {
     await page.goto(`/p/${SLUG}`);
     await expect(page.getByRole("heading", { name: "Marie Dupont" })).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`#/p/${SLUG}$`));
+    // Action 8 (scope resserré, 07/08/2026) : /p/:slug est désormais une route
+    // publique en URL propre, en dehors du hash router — elle ne doit PLUS
+    // retomber sur #/p/{slug} après chargement du JS (c'était le bug d'origine
+    // que ce test attendait comme comportement correct avant ce fix).
+    await expect(page).toHaveURL(new RegExp(`/p/${SLUG}$`));
+    expect(new URL(page.url()).hash, "l'URL doit rester propre, sans hash").toBe("");
   });
 
   test("la page n'est jamais blanche", async ({ page }) => {
