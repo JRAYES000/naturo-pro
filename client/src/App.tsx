@@ -64,10 +64,30 @@ const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminUserDetail = lazy(() => import("@/pages/admin/AdminUserDetail"));
 const AssistantAdmin = lazy(() => import("@/pages/admin/AssistantAdmin"));
 
+// Action 8 (scope resserré) — routes PUBLIQUES pré-login servies en URL propre
+// (pathname), en dehors du hash router. Voir le commentaire de tête de
+// client/src/main.tsx pour la justification complète (CLAUDE.md respecté : le hash
+// routing reste intact et inchangé pour tout le reste de l'app, ci-dessous).
+function PublicRouter() {
+  const onTenant = isOnTenantSubdomain();
+  return (
+    <Switch>
+      <Route path="/" component={onTenant ? PublicPage : Landing} />
+      <Route path="/p/:slug" component={PublicPage} />
+      <Route path="/p/:slug/book/:catId?" component={BookingFlow} />
+      {onTenant && <Route path="/book/:catId?" component={BookingFlow} />}
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
 function AppRouter() {
   // Phase 3 Lot 2 — sur {slug}.app.ecole-naturo.fr, la racine "/" affiche
   // directement la page publique du tenant et "/book" son tunnel de réservation
   // (au lieu de la landing/login génériques).
+  // Ces routes restent définies ICI AUSSI (en plus de PublicRouter) : un ancien lien
+  // partagé au format explicite /#/p/{slug} doit continuer à fonctionner à l'identique
+  // (hash non vide => on monte ce routeur, pas PublicRouter — cf. App() plus bas).
   const onTenant = isOnTenantSubdomain();
   return (
     <Switch>
@@ -117,17 +137,22 @@ function AppRouter() {
 }
 
 export default function App() {
+  // Invariant posé par client/src/main.tsx : le hash est TOUJOURS non-vide au
+  // montage, sauf sur une des routes publiques pathname-based (Action 8, scope
+  // resserré). On peut donc décider quel routeur monter juste avec ce test, sans
+  // dupliquer le pattern matching des routes ici.
+  const isPublicPathBased = !window.location.hash;
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster />
-      <Router hook={useHashLocation}>
+      <Router hook={isPublicPathBased ? undefined : useHashLocation}>
         <AuthProvider>
           <ConfirmProvider>
             {/* Suspense enveloppe le router : pendant le download d'un chunk
                 de page, on affiche le composant Loading unifié (aria-busy,
                 cohérent avec le reste des états de chargement de l'app). */}
             <Suspense fallback={<Loading label="Chargement…" />}>
-              <AppRouter />
+              {isPublicPathBased ? <PublicRouter /> : <AppRouter />}
             </Suspense>
           </ConfirmProvider>
         </AuthProvider>
