@@ -91,9 +91,14 @@ jobs:
           CIBLE="$SSH_UTILISATEUR@$SSH_HOTE:$CHEMIN_APP"
           SCP="scp -i $HOME/.ssh/id_deploiement -P $SSH_PORT"
           $SCP dist/index.cjs           "$CIBLE/dist/index.cjs"
-          $SCP dist/public/index.html   "$CIBLE/dist/public/index.html"
-          # Les noms d'assets sont hachés : on envoie ce que le build vient de produire.
-          $SCP dist/public/assets/*     "$CIBLE/dist/public/assets/"
+          # Tout le contenu de dist/public/, récursivement (index.html, assets/
+          # hachés, fonts/, et tout fichier statique de client/public/ — favicon,
+          # images, futurs ajouts). Bug trouvé le 07/08/2026 : la version
+          # précédente n'envoyait que index.html et assets/*, donc un nouveau
+          # fichier statique à la racine de client/public/ (ex. og-image.png)
+          # étaient commité et buildé mais jamais réellement déployé — servi en
+          # 404 masqué par le catch-all SPA (qui répond 200 avec index.html).
+          $SCP -r dist/public/*         "$CIBLE/dist/public/"
           $SCP -r migrations-mysql      "$CIBLE/"
 
       - name: Redémarrer et vérifier l'empreinte
