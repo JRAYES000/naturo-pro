@@ -43,7 +43,9 @@ export function buildMetaDescription(naturo: { name: string; city?: string | nul
   // Assez longue pour amener même le nom le plus court au-delà de 140
   // caractères une fois ajoutée ; l'étape de troncature qui suit ramène
   // ensuite systématiquement le résultat à 160 caractères maximum.
-  const filler = " Elle vous propose un accompagnement personnalisé, à l'écoute de vos besoins, pour retrouver équilibre et bien-être au quotidien.";
+  // Neutre en genre à dessein (Action 7, 07/08/2026) : "Elle vous propose" était
+  // appliqué indistinctement à tous les comptes, y compris masculins.
+  const filler = " Un accompagnement personnalisé et bienveillant, à l'écoute de vos besoins, pour retrouver équilibre et bien-être au quotidien.";
 
   const withSpecialties = (list: string[]) =>
     core + (list.length > 0 ? ` Spécialités : ${list.join(", ")}.` : "");
@@ -75,10 +77,31 @@ export function buildMetaDescription(naturo: { name: string; city?: string | nul
  * Injecté dans le index.html servi UNIQUEMENT aux bots sur /p/:slug — les
  * humains gardent le SPA hash-routing inchangé.
  */
+/**
+ * Force un format 1200×630 (ratio attendu par les aperçus de partage Open Graph),
+ * au lieu du 400×400 utilisé pour l'affichage in-app — Action 12, 07/08/2026.
+ * Aujourd'hui, seul le CDN Unsplash (photos de démo) supporte ce redimensionnement
+ * à la volée via des paramètres d'URL ; toute autre source https est renvoyée
+ * inchangée (aucun moyen générique de la recadrer côté serveur).
+ */
+function ogSizedImage(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "images.unsplash.com") {
+      u.searchParams.set("w", "1200");
+      u.searchParams.set("h", "630");
+      u.searchParams.set("fit", "crop");
+      return u.toString();
+    }
+  } catch { /* URL malformée : renvoyée telle quelle */ }
+  return url;
+}
+
 function buildSeoHead(naturo: { name: string; bio?: string | null; photoUrl?: string | null; city?: string | null; slug: string; specialties?: string | null }, url: string): string {
   const title = `${naturo.name} — Naturopathe${naturo.city ? ` à ${naturo.city}` : ""} | Naturo Pro`;
   const desc = buildMetaDescription(naturo);
   const img = naturo.photoUrl && /^https?:\/\//.test(naturo.photoUrl) ? naturo.photoUrl : "";
+  const ogImg = img ? ogSizedImage(img) : "";
   // Piste LCP (investigation du 06/08, page praticien à photo externe non
   // uploadée, ex. Unsplash) : préconnecter au CDN de la photo dès le <head>
   // pour paralléliser l'ouverture TCP/TLS avec le reste du chargement, plutôt
@@ -98,11 +121,13 @@ function buildSeoHead(naturo: { name: string; bio?: string | null; photoUrl?: st
     `<meta property="og:title" content="${esc(title)}" />`,
     `<meta property="og:description" content="${esc(desc)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
-    img ? `<meta property="og:image" content="${esc(img)}" />` : "",
-    `<meta name="twitter:card" content="${img ? "summary_large_image" : "summary"}" />`,
+    ogImg ? `<meta property="og:image" content="${esc(ogImg)}" />` : "",
+    ogImg ? `<meta property="og:image:width" content="1200" />` : "",
+    ogImg ? `<meta property="og:image:height" content="630" />` : "",
+    `<meta name="twitter:card" content="${ogImg ? "summary_large_image" : "summary"}" />`,
     `<meta name="twitter:title" content="${esc(title)}" />`,
     `<meta name="twitter:description" content="${esc(desc)}" />`,
-    img ? `<meta name="twitter:image" content="${esc(img)}" />` : "",
+    ogImg ? `<meta name="twitter:image" content="${esc(ogImg)}" />` : "",
   ].filter(Boolean).join("\n    ");
 }
 

@@ -343,11 +343,32 @@ export default function PublicPageEditor() {
                 />
               </details>
             </div>
-            <div><Label>Bio / présentation</Label><Textarea rows={5} value={draft.bio || ""} onChange={e => setDraft({ ...draft, bio: e.target.value })} data-testid="input-bio" /></div>
+            <div>
+              <Label>Bio / présentation</Label>
+              <Textarea rows={5} value={draft.bio || ""} onChange={e => setDraft({ ...draft, bio: e.target.value })} data-testid="input-bio" />
+              {/* Aide à la rédaction (Action 18, 07/08/2026) — seuil aligné sur le critère
+                  SEO réel (Onglet 2, Cocon 8) : une bio trop courte prive la fiche de son
+                  potentiel de référencement local, indépendamment de son intérêt pour un
+                  lecteur humain. */}
+              <p
+                className={`text-xs mt-1 ${(draft.bio?.length || 0) >= 300 ? "text-muted-foreground" : "text-amber-600"}`}
+                data-testid="text-bio-counter"
+              >
+                {(draft.bio?.length || 0)} / 300 caractères {(draft.bio?.length || 0) >= 300 ? "— longueur recommandée atteinte" : "minimum recommandé pour le référencement"}
+              </p>
+            </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
               <div><Label>Téléphone</Label><Input value={draft.phone || ""} onChange={e => setDraft({ ...draft, phone: e.target.value })} data-testid="input-phone" /></div>
-              <div><Label>Ville</Label><Input value={draft.city || ""} onChange={e => setDraft({ ...draft, city: e.target.value })} data-testid="input-city" /></div>
+              <div>
+                <Label>Ville {!draft.city?.trim() && <span className="text-amber-600 font-normal">(recommandé)</span>}</Label>
+                <Input value={draft.city || ""} onChange={e => setDraft({ ...draft, city: e.target.value })} data-testid="input-city" />
+                {!draft.city?.trim() && (
+                  <p className="text-xs text-amber-600 mt-1" data-testid="text-city-warning">
+                    Sans ville, votre fiche n'apparaît pas dans les recherches locales ("naturopathe [votre ville]").
+                  </p>
+                )}
+              </div>
             </div>
             <div><Label>Adresse cabinet</Label><Input value={draft.address || ""} onChange={e => setDraft({ ...draft, address: e.target.value })} data-testid="input-address" /></div>
 
