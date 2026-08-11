@@ -19,6 +19,7 @@ import { sendEmail } from "../email";
 import {
   computeInvoiceTotals, computeItemTotal, buildPractitionerSnapshot,
   getYearFromMs, generateInvoicePdf, renderInvoiceEmail,
+  buildDevisNumber, nextDevisSeq,
   type PractitionerSnapshot,
 } from "../invoices";
 import { createInvoiceFromAppointment } from "./helpers/invoices";
@@ -69,6 +70,8 @@ export function registerInvoiceRoutes(app: Express): void {
     dueDate: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
     items: z.array(invoiceItemSchema).min(1),
+    // Lot 4 — devis : même structure, numérotation séparée, hors comptabilité.
+    docType: z.enum(["invoice", "devis"]).optional(),
   });
   app.post("/api/invoices", requireAuth, async (req: AuthedRequest, res) => {
     const parsed = invoiceCreateSchema.safeParse(req.body);
@@ -92,6 +95,14 @@ export function registerInvoiceRoutes(app: Express): void {
         clientAddress = clientAddress ?? ((c as any).address || null);
         clientPostalCode = clientPostalCode ?? ((c as any).postalCode || null);
         clientCity = clientCity ?? ((c as any).city || null);
+        // Lot 4 (action C5) — client entreprise : la facture porte la raison
+        // sociale et le SIRET, sans champ dédié en base (snapshot texte).
+        if ((c as any).clientType === "entreprise" && (c as any).companyName) {
+          if (!data.clientLastName) { clientLastName = (c as any).companyName; clientFirstName = data.clientFirstName || ""; }
+          if ((c as any).companySiret && !String(clientAddress || "").includes("SIRET")) {
+            clientAddress = [clientAddress, `SIRET : ${(c as any).companySiret}`].filter(Boolean).join("\n");
+          }
+        }
       }
     }
 
@@ -102,9 +113,7 @@ export function registerInvoiceRoutes(app: Express): void {
     const year = getYearFromMs(issueDate);
     const snapshot = buildPractitionerSnapshot(user);
 
-    // Numérotation + insertion dans le même appel : la contrainte UNIQUE(user_id,
-    // number) garantit l'unicité et createInvoiceNumbered retente sur collision.
-    const inv = await storage.createInvoiceNumbered(year, {
+    const base = {
       userId: req.userId!,
       status: "draft",
       issueDate,
@@ -129,7 +138,31 @@ export function registerInvoiceRoutes(app: Express): void {
       practitionerSnapshot: JSON.stringify(snapshot),
       createdAt: issueDate,
       updatedAt: issueDate,
-    } as any);
+    };
+
+    let inv;
+    if (data.docType === "devis") {
+      // Numérotation devis : max existant + 1 sur le préfixe DEVIS-YYYY-, retry
+      // sur l'index UNIQUE(user_id, number) en cas de course.
+      // ponytail: pas de sérialisation par user ici — l'index unique suffit à ce volume.
+      const numbers = (await storage.listInvoices(req.userId!)).map((i) => i.number);
+      let derniere: unknown;
+      for (let seq = nextDevisSeq(numbers, year), tentative = 0; tentative < 8; tentative++, seq++) {
+        try {
+          inv = await storage.createInvoice({ ...base, docType: "devis", number: buildDevisNumber(year, seq) } as any);
+          break;
+        } catch (e: any) {
+          const signature = `${e?.code || ""} ${e?.message || e}`;
+          if (!/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(signature)) throw e;
+          derniere = e;
+        }
+      }
+      if (!inv) throw derniere;
+    } else {
+      // Numérotation + insertion dans le même appel : la contrainte UNIQUE(user_id,
+      // number) garantit l'unicité et createInvoiceNumbered retente sur collision.
+      inv = await storage.createInvoiceNumbered(year, base as any);
+    }
 
     await storage.replaceInvoiceItems(inv.id, data.items.map((it, i) => ({
       invoiceId: inv.id,
@@ -159,6 +192,18 @@ export function registerInvoiceRoutes(app: Express): void {
     const inv = await createInvoiceFromAppointment(req.userId!, appt, user);
     const items = await storage.getInvoiceItems(inv.id);
     res.status(201).json({ ...inv, items });
+  });
+
+  // POST /api/invoices/:id/convert  (Lot 4 — devis → facture, numéro de la séquence légale)
+  app.post("/api/invoices/:id/convert", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const inv = await storage.getInvoice(id);
+    if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if ((inv as any).docType !== "devis") return res.status(400).json({ message: "Seul un devis peut être converti en facture." });
+    const now = Date.now();
+    const updated = await storage.convertDevisToInvoice(id, req.userId!, getYearFromMs(now));
+    const items = await storage.getInvoiceItems(id);
+    res.json({ ...updated, items });
   });
 
   // PATCH /api/invoices/:id  (statut, paiement, lignes, notes)
@@ -304,6 +349,7 @@ export function registerInvoiceRoutes(app: Express): void {
         practitionerName: snapshot.companyName || user?.name || "votre praticienne",
         totalCents: inv.totalCents,
         notes: inv.notes,
+        isDevis: (inv as any).docType === "devis",
       });
       const r = await sendEmail(cfg, inv.clientEmail, email.subject, email.html, email.text, [{
         filename: `${inv.number}.pdf`,

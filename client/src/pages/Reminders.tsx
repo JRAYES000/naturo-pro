@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -147,6 +148,8 @@ function StatusBadge({ status }: { status: ReminderStatus }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 function Reminders() {
+  // Lot 4 (action P6) — filtre « Sans email » sur le tableau des rappels.
+  const [noEmailOnly, setNoEmailOnly] = useState(false);
   const {
     data: stats,
     isLoading: statsLoading,
@@ -178,7 +181,9 @@ function Reminders() {
       ? "réglage « Rappels automatiques J-1 » désactivé"
       : "configuration email manquante (clé Resend + adresse expéditeur)";
 
-  const isEmpty = !logLoading && (!log || log.length === 0);
+  const noEmailCount = (log ?? []).filter((e) => e.status === "disabled").length;
+  const visibleLog = noEmailOnly ? (log ?? []).filter((e) => e.status === "disabled") : (log ?? []);
+  const isEmpty = !logLoading && visibleLog.length === 0;
 
   return (
     <AppLayout>
@@ -285,10 +290,29 @@ function Reminders() {
 
       {/* ── Tableau ── */}
       <Card className="card-naturo rounded-lg">
-        <CardHeader className="border-b border-border pb-4">
+        <CardHeader className="border-b border-border pb-4 flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-bold">
             Derniers rappels (J-7 → J+30)
           </CardTitle>
+          {/* Lot 4 (action P6) — badge « Sans email » cliquable : filtre le tableau */}
+          {noEmailCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setNoEmailOnly((v) => !v)}
+              aria-pressed={noEmailOnly}
+              title="Afficher uniquement les rendez-vous dont la cliente n'a pas d'email"
+              data-testid="button-filter-no-email"
+            >
+              <Badge
+                className={`flex items-center gap-1 text-xs font-semibold cursor-pointer transition ${
+                  noEmailOnly ? "bg-gray-700 text-white border-0" : "bg-gray-100 text-gray-600 border-0 hover:bg-gray-200"
+                }`}
+              >
+                <XCircle className="h-3 w-3" />
+                {noEmailCount} sans email {noEmailOnly ? "— filtre actif ✕" : ""}
+              </Badge>
+            </button>
+          )}
         </CardHeader>
         <CardContent className="pt-4 px-0" aria-busy={logLoading}>
           {logLoading ? (
@@ -324,7 +348,7 @@ function Reminders() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(log ?? []).slice(0, 20).map((entry) => (
+                {visibleLog.slice(0, 20).map((entry) => (
                   <TableRow key={entry.id} data-testid={`row-reminder-${entry.id}`}>
                     <TableCell className="pl-6 font-medium text-sm">
                       <span data-testid={`text-scheduled-${entry.id}`}>

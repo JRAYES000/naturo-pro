@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -147,13 +148,18 @@ function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void
   // le champ « Date de naissance » (donnée étendue, ignorée par le serveur en
   // gratuit) est masqué au lieu d'être silencieusement perdu à l'enregistrement.
   const fullAccess = !!user?.hasFullAccess;
-  const [data, setData] = useState({ firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "" });
+  const emptyForm = { firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", clientType: "particulier", companyName: "", companySiret: "" };
+  const [data, setData] = useState(emptyForm);
   const createMut = useMutation({
-    mutationFn: async () => apiRequest("POST", "/api/clients", data),
+    mutationFn: async () => apiRequest("POST", "/api/clients", {
+      ...data,
+      companyName: data.clientType === "entreprise" ? data.companyName || null : null,
+      companySiret: data.clientType === "entreprise" ? data.companySiret || null : null,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({ title: "Client créé", variant: "success" });
-      setData({ firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "" });
+      setData(emptyForm);
       onClose();
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -163,6 +169,23 @@ function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void
       <DialogContent>
         <DialogHeader><DialogTitle>Nouveau client</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
+          {/* Lot 4 (action C5) — facturation B2B : client particulier ou entreprise */}
+          <div>
+            <Label>Type de client</Label>
+            <Select value={data.clientType} onValueChange={v => setData({ ...data, clientType: v })}>
+              <SelectTrigger data-testid="select-new-client-type"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="particulier">Particulier</SelectItem>
+                <SelectItem value="entreprise">Entreprise</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {data.clientType === "entreprise" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Raison sociale</Label><Input value={data.companyName} onChange={e => setData({ ...data, companyName: e.target.value })} data-testid="input-new-company-name" /></div>
+              <div><Label>SIRET</Label><Input value={data.companySiret} onChange={e => setData({ ...data, companySiret: e.target.value })} data-testid="input-new-company-siret" /></div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Prénom *</Label><Input value={data.firstName} onChange={e => setData({ ...data, firstName: e.target.value })} data-testid="input-firstName" /></div>
             <div><Label>Nom *</Label><Input value={data.lastName} onChange={e => setData({ ...data, lastName: e.target.value })} data-testid="input-lastName" /></div>

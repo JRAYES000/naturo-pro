@@ -63,6 +63,10 @@ export function registerProfileRoutes(app: Express): void {
     // Paiements en ligne (Stripe)
     stripeSecretKey: z.string().nullable().optional(),
     stripeDepositPercent: z.number().int().min(0).max(100).optional(),
+    // Lot 4 — Reply-To, note du tableau de bord, masquage checklist
+    emailReplyTo: z.string().email().nullable().optional().or(z.literal("").transform(() => null)),
+    dashboardNote: z.string().max(5000).nullable().optional(),
+    onboardingChecklistHiddenAt: z.number().int().nullable().optional(),
   });
 
   app.patch("/api/profile", requireAuth, async (req: AuthedRequest, res) => {
@@ -76,5 +80,33 @@ export function registerProfileRoutes(app: Express): void {
     }
     const u = await storage.updateUser(req.userId!, patch);
     res.json({ user: publicUser(u) });
+  });
+
+  // Lot 4 — checklist de démarrage persistante : état réel calculé sur les
+  // données existantes, aucune table dédiée. Affichée sur le tableau de bord
+  // tant que tout n'est pas fait (et non masquée par la praticienne).
+  app.get("/api/onboarding/checklist", requireAuth, async (req: AuthedRequest, res) => {
+    const userId = req.userId!;
+    const u = await storage.getUserById(userId);
+    const [cats, avail, clients, appts, anamneses] = await Promise.all([
+      storage.listCategories(userId),
+      storage.listAvailability(userId),
+      storage.listClients(userId),
+      storage.listAppointments(userId, 0, Date.now() + 366 * 86400000),
+      storage.listAnamnesisTemplates(userId),
+    ]);
+    res.json({
+      hiddenAt: u?.onboardingChecklistHiddenAt ?? null,
+      steps: {
+        profil: !!(u?.bio && u.bio.trim().length > 0),
+        prestation: cats.length > 0,
+        disponibilites: avail.length > 0,
+        client: clients.length > 0,
+        rdv: appts.length > 0,
+        anamnese: anamneses.length > 0,
+        pagePublique: !!u?.publicPageEnabled && !!u?.photoUrl,
+        google: !!u?.googleCalendarToken,
+      },
+    });
   });
 }

@@ -81,6 +81,11 @@ export const users = mysqlTable("users", {
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
   stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  // Lot 4 — Reply-To des emails clients + note libre du tableau de bord +
+  // masquage de la checklist de démarrage.
+  emailReplyTo: varchar("email_reply_to", { length: 255 }),
+  dashboardNote: text("dashboard_note"),
+  onboardingChecklistHiddenAt: bigint("onboarding_checklist_hidden_at", { mode: "number" }),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -91,6 +96,9 @@ export const invoices = mysqlTable("invoices", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("user_id").notNull(),
   number: varchar("number", { length: 32 }).notNull(), // FACT-2026-0001
+  // Lot 4 — devis : même structure qu'une facture, sans valeur comptable tant
+  // qu'il n'est pas converti (numérotation DEVIS-… hors séquence légale FACT-…).
+  docType: varchar("doc_type", { length: 16 }).notNull().default("invoice"), // invoice | devis
   status: varchar("status", { length: 20 }).notNull().default("draft"), // draft | sent | paid | cancelled
   issueDate: bigint("issue_date", { mode: "number" }).notNull(),
   dueDate: bigint("due_date", { mode: "number" }),
@@ -210,6 +218,13 @@ export const clients = mysqlTable("clients", {
   antecedents: text("antecedents"),
   lifestyleNotes: text("lifestyle_notes"),
   penseBete: text("pense_bete"),
+  // Lot 4 — facturation B2B : type de client + coordonnées entreprise.
+  clientType: varchar("client_type", { length: 20 }).default("particulier"), // particulier | entreprise
+  companyName: varchar("company_name", { length: 255 }),
+  companySiret: varchar("company_siret", { length: 32 }),
+  // Lot 4 — morphologie (IMC / poids idéal calculés côté client).
+  heightCm: int("height_cm"),
+  weightKg: int("weight_kg"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
@@ -351,6 +366,9 @@ export const clientDocuments = mysqlTable("client_documents", {
   mimeType: varchar("mime_type", { length: 128 }),
   sizeBytes: int("size_bytes"),
   dataBase64: longtext("data_base64").notNull(),
+  // Lot 4 — nature du document (null = document libre, "formulaire_externe" =
+  // questionnaire rempli hors Naturo Pro et importé dans le dossier).
+  kind: varchar("kind", { length: 32 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_client_docs_user_client: index("idx_client_docs_user_client").on(t.userId, t.clientId),

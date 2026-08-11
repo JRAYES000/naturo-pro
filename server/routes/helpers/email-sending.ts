@@ -22,6 +22,7 @@ export function getEmailConfigForUser(u: any): EmailConfig | null {
     apiKey: u.resendApiKey,
     fromAddress: u.emailFromAddress,
     fromName: u.emailFromName || u.name || null,
+    replyTo: u.emailReplyTo || null,
   };
 }
 
@@ -49,11 +50,7 @@ export async function sendBookingConfirmationEmail(
   // Choisir la config email : clé du praticien si disponible, sinon clé système
   let cfg: EmailConfig | null = null;
   if (user?.resendApiKey && user?.emailFromAddress) {
-    cfg = {
-      apiKey: user.resendApiKey,
-      fromAddress: user.emailFromAddress,
-      fromName: user.emailFromName || user.name || null,
-    };
+    cfg = getEmailConfigForUser(user);
   } else {
     cfg = getSystemEmailConfig();
   }

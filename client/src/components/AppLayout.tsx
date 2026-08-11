@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Calendar, Users, Tag, Clock, Globe, Settings, LogOut,
   ExternalLink, Receipt, Shield, Bell, MailOpen, ClipboardList, FileText,
-  BarChart2, Leaf, Ticket, Sparkles, BookOpen, Menu,
+  BarChart2, Leaf, Ticket, Sparkles, BookOpen, Menu, Scale,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "./Logo";
@@ -33,6 +33,7 @@ const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       { href: "/app/forfaits", label: "Forfaits", icon: Ticket },
       { href: "/app/solutions", label: "Bibliothèque de référence", icon: Leaf },
       { href: "/app/chat", label: "Naturobot", icon: Sparkles },
+      { href: "/app/cadre-legal", label: "Cadre légal", icon: Scale },
     ],
   },
   {

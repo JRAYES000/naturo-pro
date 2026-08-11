@@ -1085,6 +1085,28 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  /**
+   * Lot 4 — conversion d'un devis en facture : le même enregistrement reçoit un
+   * numéro de la séquence légale FACT- et bascule docType. Mêmes protections que
+   * createInvoiceNumbered (sérialisation par user + retry sur l'index unique).
+   */
+  async convertDevisToInvoice(id: number, userId: number, year: number): Promise<Invoice | undefined> {
+    return serialiserParUser(userId, async () => {
+      let derniere: unknown;
+      for (let tentative = 1; tentative <= 8; tentative++) {
+        const number = buildInvoiceNumber(year, await this.nextInvoiceCounter(userId, year));
+        try {
+          return await this.updateInvoice(id, { number, docType: "invoice", issueDate: Date.now() } as any);
+        } catch (e: any) {
+          const signature = `${e?.code || ""} ${e?.message || e}`;
+          if (!/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(signature)) throw e;
+          derniere = e;
+        }
+      }
+      throw derniere;
+    });
+  }
+
   // ── PHASE 3.5-B — Manage token ———————————————————————————————————————
   /** Persiste un token d'annulation/report sur un RDV. */
   async setCancelToken(appointmentId: number, token: string): Promise<Appointment | undefined> {
@@ -1259,6 +1281,7 @@ export class DatabaseStorage implements IStorage {
         filename: clientDocuments.filename,
         mimeType: clientDocuments.mimeType,
         sizeBytes: clientDocuments.sizeBytes,
+        kind: clientDocuments.kind,
         createdAt: clientDocuments.createdAt,
       })
       .from(clientDocuments)
@@ -1496,6 +1519,18 @@ export class DatabaseStorage implements IStorage {
     }
     await dbInsertReturning<AiChatUsage>(aiChatUsage, { userId, day, count: 1 });
     return 1;
+  }
+
+  /** Lot 4 — total d'appels IA sur un mois ('YYYY-MM') + aujourd'hui, pour l'indicateur d'usage. */
+  async getAiChatUsageSummary(userId: number, monthPrefix: string, day: string): Promise<{ month: number; today: number }> {
+    const rows: AiChatUsage[] = await db.select().from(aiChatUsage).where(eq(aiChatUsage.userId, userId));
+    let month = 0;
+    let today = 0;
+    for (const r of rows) {
+      if (r.day.startsWith(monthPrefix)) month += r.count;
+      if (r.day === day) today = r.count;
+    }
+    return { month, today };
   }
 
   // ── Assistant IA — instructions globales + base de connaissances (RAG) ───────

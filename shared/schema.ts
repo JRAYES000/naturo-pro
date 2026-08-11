@@ -79,6 +79,11 @@ export const users = sqliteTable("users", {
   lastLoginAt: integer("last_login_at"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  // Lot 4 — Reply-To des emails clients + note libre du tableau de bord +
+  // masquage de la checklist de démarrage.
+  emailReplyTo: text("email_reply_to"),
+  dashboardNote: text("dashboard_note"),
+  onboardingChecklistHiddenAt: integer("onboarding_checklist_hidden_at"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -89,6 +94,9 @@ export const invoices = sqliteTable("invoices", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
   number: text("number").notNull(),
+  // Lot 4 — devis : même structure qu'une facture, sans valeur comptable tant
+  // qu'il n'est pas converti (numérotation DEVIS-… hors séquence légale FACT-…).
+  docType: text("doc_type").notNull().default("invoice"), // invoice | devis
   status: text("status").notNull().default("draft"),
   issueDate: integer("issue_date").notNull(),
   dueDate: integer("due_date"),
@@ -203,6 +211,13 @@ export const clients = sqliteTable("clients", {
   antecedents: text("antecedents"),
   lifestyleNotes: text("lifestyle_notes"),
   penseBete: text("pense_bete"),
+  // Lot 4 — facturation B2B : type de client + coordonnées entreprise.
+  clientType: text("client_type").default("particulier"), // particulier | entreprise
+  companyName: text("company_name"),
+  companySiret: text("company_siret"),
+  // Lot 4 — morphologie (IMC / poids idéal calculés côté client).
+  heightCm: integer("height_cm"),
+  weightKg: integer("weight_kg"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
@@ -339,6 +354,9 @@ export const clientDocuments = sqliteTable("client_documents", {
   mimeType: text("mime_type"),
   sizeBytes: integer("size_bytes"),
   dataBase64: text("data_base64").notNull(),
+  // Lot 4 — nature du document (null = document libre, "formulaire_externe" =
+  // questionnaire rempli hors Naturo Pro et importé dans le dossier).
+  kind: text("kind"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_client_docs_user_client: index("idx_client_docs_user_client").on(t.userId, t.clientId),

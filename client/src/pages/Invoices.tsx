@@ -87,6 +87,7 @@ function MobileInvoiceCard({
 
 function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -119,6 +120,7 @@ function InvoicesPage() {
   const filtered = useMemo(() => {
     return invoices.filter((inv) => {
       if (statusFilter !== "all" && inv.status !== statusFilter) return false;
+      if (typeFilter !== "all" && ((inv as any).docType || "invoice") !== typeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         const name = `${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.toLowerCase();
@@ -126,16 +128,17 @@ function InvoicesPage() {
       }
       return true;
     });
-  }, [invoices, statusFilter, search]);
+  }, [invoices, statusFilter, typeFilter, search]);
 
-  // KPIs
+  // KPIs — les devis (Lot 4) n'ont pas de valeur comptable : exclus du CA.
   const kpis = useMemo(() => {
-    const paid = invoices.filter((i) => i.status === "paid");
-    const pending = invoices.filter((i) => i.status === "sent" || i.status === "draft");
+    const factures = invoices.filter((i) => ((i as any).docType || "invoice") !== "devis");
+    const paid = factures.filter((i) => i.status === "paid");
+    const pending = factures.filter((i) => i.status === "sent" || i.status === "draft");
     return {
       caEncaisseCents: paid.reduce((s, i) => s + (i.totalCents || 0), 0),
       enAttenteCents: pending.reduce((s, i) => s + (i.totalCents || 0), 0),
-      totalCount: invoices.length,
+      totalCount: factures.length,
       paidCount: paid.length,
     };
   }, [invoices]);
@@ -228,6 +231,16 @@ function InvoicesPage() {
               <SelectItem value="cancelled">Annulée</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-40" data-testid="select-type-filter">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Factures + devis</SelectItem>
+              <SelectItem value="invoice">Factures</SelectItem>
+              <SelectItem value="devis">Devis</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Liste */}
@@ -287,6 +300,9 @@ function InvoicesPage() {
                         <Link href={`/app/invoices/${inv.id}`} className="hover:underline text-heading">
                           {inv.number}
                         </Link>
+                        {((inv as any).docType || "invoice") === "devis" && (
+                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-[11px] font-semibold align-middle">Devis</span>
+                        )}
                       </td>
                       <td className="text-muted-foreground">{formatDateShort(inv.issueDate)}</td>
                       <td>

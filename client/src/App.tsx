@@ -58,6 +58,7 @@ const Packages = lazy(() => import("@/pages/Packages"));
 const Stats = lazy(() => import("@/pages/Stats"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const StudioContenu = lazy(() => import("@/pages/StudioContenu"));
+const CadreLegal = lazy(() => import("@/pages/CadreLegal"));
 const BookingManage = lazy(() => import("@/pages/BookingManage"));
 // Phase 3 Lot 4 — admin (rarement visité, jamais en même temps que le reste)
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
@@ -121,6 +122,7 @@ function AppRouter() {
       <Route path="/app/stats" component={() => <ProtectedRoute><Stats /></ProtectedRoute>} />
       <Route path="/app/chat/:discussionId?" component={() => <ProtectedRoute><Chat /></ProtectedRoute>} />
       <Route path="/app/studio-contenu" component={() => <ProtectedRoute><StudioContenu /></ProtectedRoute>} />
+      <Route path="/app/cadre-legal" component={() => <ProtectedRoute><CadreLegal /></ProtectedRoute>} />
 
       {/* Phase 3 Lot 4 — admin (le 403 backend renvoie un message géré dans la page) */}
       <Route path="/admin/users" component={() => <ProtectedRoute><AdminUsers /></ProtectedRoute>} />

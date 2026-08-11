@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatPrice, durationLabel } from "@/lib/format";
 import type { AppointmentCategory } from "@shared/schema";
+import { GoogleStatusBanner, useGoogleStatus } from "@/components/GoogleStatusBanner";
 
 export default function CategoriesPage() {
   const { toast } = useToast();
@@ -54,6 +55,9 @@ export default function CategoriesPage() {
             </Button>
           }
         />
+
+        {/* Lot 4 (action C9) — visible surtout si une prestation Visio existe sans connexion Google */}
+        {cats.some(c => c.location === "visio") && <GoogleStatusBanner visioContext />}
 
         <HelpNote>
           <p>
@@ -137,6 +141,8 @@ export default function CategoriesPage() {
 function CategoryDialog({ open, editing, onClose }: any) {
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
+  // Lot 4 (action P8) — avertissement contextuel si prestation Visio sans Google connecté.
+  const { data: googleStatus } = useGoogleStatus();
 
   if (open && data === null) {
     setData(editing === "new"
@@ -184,6 +190,13 @@ function CategoryDialog({ open, editing, onClose }: any) {
               </div>
               <div><Label>Couleur</Label><Input type="color" value={data.color} onChange={e => setData({ ...data, color: e.target.value })} className="h-10 p-1" data-testid="input-color" /></div>
             </div>
+            {data.location === "visio" && googleStatus?.configured && !googleStatus?.connected && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs" data-testid="warning-visio-google">
+                ⚠️ <strong>Google Agenda n'est pas connecté :</strong> aucun lien Google Meet ne sera généré pour cette
+                prestation Visio. Connectez Google dans{" "}
+                <a href="/api/auth/google" className="underline font-semibold">Paramètres → Google Calendar</a>.
+              </div>
+            )}
             <div><Label>Description</Label><Textarea rows={2} value={data.description || ""} onChange={e => setData({ ...data, description: e.target.value })} data-testid="input-description" /></div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-secondary">
               <div>

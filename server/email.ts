@@ -24,6 +24,7 @@ export interface EmailConfig {
   apiKey: string;
   fromAddress: string;
   fromName?: string | null;
+  replyTo?: string | null;
 }
 
 export interface EmailAttachment {
@@ -52,6 +53,7 @@ export async function sendEmail(
       ? `${cfg.fromName} <${cfg.fromAddress}>`
       : cfg.fromAddress;
     const payload: any = { from, to, subject, html, text };
+    if (cfg.replyTo) payload.replyTo = cfg.replyTo;
     if (attachments && attachments.length > 0) {
       payload.attachments = attachments.map((a) => ({
         filename: a.filename,

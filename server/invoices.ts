@@ -141,6 +141,31 @@ export function buildInvoiceNumber(year: number, value: number): string {
   return `${invoiceNumberPrefix(year)}${String(value).padStart(4, "0")}`;
 }
 
+/**
+ * Numérotation des devis (Lot 4) : séquence indépendante DEVIS-YYYY-XXX,
+ * volontairement hors du préfixe FACT- pour ne jamais polluer la séquence
+ * légale des factures (nextInvoiceCounter scanne par préfixe).
+ */
+export function devisNumberPrefix(year: number): string {
+  return `DEVIS-${year}-`;
+}
+
+export function buildDevisNumber(year: number, value: number): string {
+  return `${devisNumberPrefix(year)}${String(value).padStart(3, "0")}`;
+}
+
+/** Prochain numéro de devis déduit des numéros existants (max + 1). */
+export function nextDevisSeq(existingNumbers: string[], year: number): number {
+  const prefix = devisNumberPrefix(year);
+  let max = 0;
+  for (const n of existingNumbers) {
+    if (!n.startsWith(prefix)) continue;
+    const v = Number(n.slice(prefix.length));
+    if (Number.isInteger(v) && v > max) max = v;
+  }
+  return max + 1;
+}
+
 /** Label humain d'un mode de paiement. */
 export function paymentMethodLabel(m: string | null | undefined): string {
   switch (m) {
@@ -189,7 +214,7 @@ export async function generateInvoicePdf(
         size: "A4",
         margin: 50,
         info: {
-          Title: `Facture ${invoice.number}`,
+          Title: `${(invoice as any).docType === "devis" ? "Devis" : "Facture"} ${invoice.number}`,
           Author: snapshot.companyName || snapshot.name,
         },
       });
@@ -225,12 +250,12 @@ export async function generateInvoicePdf(
           });
       }
 
-      // Titre FACTURE à droite
+      // Titre FACTURE (ou DEVIS) à droite
       doc
         .fillColor("#ffffff")
         .font("Helvetica-Bold")
         .fontSize(28)
-        .text("FACTURE", leftX, 28, { width: pageWidth, align: "right" });
+        .text((invoice as any).docType === "devis" ? "DEVIS" : "FACTURE", leftX, 28, { width: pageWidth, align: "right" });
       doc
         .fillColor("#ffffff")
         .font("Helvetica")
@@ -419,8 +444,10 @@ export function renderInvoiceEmail(opts: {
   clientFirstName?: string | null;
   notes?: string | null;
   fromEmail?: string | null;
+  isDevis?: boolean;
 }): { subject: string; html: string; text: string } {
-  const subject = `Facture ${opts.invoiceNumber} — ${opts.practitionerName}`;
+  const docLabel = opts.isDevis ? "Devis" : "Facture";
+  const subject = `${docLabel} ${opts.invoiceNumber} — ${opts.practitionerName}`;
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${escapeHtml(subject)}</title>
 <style>
   body { margin:0; padding:0; background:#f7faf9; font-family: -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#1a1a1a; }
@@ -433,7 +460,7 @@ export function renderInvoiceEmail(opts: {
 </style></head><body>
 <div class="wrap"><div class="card">
   <h1>Bonjour ${escapeHtml(opts.clientFirstName || "")},</h1>
-  <p>Veuillez trouver ci-jointe la facture <strong>${escapeHtml(opts.invoiceNumber)}</strong>.</p>
+  <p>Veuillez trouver ci-joint${opts.isDevis ? " le devis" : "e la facture"} <strong>${escapeHtml(opts.invoiceNumber)}</strong>.</p>
   <div class="info">
     <p><strong>Montant total :</strong> ${formatPriceCents(opts.totalCents)}</p>
   </div>

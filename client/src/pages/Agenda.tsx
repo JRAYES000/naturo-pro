@@ -14,13 +14,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw, Pencil } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw, Pencil, Check, ChevronsUpDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Loading } from "@/components/Loading";
+import { GoogleStatusBanner } from "@/components/GoogleStatusBanner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const locales = { fr };
 const localizer = dateFnsLocalizer({
@@ -205,6 +208,9 @@ export default function Agenda() {
             </div>
           }
         />
+
+        {/* Lot 4 (action C9) — état Google : fonctionnalités impactées + reconnexion */}
+        <GoogleStatusBanner />
 
         <AgendaColorLegend showGoogle={!!googleStatus?.connected} />
 
@@ -426,6 +432,59 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: "Confirmé", completed: "Terminé", cancelled: "Annulé", blocked: "Bloqué",
 };
 
+// Lot 4 (action P2) — combobox de recherche client (cmdk déjà installé via shadcn).
+function ClientCombobox({ clients, value, onChange }: {
+  clients: Client[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = value ? clients.find((c) => c.id === Number(value)) : null;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+          data-testid="select-client"
+        >
+          {selected ? `${selected.firstName} ${selected.lastName}` : "— Aucun (nouveau) —"}
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+        <Command>
+          <CommandInput placeholder="Rechercher un client…" data-testid="input-client-search" />
+          <CommandList>
+            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="__aucun__" onSelect={() => { onChange(""); setOpen(false); }}>
+                <Check className={`h-4 w-4 ${!value ? "opacity-100" : "opacity-0"}`} />
+                — Aucun (nouveau) —
+              </CommandItem>
+              {clients.map((c) => (
+                <CommandItem
+                  key={c.id}
+                  value={`${c.firstName} ${c.lastName} ${c.email || ""}`}
+                  onSelect={() => { onChange(String(c.id)); setOpen(false); }}
+                  data-testid={`client-option-${c.id}`}
+                >
+                  <Check className={`h-4 w-4 ${value === String(c.id) ? "opacity-100" : "opacity-0"}`} />
+                  {c.firstName} {c.lastName}
+                  {c.email && <span className="ml-auto text-xs text-muted-foreground truncate max-w-[45%]">{c.email}</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function AppointmentDialog({ open, dialogState, cats, clients, onClose }: any) {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -555,10 +614,8 @@ function AppointmentDialog({ open, dialogState, cats, clients, onClose }: any) {
           </div>
           <div>
             <Label>Client existant (optionnel)</Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger data-testid="select-client"><SelectValue placeholder="— Aucun (nouveau) —" /></SelectTrigger>
-              <SelectContent>{clients.map((c: Client) => <SelectItem key={c.id} value={String(c.id)}>{c.firstName} {c.lastName}</SelectItem>)}</SelectContent>
-            </Select>
+            {/* Lot 4 (action P2) — recherche instantanée à la place de la liste déroulante */}
+            <ClientCombobox clients={clients} value={clientId} onChange={setClientId} />
           </div>
           {!clientId && (
             <div className="grid grid-cols-2 gap-3">

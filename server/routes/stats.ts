@@ -55,8 +55,10 @@ export function registerStatsRoutes(app: Express): void {
     const to = req.query.to ? Number(req.query.to) : endOfCurrentMonthMs();
 
     try {
-      // Factures sur la période (filtre par issueDate via opts.from / opts.to)
-      const invoices = await storage.listInvoices(req.userId!, { from, to });
+      // Factures sur la période (filtre par issueDate via opts.from / opts.to).
+      // Les devis (Lot 4) n'ont pas de valeur comptable : exclus de tous les KPIs.
+      const invoices = (await storage.listInvoices(req.userId!, { from, to }))
+        .filter((i) => (i as any).docType !== "devis");
 
       const caEncaisseCents = invoices
         .filter((i) => i.status === "paid")
@@ -123,13 +125,39 @@ export function registerStatsRoutes(app: Express): void {
     }
   });
 
+  // ── GET /api/stats/revenue-monthly ───────────────────────────────────────
+  // CA encaissé (factures payées, hors devis) par mois sur 12 mois glissants —
+  // alimente le graphique du tableau de bord (Lot 4).
+  app.get("/api/stats/revenue-monthly", requireAuth, async (req: AuthedRequest, res) => {
+    try {
+      const now = new Date();
+      const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1);
+      const invoices = await storage.listInvoices(req.userId!, { from: start, status: "paid" });
+      const byMonth = new Map<string, number>();
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11 + i, 1));
+        byMonth.set(d.toISOString().slice(0, 7), 0);
+      }
+      for (const inv of invoices) {
+        if ((inv as any).docType === "devis") continue;
+        const key = new Date(inv.issueDate).toISOString().slice(0, 7);
+        if (byMonth.has(key)) byMonth.set(key, (byMonth.get(key) || 0) + (inv.totalCents || 0));
+      }
+      res.json(Array.from(byMonth.entries()).map(([month, caCents]) => ({ month, caCents })));
+    } catch (e: any) {
+      console.error("[stats/revenue-monthly]", e?.message || e);
+      res.status(500).json({ message: "Erreur calcul revenus mensuels" });
+    }
+  });
+
   // ── GET /api/stats/recettes.csv ──────────────────────────────────────────
   app.get("/api/stats/recettes.csv", requireAuth, async (req: AuthedRequest, res) => {
     const from = req.query.from ? Number(req.query.from) : startOfCurrentMonthMs();
     const to = req.query.to ? Number(req.query.to) : endOfCurrentMonthMs();
 
     try {
-      const invoices = await storage.listInvoices(req.userId!, { from, to });
+      const invoices = (await storage.listInvoices(req.userId!, { from, to }))
+        .filter((i) => (i as any).docType !== "devis");
 
       const STATUS_LABELS: Record<string, string> = {
         draft: "Brouillon",

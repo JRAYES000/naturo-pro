@@ -13,6 +13,8 @@ import { genToken } from "./helpers/tokens";
 import { SYSTEM_PROMPT, completeText, AI_DAILY_LIMIT } from "../mistral";
 import { programmeFromMarkdown } from "./helpers/programme-bridge";
 import { recordEvent } from "../analytics";
+import { sendEmail, getSystemEmailConfig } from "../email";
+import { getEmailConfigForUser } from "./helpers/email-sending";
 
 // ── Schémas de validation ─────────────────────────────────────────────────────
 
@@ -169,6 +171,44 @@ export function registerAnamneseRoutes(app: Express): void {
     });
     const APP_URL = process.env.PUBLIC_URL || "http://localhost:5000";
     res.json({ ...resp, link: `${APP_URL}/#/anamnese/${token}` });
+  });
+
+  // ── Envoi direct du lien par email (Lot 4, action P7) ─────────────────────
+  // Le lien existait déjà (copier-coller manuel) : on automatise juste l'envoi,
+  // vers l'email de la fiche cliente rattachée ou un email saisi à la volée.
+  app.post("/api/anamnesis-responses/:id/send-email", requireAuth, async (req: AuthedRequest, res) => {
+    const resp = await storage.getAnamnesisResponse(Number(req.params.id));
+    if (!resp || resp.userId !== req.userId) return res.status(404).json({ message: "Lien introuvable" });
+    if (resp.submittedAt) return res.status(400).json({ message: "Ce questionnaire a déjà été rempli." });
+
+    const bodySchema = z.object({ email: z.string().email().optional() });
+    const parsed = bodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ message: "Email invalide" });
+
+    let to = parsed.data.email || null;
+    let clientFirstName = "";
+    if (!to && resp.clientId) {
+      const c = await storage.getClient(resp.clientId);
+      if (c && c.userId === req.userId) { to = c.email || null; clientFirstName = c.firstName || ""; }
+    }
+    if (!to) return res.status(400).json({ message: "Aucune adresse email : renseignez l'email de la cliente ou saisissez-en un." });
+
+    const user = await storage.getUserById(req.userId!);
+    const cfg = getEmailConfigForUser(user) || getSystemEmailConfig();
+    if (!cfg) return res.status(400).json({ message: "Configuration email manquante (clé Resend + adresse expéditeur)" });
+
+    const tpl = resp.templateId ? await storage.getAnamnesisTemplate(resp.templateId) : null;
+    const APP_URL = process.env.PUBLIC_URL || "http://localhost:5000";
+    const link = `${APP_URL}/#/anamnese/${resp.token}`;
+    const praticienne = user?.name || "votre praticienne";
+    const subject = `Questionnaire à remplir avant votre consultation — ${praticienne}`;
+    const html = `<p>Bonjour${clientFirstName ? ` ${clientFirstName}` : ""},</p>
+<p>${praticienne} vous invite à remplir le questionnaire « <strong>${tpl?.name || "Anamnèse"}</strong> » avant votre consultation.</p>
+<p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#186749;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Remplir le questionnaire</a></p>
+<p style="font-size:13px;color:#666;">Ou copiez ce lien : ${link}</p>`;
+    const r = await sendEmail(cfg, to, subject, html, `Bonjour, merci de remplir ce questionnaire avant votre consultation : ${link}`);
+    if (!r.ok) return res.status(502).json({ message: r.error || "Erreur envoi" });
+    res.json({ ok: true, to });
   });
 
   // ── Liste des réponses reçues (auth requis) ────────────────────────────────

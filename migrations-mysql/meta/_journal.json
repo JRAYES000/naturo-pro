@@ -22,6 +22,13 @@
       "when": 1786472908252,
       "tag": "0002_bent_meltdown",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786491323431,
+      "tag": "0003_fast_boomerang",
+      "breakpoints": true
     }
   ]
 }

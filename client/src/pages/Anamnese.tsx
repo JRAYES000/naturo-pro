@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus, Pencil, Trash2, ClipboardList, Link2, ChevronDown, ChevronUp,
-  Eye, Check, GripVertical, Sparkles, Loader2,
+  Eye, Check, GripVertical, Sparkles, Loader2, Copy, Send,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
@@ -107,6 +107,73 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   scale: "Échelle (1–10)",
 };
 
+// Lot 4 (actions C6+C7) — modèles thématiques prêts à l'emploi. Le contenu
+// métier est volontairement générique (pas de diagnostic, pas de prescription).
+function q(label: string, type: QuestionType = "textarea", required = false): Question {
+  return { id: crypto.randomUUID(), label, type, required };
+}
+
+const STARTER_TEMPLATES: Array<{ key: string; name: string; description: string; questions: () => Question[] }> = [
+  {
+    key: "premiere",
+    name: "Anamnèse — première consultation",
+    description: "Questionnaire à remplir avant le premier rendez-vous.",
+    questions: defaultQuestions,
+  },
+  {
+    key: "emonctoires",
+    name: "Bilan des émonctoires",
+    description: "État des portes de sortie de l'organisme : foie, intestins, reins, peau, poumons.",
+    questions: () => [
+      q("Comment se passe votre digestion après les repas (lourdeurs, ballonnements, somnolence) ?", "textarea", true),
+      q("Votre transit est-il régulier ? À quelle fréquence allez-vous à la selle ?"),
+      q("Comment est votre peau en ce moment (boutons, eczéma, sécheresse, transpiration) ?"),
+      q("Buvez-vous suffisamment d'eau ? Décrivez vos urines (couleur, fréquence).", "textarea"),
+      q("Êtes-vous sujet(te) aux troubles respiratoires (encombrement, mucosités, sinusite) ?"),
+      q("Sur une échelle de 1 à 10, comment évaluez-vous votre niveau d'énergie général ?", "scale"),
+    ],
+  },
+  {
+    key: "sommeil-stress",
+    name: "Bilan sommeil & stress",
+    description: "Qualité du sommeil, charge mentale et gestion du stress au quotidien.",
+    questions: () => [
+      q("Décrivez votre sommeil : heure de coucher, endormissement, réveils nocturnes, forme au réveil.", "textarea", true),
+      q("Sur une échelle de 1 à 10, quel est votre niveau de stress moyen ces dernières semaines ?", "scale"),
+      q("Quelles sont vos principales sources de stress ou de préoccupation actuellement ?"),
+      q("Que faites-vous aujourd'hui pour décompresser (sport, méditation, écrans, autre) ?"),
+      q("Consommez-vous des excitants (café, thé, alcool, tabac) ? En quelle quantité et à quels moments ?"),
+      q("Ressentez-vous des tensions physiques liées au stress (mâchoires, épaules, ventre) ?"),
+    ],
+  },
+  {
+    key: "alimentation",
+    name: "Bilan alimentation & digestion",
+    description: "Journée alimentaire type, habitudes et confort digestif.",
+    questions: () => [
+      q("Décrivez précisément une journée alimentaire type (repas, boissons, grignotages, horaires).", "textarea", true),
+      q("Y a-t-il des aliments que vous ne digérez pas ou que vous évitez ? Pourquoi ?"),
+      q("Comment évaluez-vous votre confort digestif (ballonnements, acidité, lourdeurs, transit) ?"),
+      q("Cuisinez-vous maison ? Quelle place ont les produits transformés dans votre alimentation ?"),
+      q("Avez-vous des envies ou compulsions particulières (sucre, sel, fromage…) ? À quels moments ?"),
+      q("Sur une échelle de 1 à 10, quelle est votre satisfaction globale vis-à-vis de votre alimentation ?", "scale"),
+    ],
+  },
+  {
+    key: "cycle-hormonal",
+    name: "Bilan cycle & équilibre hormonal",
+    description: "Cycle féminin, symptômes associés et hygiène de vie hormonale.",
+    questions: () => [
+      q("Décrivez votre cycle : régularité, durée, abondance, douleurs éventuelles.", "textarea", true),
+      q("Ressentez-vous des symptômes prémenstruels (irritabilité, seins tendus, fringales, migraines) ?"),
+      q("Où en êtes-vous dans votre vie hormonale (contraception, grossesse, allaitement, périménopause) ?"),
+      q("Comment sont votre énergie et votre moral au fil du cycle ?"),
+      q("Suivez-vous un traitement hormonal ou avez-vous des antécédents hormonaux ou thyroïdiens connus ?"),
+      q("Sur une échelle de 1 à 10, à quel point ces symptômes impactent-ils votre quotidien ?", "scale"),
+    ],
+  },
+];
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 function AnamnesePage() {
@@ -143,6 +210,21 @@ function AnamnesePage() {
       navigate("/app/programmes");
     },
     onError: (e: any) => toast({ title: "Génération impossible", description: e?.message || "Réessaie dans un instant.", variant: "destructive" }),
+  });
+
+  // Lot 4 (action C6) — duplication d'un modèle en un clic.
+  const dupMut = useMutation({
+    mutationFn: (tpl: AnamnesisTemplate) =>
+      apiRequest("POST", "/api/anamnesis-templates", {
+        name: `${tpl.name} (copie)`,
+        description: tpl.description ?? null,
+        questions: parseQuestions(tpl.questions),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-templates"] });
+      toast({ title: "Modèle dupliqué", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
   const delMut = useMutation({
@@ -246,6 +328,16 @@ function AnamnesePage() {
                         data-testid={`button-share-${tpl.id}`}
                       >
                         <Link2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                        onClick={() => dupMut.mutate(tpl)}
+                        disabled={dupMut.isPending}
+                        title="Dupliquer ce modèle"
+                        aria-label="Dupliquer ce modèle"
+                        data-testid={`button-duplicate-${tpl.id}`}
+                      >
+                        <Copy className="h-4 w-4" />
                       </button>
                       <button
                         className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -380,9 +472,22 @@ function TemplateDialog({ open, editing, onClose }: {
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const [starterKey, setStarterKey] = useState(STARTER_TEMPLATES[0].key);
+
+  // Lot 4 (actions C6+C7) — choisir un modèle de départ thématique remplace
+  // nom/description/questions d'un coup (avant toute personnalisation).
+  function applyStarter(key: string) {
+    const s = STARTER_TEMPLATES.find(t => t.key === key);
+    if (!s) return;
+    setStarterKey(key);
+    setName(s.name);
+    setDescription(s.description);
+    setQuestions(s.questions());
+  }
 
   if (open && !initialized) {
     if (editing === "new") {
+      setStarterKey(STARTER_TEMPLATES[0].key);
       setName("Anamnèse — première consultation");
       setDescription("Questionnaire à remplir avant le premier rendez-vous.");
       setQuestions(defaultQuestions());
@@ -442,6 +547,22 @@ function TemplateDialog({ open, editing, onClose }: {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {editing === "new" && (
+            <div>
+              <Label>Partir d'un modèle thématique</Label>
+              <Select value={starterKey} onValueChange={applyStarter}>
+                <SelectTrigger data-testid="select-starter-template"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STARTER_TEMPLATES.map(s => (
+                    <SelectItem key={s.key} value={s.key}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Les questions se pré-remplissent : modifiez, ajoutez ou supprimez librement ensuite.
+              </p>
+            </div>
+          )}
           <div>
             <Label>Nom du modèle</Label>
             <Input
@@ -652,10 +773,11 @@ function ShareDialog({ open, templateId, clients, onClose }: {
 }) {
   const { toast } = useToast();
   const [link, setLink] = useState<string | null>(null);
+  const [respId, setRespId] = useState<number | null>(null);
   const [generated, setGenerated] = useState(false);
   const [clientId, setClientId] = useState<string>("");
 
-  if (!open && generated) { setGenerated(false); setLink(null); setClientId(""); }
+  if (!open && generated) { setGenerated(false); setLink(null); setRespId(null); setClientId(""); }
 
   const genMut = useMutation({
     mutationFn: async () => {
@@ -667,10 +789,19 @@ function ShareDialog({ open, templateId, clients, onClose }: {
     },
     onSuccess: (data: any) => {
       setLink(data.link);
+      setRespId(data.id ?? null);
       setGenerated(true);
       queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-responses"] });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  // Lot 4 (action P7) — envoi direct par email : l'adresse vient de la fiche cliente.
+  const selectedClient = clientId ? clients.find(c => c.id === Number(clientId)) : null;
+  const sendMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/anamnesis-responses/${respId}/send-email`, {})).json(),
+    onSuccess: (data: any) => toast({ title: "Email envoyé", description: `Le lien du questionnaire est parti à ${data.to}.`, variant: "success" }),
+    onError: (e: any) => toast({ title: "Envoi impossible", description: e.message, variant: "destructive" }),
   });
 
   function copyLink() {
@@ -736,6 +867,23 @@ function ShareDialog({ open, templateId, clients, onClose }: {
                   Copier
                 </Button>
               </div>
+              {/* Lot 4 (action P7) — envoi direct sans copier-coller */}
+              {respId != null && selectedClient?.email && (
+                <Button
+                  onClick={() => sendMut.mutate()}
+                  disabled={sendMut.isPending}
+                  className="w-full rounded-lg py-5 font-bold"
+                  data-testid="button-send-anamnese-email"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {sendMut.isPending ? "Envoi…" : `Envoyer par email à ${selectedClient.firstName} (${selectedClient.email})`}
+                </Button>
+              )}
+              {respId != null && clientId && !selectedClient?.email && (
+                <p className="text-xs text-muted-foreground">
+                  Cette cliente n'a pas d'adresse email dans sa fiche : copiez le lien et envoyez-le par un autre canal.
+                </p>
+              )}
               <Button
                 variant="outline"
                 onClick={() => { setLink(null); setGenerated(false); }}

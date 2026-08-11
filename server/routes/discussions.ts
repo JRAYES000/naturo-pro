@@ -46,6 +46,14 @@ export function registerDiscussionRoutes(app: Express): void {
     res.json(await storage.listDiscussions(req.userId!));
   });
 
+  // Lot 4 (action P4) — indicateur d'usage IA : compteurs déjà enregistrés
+  // (ai_chat_usage), simple agrégation mois courant + jour courant.
+  app.get("/api/ai-usage", requireAuth, async (req: AuthedRequest, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { month, today: todayCount } = await storage.getAiChatUsageSummary(req.userId!, today.slice(0, 7), today);
+    res.json({ month, today: todayCount, dailyLimit: AI_DAILY_LIMIT });
+  });
+
   app.post("/api/discussions", requireAuth, async (req: AuthedRequest, res) => {
     const p = createSchema.safeParse(req.body);
     if (!p.success) return res.status(400).json({ message: "Données invalides" });

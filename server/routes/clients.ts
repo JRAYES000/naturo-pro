@@ -39,6 +39,12 @@ const patchClientSchema = z.object({
   antecedents: z.string().nullable().optional(),
   lifestyleNotes: z.string().nullable().optional(),
   penseBete: z.string().nullable().optional(),
+  // Lot 4 — B2B + morphologie
+  clientType: z.enum(["particulier", "entreprise"]).optional(),
+  companyName: z.string().max(255).nullable().optional(),
+  companySiret: z.string().max(32).nullable().optional(),
+  heightCm: z.number().int().min(0).max(300).nullable().optional(),
+  weightKg: z.number().int().min(0).max(500).nullable().optional(),
 }).strict();
 
 export function registerClientRoutes(app: Express): void {

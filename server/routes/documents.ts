@@ -20,6 +20,8 @@ const uploadBodySchema = z.object({
   dataBase64: z.string().min(1).max(MAX_BASE64_LEN, {
     message: "Fichier trop volumineux (maximum 5 Mo)",
   }),
+  // Lot 4 — "formulaire_externe" = questionnaire rempli hors Naturo Pro.
+  kind: z.enum(["formulaire_externe"]).nullable().optional(),
 });
 
 export function registerDocumentRoutes(app: Express): void {
@@ -50,7 +52,7 @@ export function registerDocumentRoutes(app: Express): void {
       return res.status(status).json({ message: firstIssue?.message ?? "Données invalides", errors: parsed.error.errors });
     }
 
-    const { filename, mimeType, dataBase64 } = parsed.data;
+    const { filename, mimeType, dataBase64, kind } = parsed.data;
     // Calculer la taille réelle en octets à partir de la longueur base64
     // (chaque groupe de 4 chars = 3 octets, déduction pour le padding =)
     const padding = dataBase64.endsWith("==") ? 2 : dataBase64.endsWith("=") ? 1 : 0;
@@ -63,6 +65,7 @@ export function registerDocumentRoutes(app: Express): void {
       mimeType,
       sizeBytes,
       dataBase64,
+      kind: kind ?? null,
     });
 
     // Retourner les métadonnées sans le dataBase64

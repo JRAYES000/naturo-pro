@@ -31,6 +31,8 @@ export default function Settings() {
       hasResendApiKey: !!data.user.hasResendApiKey,
       emailFromAddress: data.user.emailFromAddress || "",
       emailFromName: data.user.emailFromName || "",
+      // Lot 4 (action P9) — adresse de réponse (Reply-To)
+      emailReplyTo: data.user.emailReplyTo || "",
       dailyRecapEnabled: !!data.user.dailyRecapEnabled,
       reminderHourLocal: typeof data.user.reminderHourLocal === "number" ? data.user.reminderHourLocal : 10,
       recapHourLocal: typeof data.user.recapHourLocal === "number" ? data.user.recapHourLocal : 10,
@@ -87,6 +89,7 @@ export default function Settings() {
       // Normaliser "" en null pour les champs nullable
       if (payload.emailFromAddress === "") payload.emailFromAddress = null;
       if (payload.emailFromName === "") payload.emailFromName = null;
+      if (payload.emailReplyTo === "") payload.emailReplyTo = null;
       if (payload.googleReviewUrl === "") payload.googleReviewUrl = null;
       return apiRequest("PATCH", "/api/profile", payload);
     },
@@ -260,6 +263,20 @@ export default function Settings() {
                 onChange={(e) => setDraft({ ...draft, emailFromName: e.target.value })}
                 data-testid="input-email-from-name"
               />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Adresse de réponse — Reply-To (optionnel)</Label>
+              <Input
+                type="email"
+                placeholder="vous@votre-domaine.fr"
+                value={draft.emailReplyTo || ""}
+                onChange={(e) => setDraft({ ...draft, emailReplyTo: e.target.value })}
+                data-testid="input-email-reply-to"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Quand une cliente clique « Répondre » à un email automatique, sa réponse arrivera à cette
+                adresse — pratique si votre expéditeur est un « noreply@ ».
+              </p>
             </div>
           </div>
 

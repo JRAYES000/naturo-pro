@@ -105,6 +105,9 @@ function InvoiceEditor() {
   const [status, setStatus] = useState<string>("draft");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [paidAt, setPaidAt] = useState<string>("");
+  // Lot 4 (action C10) — devis : même éditeur, type choisi à la création.
+  const [docType, setDocType] = useState<"invoice" | "devis">("invoice");
+  const isDevis = (isNew ? docType : (invoice as any)?.docType) === "devis";
 
   // Pré-remplir si modification
   useEffect(() => {
@@ -157,15 +160,17 @@ function InvoiceEditor() {
     return () => { cancelled = true; };
   }, [isNew, fromAppointmentId, navigate, toast]);
 
-  // Pré-remplir client à la sélection
+  // Pré-remplir client à la sélection (raison sociale + SIRET pour une entreprise — Lot 4)
   useEffect(() => {
     if (!clientId) return;
     const c = clients.find((x) => x.id === clientId);
     if (c && isNew) {
-      setClientFirstName(c.firstName || "");
-      setClientLastName(c.lastName || "");
+      const entreprise = (c as any).clientType === "entreprise" && (c as any).companyName;
+      setClientFirstName(entreprise ? "" : (c.firstName || ""));
+      setClientLastName(entreprise ? (c as any).companyName : (c.lastName || ""));
       setClientEmail(c.email || "");
-      setClientAddress((c as any).address || "");
+      const addr = (c as any).address || "";
+      setClientAddress(entreprise && (c as any).companySiret ? [addr, `SIRET : ${(c as any).companySiret}`].filter(Boolean).join("\n") : addr);
       setClientPostalCode((c as any).postalCode || "");
       setClientCity((c as any).city || "");
     }
@@ -190,13 +195,14 @@ function InvoiceEditor() {
         dueDate: fromDateInputValue(dueDate),
         notes: notes || null,
         items: items.filter((i) => i.description.trim()),
+        docType,
       };
       const res = await apiRequest("POST", "/api/invoices", body);
       return res.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      toast({ title: "Facture créée", description: data.number, variant: "success" });
+      toast({ title: docType === "devis" ? "Devis créé" : "Facture créée", description: data.number, variant: "success" });
       navigate(`/app/invoices/${data.id}`);
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
@@ -222,6 +228,18 @@ function InvoiceEditor() {
       toast({ title: "Facture supprimée", variant: "success" });
       navigate("/app/invoices");
     },
+  });
+
+  // Lot 4 (action C10) — devis → facture : le document reçoit un numéro FACT- de
+  // la séquence légale et devient une facture normale.
+  const convertMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/invoices/${numericId}/convert`, {})).json(),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", numericId] });
+      toast({ title: "Devis converti en facture", description: data.number, variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
   const sendMut = useMutation({
@@ -292,12 +310,22 @@ function InvoiceEditor() {
     <AppLayout>
       <div className="max-w-5xl pb-8 lg:pb-0">
         <PageHeader
-          title={isNew ? "Nouvelle facture" : (invoice?.number ?? "")}
-          subtitle={!isNew && invoice ? `Créée le ${new Date(invoice.createdAt).toLocaleDateString("fr-FR")}` : undefined}
+          title={isNew ? (docType === "devis" ? "Nouveau devis" : "Nouvelle facture") : (invoice?.number ?? "")}
+          subtitle={!isNew && invoice ? `${isDevis ? "Devis créé" : "Créée"} le ${new Date(invoice.createdAt).toLocaleDateString("fr-FR")}` : undefined}
           icon={Receipt}
           backTo={{ href: "/app/invoices", label: "Factures" }}
           actions={!isNew && invoice ? (
             <>
+              {isDevis && (
+                <Button
+                  onClick={() => convertMut.mutate()}
+                  disabled={convertMut.isPending}
+                  className="rounded-lg font-bold"
+                  data-testid="button-convert-devis"
+                >
+                  {convertMut.isPending ? "Conversion…" : "Convertir en facture"}
+                </Button>
+              )}
               <a
                 href={`/api/invoices/${numericId}/pdf`}
                 target="_blank"
@@ -319,6 +347,35 @@ function InvoiceEditor() {
             </>
           ) : undefined}
         />
+
+        {isNew && (
+          <div className="mb-4 flex gap-2" data-testid="toggle-doc-type">
+            {(["invoice", "devis"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setDocType(t)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  docType === t ? "border-primary bg-primary/10 text-primary" : "border-input hover:bg-secondary"
+                }`}
+                data-testid={`button-doctype-${t}`}
+              >
+                {t === "invoice" ? "Facture" : "Devis"}
+              </button>
+            ))}
+            {docType === "devis" && (
+              <p className="text-xs text-muted-foreground self-center">
+                Un devis n'a pas de valeur comptable : il ne compte pas dans votre CA et pourra être converti en facture en un clic.
+              </p>
+            )}
+          </div>
+        )}
+
+        {isDevis && !isNew && (
+          <div className="mb-4 text-sm bg-sky-50 border border-sky-200 text-sky-800 rounded-lg px-4 py-3" data-testid="banner-devis">
+            Ce document est un <strong>devis</strong> (hors comptabilité, non compté dans le CA). Utilisez « Convertir en
+            facture » une fois accepté : il recevra un numéro de la séquence légale.
+          </div>
+        )}
 
         {isLocked && (
           <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3">

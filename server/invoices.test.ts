@@ -7,11 +7,20 @@ import assert from "node:assert/strict";
 import {
   computeInvoiceTotals, computeItemTotal,
   buildInvoiceNumber, getYearFromMs,
+  buildDevisNumber, nextDevisSeq,
   formatPriceCents, formatVatRate,
   paymentMethodLabel, invoiceStatusLabel,
   buildPractitionerSnapshot,
   renderInvoiceEmail,
 } from "./invoices";
+
+test("buildDevisNumber / nextDevisSeq — séquence indépendante des factures", () => {
+  assert.equal(buildDevisNumber(2026, 1), "DEVIS-2026-001");
+  assert.equal(buildDevisNumber(2026, 1234), "DEVIS-2026-1234");
+  // les numéros FACT- et les devis d'une autre année sont ignorés
+  assert.equal(nextDevisSeq(["FACT-2026-0001", "DEVIS-2025-004"], 2026), 1);
+  assert.equal(nextDevisSeq(["DEVIS-2026-001", "DEVIS-2026-007", "FACT-2026-0009"], 2026), 8);
+});
 
 test("computeInvoiceTotals — sans TVA", () => {
   const t = computeInvoiceTotals([{ description: "C", quantity: 1, unitPriceCents: 1000 }], false, 2000);

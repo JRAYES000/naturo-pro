@@ -57,6 +57,8 @@ export const CLIENT_HEALTH_FIELDS = [
   "antecedents",
   "lifestyleNotes",
   "penseBete",
+  "heightCm",
+  "weightKg",
 ] as const;
 
 /**

@@ -34,6 +34,16 @@ import { FeatureGate } from "@/components/FeatureGate";
 // Si absent, l'avatar retombe proprement sur une icône.
 const NATUROBOT_AVATAR = "/naturobot.jpg";
 
+// Lot 4 (action P3) — questions suggérées à l'ouverture d'une discussion vide.
+const SUGGESTED_QUESTIONS = [
+  "Quelles plantes conseiller pour un sommeil difficile ?",
+  "Comment accompagner une cliente stressée en période d'examens ?",
+  "Quels sont les émonctoires et comment les soutenir ?",
+  "Propose-moi une trame de première consultation",
+  "Quelles précautions avec le millepertuis ?",
+  "Idées de petits-déjeuners pour une cliente en fatigue chronique",
+];
+
 function initials(name?: string | null): string {
   if (!name) return "•";
   return name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -143,6 +153,10 @@ function Chat() {
 
   const { data: discussions = [] } = useQuery<AiDiscussion[]>({ queryKey: ["/api/discussions"] });
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
+  // Lot 4 (action P4) — indicateur d'usage IA (jour + mois).
+  const { data: aiUsage } = useQuery<{ month: number; today: number; dailyLimit: number }>({
+    queryKey: ["/api/ai-usage"],
+  });
   const selected = discussions.find((d) => d.id === selectedId) || null;
   const { data: messages = [], isLoading } = useQuery<AiChatMessage[]>({
     queryKey: ["/api/discussions", selectedId, "messages"],
@@ -278,7 +292,13 @@ function Chat() {
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm flex gap-2 items-start mb-4" data-testid="text-disclaimer-sante">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
-        <span>Cet assistant est à visée <strong>éducative</strong> et ne remplace pas un avis médical. Pour tout problème de santé, oriente la personne vers un professionnel de santé.</span>
+        <span className="flex-1">Cet assistant est à visée <strong>éducative</strong> et ne remplace pas un avis médical. Pour tout problème de santé, oriente la personne vers un professionnel de santé.</span>
+        {/* Lot 4 (action P4) — transparence sur l'usage IA */}
+        {aiUsage && (
+          <span className="shrink-0 text-xs font-semibold text-amber-700 bg-amber-100 rounded-full px-2.5 py-1" data-testid="text-ai-usage" title="Nombre d'appels à l'IA (Naturobot + générations)">
+            IA : {aiUsage.today}/{aiUsage.dailyLimit} aujourd'hui · {aiUsage.month} ce mois-ci
+          </span>
+        )}
       </div>
 
       <div className="card-naturo flex h-[calc(100vh-22rem)] min-h-[460px] !p-0 overflow-hidden">
@@ -340,7 +360,7 @@ function Chat() {
                 />
               </div>
             ) : isLoading ? <Loading /> : messages.length === 0 && !pending && !sendMut.isPending ? (
-              <div className="h-full flex items-center justify-center">
+              <div className="h-full flex flex-col items-center justify-center gap-4">
                 <EmptyState
                   icon={Sparkles}
                   title="Prêt à discuter avec Naturobot"
@@ -348,6 +368,19 @@ function Chat() {
                   card={false}
                   testid="empty-state-discussion-vide"
                 />
+                {/* Lot 4 (action P3) — chips de questions suggérées, envoi direct au clic */}
+                <div className="flex flex-wrap justify-center gap-2 max-w-lg px-4" data-testid="suggested-questions">
+                  {SUGGESTED_QUESTIONS.map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => submit(q)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/30 bg-card text-primary hover:bg-primary/10 transition"
+                      data-testid="chip-suggested-question"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <>

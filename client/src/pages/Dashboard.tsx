@@ -1,13 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, Wallet, CheckCircle2, XCircle, TrendingUp } from "lucide-react";
+import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, Wallet, CheckCircle2, XCircle, TrendingUp, StickyNote, Megaphone, ListChecks, Circle, X } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { formatTime, formatDay, durationLabel, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Appointment, Client, AppointmentCategory } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
@@ -38,6 +38,11 @@ function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery<StatsOverview>({
     queryKey: ["/api/stats/overview"],
     queryFn: async () => (await apiRequest("GET", "/api/stats/overview")).json(),
+  });
+  // Lot 4 (action C2) — CA encaissé mensuel sur 12 mois glissants.
+  const { data: revenue = [] } = useQuery<Array<{ month: string; caCents: number }>>({
+    queryKey: ["/api/stats/revenue-monthly"],
+    queryFn: async () => (await apiRequest("GET", "/api/stats/revenue-monthly")).json(),
   });
 
   const upcoming = (appts || []).filter(a => a.startAt >= now && a.status !== "cancelled").sort((a,b) => a.startAt - b.startAt);
@@ -93,6 +98,8 @@ function Dashboard() {
           </div>
         )}
 
+        <OnboardingChecklistCard />
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <StatCard label="RDV aujourd'hui" value={todayCount} icon={Calendar} testid="stat-today" />
           <StatCard label="Cette semaine" value={thisWeekCount} icon={Sparkles} testid="stat-week" />
@@ -122,6 +129,12 @@ function Dashboard() {
               />
             </>
           )}
+        </div>
+
+        {/* Lot 4 (action C2) — note libre + tendance de revenus sans ouvrir Factures */}
+        <div className="grid lg:grid-cols-2 gap-4 mb-6">
+          <RevenueChartCard data={revenue} />
+          <NoteToSelfCard initial={(user as any)?.dashboardNote ?? ""} />
         </div>
 
         <div className="card-naturo mb-8 flex items-center gap-4" data-testid="card-remplissage-semaine">
@@ -198,6 +211,16 @@ function Dashboard() {
                 </div>
               </div>
             </Link>
+            {/* Lot 4 (action P5) — mise en avant du Studio contenu */}
+            <Link href="/app/studio-contenu" className="card-naturo block hover:-translate-y-0.5 transition border-primary/30 bg-secondary/40" data-testid="quick-studio">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent/30 flex items-center justify-center text-primary"><Megaphone className="h-5 w-5" /></div>
+                <div>
+                  <h3 className="font-extrabold">Studio contenu ✨</h3>
+                  <p className="text-xs text-muted-foreground">Générez vos posts Instagram et Facebook en quelques clics.</p>
+                </div>
+              </div>
+            </Link>
             {user && (
               <a href={`/p/${user.slug}`} target="_blank" rel="noreferrer" className="card-naturo block hover:-translate-y-0.5 transition" data-testid="quick-public">
                 <div className="flex items-start gap-3">
@@ -241,6 +264,155 @@ function Dashboard() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+// Lot 4 (action C2) — champ texte libre auto-sauvegardé (débounce 1 s, PATCH /api/profile).
+function NoteToSelfCard({ initial }: { initial: string }) {
+  const [note, setNote] = useState(initial);
+  const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSaved = useRef(initial);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  function onChange(v: string) {
+    setNote(v);
+    setSaved("saving");
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(async () => {
+      if (v === lastSaved.current) { setSaved("idle"); return; }
+      try {
+        await apiRequest("PATCH", "/api/profile", { dashboardNote: v || null });
+        lastSaved.current = v;
+        setSaved("saved");
+      } catch {
+        setSaved("idle");
+      }
+    }, 1000);
+  }
+
+  return (
+    <div className="card-naturo" data-testid="card-note-to-self">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <StickyNote className="h-4 w-4 text-primary" />
+          <h3 className="font-extrabold">Note à moi-même</h3>
+        </div>
+        <span className="text-xs text-muted-foreground" aria-live="polite">
+          {saved === "saving" ? "Enregistrement…" : saved === "saved" ? "Enregistré ✓" : ""}
+        </span>
+      </div>
+      <textarea
+        className="w-full min-h-[120px] rounded-[12px] border border-input bg-background p-3 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        placeholder="Un pense-bête personnel, visible de vous seule : idées, choses à faire, rappels…"
+        value={note}
+        onChange={(e) => onChange(e.target.value)}
+        data-testid="input-note-to-self"
+      />
+    </div>
+  );
+}
+
+// Lot 4 (action C2) — CA encaissé par mois (12 mois glissants), barres CSS pures.
+function RevenueChartCard({ data }: { data: Array<{ month: string; caCents: number }> }) {
+  const max = Math.max(1, ...data.map((d) => d.caCents));
+  const total = data.reduce((s, d) => s + d.caCents, 0);
+  const monthLabel = (m: string) => {
+    const [y, mm] = m.split("-").map(Number);
+    return new Date(Date.UTC(y, mm - 1, 1)).toLocaleDateString("fr-FR", { month: "short" });
+  };
+  return (
+    <div className="card-naturo" data-testid="card-revenue-chart">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-extrabold">CA encaissé — 12 derniers mois</h3>
+        <span className="text-sm font-bold text-primary">{formatPrice(total)}</span>
+      </div>
+      {total === 0 ? (
+        <p className="text-sm text-muted-foreground py-6 text-center">
+          Vos revenus encaissés apparaîtront ici dès votre première facture payée.
+        </p>
+      ) : (
+        <div className="flex items-end gap-1.5 h-32" role="img" aria-label="Évolution mensuelle du chiffre d'affaires encaissé">
+          {data.map((d) => (
+            <div key={d.month} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${monthLabel(d.month)} : ${formatPrice(d.caCents)}`}>
+              <div
+                className="w-full rounded-t-md bg-primary/80 hover:bg-primary transition-colors"
+                style={{ height: `${Math.max(2, Math.round((d.caCents / max) * 100))}%` }}
+                data-testid={`bar-revenue-${d.month}`}
+              />
+              <span className="text-[10px] text-muted-foreground truncate">{monthLabel(d.month)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Lot 4 (action C3) — checklist de démarrage persistante : état réel calculé
+// côté serveur sur les données existantes, masquable définitivement.
+const CHECKLIST_STEPS: Array<{ key: string; label: string; href: string }> = [
+  { key: "profil", label: "Compléter votre profil (bio)", href: "/app/settings" },
+  { key: "prestation", label: "Créer votre première prestation", href: "/app/categories" },
+  { key: "disponibilites", label: "Définir vos disponibilités", href: "/app/availability" },
+  { key: "client", label: "Ajouter votre premier client", href: "/app/clients" },
+  { key: "rdv", label: "Planifier votre premier rendez-vous", href: "/app/agenda" },
+  { key: "anamnese", label: "Créer votre premier modèle d'anamnèse", href: "/app/anamnese" },
+  { key: "pagePublique", label: "Personnaliser votre page publique (photo)", href: "/app/public-page" },
+  { key: "google", label: "Connecter Google Agenda (visio, synchronisation)", href: "/app/settings" },
+];
+
+function OnboardingChecklistCard() {
+  const { data } = useQuery<{ hiddenAt: number | null; steps: Record<string, boolean> }>({
+    queryKey: ["/api/onboarding/checklist"],
+    queryFn: async () => (await apiRequest("GET", "/api/onboarding/checklist")).json(),
+  });
+  const hideMut = useMutation({
+    mutationFn: async () => apiRequest("PATCH", "/api/profile", { onboardingChecklistHiddenAt: Date.now() }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/checklist"] }),
+  });
+  if (!data || data.hiddenAt) return null;
+  const done = CHECKLIST_STEPS.filter((s) => data.steps[s.key]).length;
+  if (done === CHECKLIST_STEPS.length) return null;
+  return (
+    <div className="mb-6 rounded-lg border border-primary/20 bg-secondary/40 p-4 sm:p-5" data-testid="card-onboarding-checklist">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <ListChecks className="h-5 w-5 text-primary" />
+          <p className="font-extrabold text-heading">Bien démarrer avec Naturo Pro — {done}/{CHECKLIST_STEPS.length}</p>
+        </div>
+        <button
+          onClick={() => hideMut.mutate()}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+          title="Masquer définitivement cette checklist"
+          aria-label="Masquer la checklist"
+          data-testid="button-hide-checklist"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="h-2 rounded-full bg-border mb-4 overflow-hidden">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((done / CHECKLIST_STEPS.length) * 100)}%` }} />
+      </div>
+      <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
+        {CHECKLIST_STEPS.map((s) => {
+          const ok = !!data.steps[s.key];
+          return (
+            <li key={s.key}>
+              <Link
+                href={s.href}
+                className={`flex items-center gap-2 text-sm py-1 rounded hover:text-primary ${ok ? "text-muted-foreground line-through" : "font-semibold"}`}
+                data-testid={`checklist-step-${s.key}`}
+              >
+                {ok ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
+                {s.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

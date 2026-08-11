@@ -1,6 +1,6 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles, Mail, Phone, CalendarPlus, NotebookPen } from "lucide-react";
+import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles, Mail, Phone, CalendarPlus, NotebookPen, ClipboardList, Check, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,11 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useAuth } from "@/lib/auth";
 import { FeatureGateInline } from "@/components/FeatureGate";
-import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
+import { computeImc, imcLabel, ageFromDateOfBirth, poidsIdealCreff } from "@/lib/imc";
 
 // Type métadonnées document (sans dataBase64)
 interface ClientDocumentMeta {
@@ -29,6 +32,7 @@ interface ClientDocumentMeta {
   filename: string;
   mimeType: string;
   sizeBytes: number;
+  kind: string | null;
   createdAt: number;
 }
 
@@ -50,6 +54,7 @@ interface ClientSummaryCardProps {
   apptsCount: number;
   notesCount: number;
   lastApptAt: number | null;
+  anamnesesRecues: number;
 }
 
 /**
@@ -57,7 +62,7 @@ interface ClientSummaryCardProps {
  * Identité, coordonnées, mini-KPIs et actions rapides pour une lecture en un coup d'œil
  * entre deux consultations.
  */
-function ClientSummaryCard({ client, cid, apptsCount, notesCount, lastApptAt }: ClientSummaryCardProps) {
+function ClientSummaryCard({ client, cid, apptsCount, notesCount, lastApptAt, anamnesesRecues }: ClientSummaryCardProps) {
   const initials = getInitials(client.firstName, client.lastName);
   return (
     <div className="card-naturo mb-6">
@@ -71,8 +76,32 @@ function ClientSummaryCard({ client, cid, apptsCount, notesCount, lastApptAt }: 
             {initials}
           </span>
           <div className="min-w-0">
-            <p className="font-extrabold text-heading text-xl truncate" data-testid="text-client-summary-name">
+            <p className="font-extrabold text-heading text-xl truncate flex items-center gap-2 flex-wrap" data-testid="text-client-summary-name">
               {client.firstName} {client.lastName}
+              {/* Lot 4 (action P11) — badges de statut visibles en tête de fiche */}
+              {(client as any).clientType === "entreprise" && (
+                <Badge className="bg-sky-100 text-sky-700 border-0 text-xs font-semibold">Entreprise</Badge>
+              )}
+              {client.email ? (
+                <Badge className="bg-accent/30 text-primary border-0 text-xs font-semibold" data-testid="badge-email-ok">
+                  <Check className="h-3 w-3 mr-1" /> Email renseigné
+                </Badge>
+              ) : (
+                <Badge className="bg-red-100 text-red-700 border-0 text-xs font-semibold" data-testid="badge-email-missing" title="Sans email, cette cliente ne recevra ni confirmation ni rappel automatique.">
+                  <X className="h-3 w-3 mr-1" /> Sans email
+                </Badge>
+              )}
+              {anamnesesRecues > 0 ? (
+                <Badge className="bg-accent/30 text-primary border-0 text-xs font-semibold" data-testid="badge-anamnese-ok">
+                  <Check className="h-3 w-3 mr-1" /> Anamnèse reçue
+                </Badge>
+              ) : (
+                <Link href="/app/anamnese">
+                  <Badge className="bg-gray-100 text-gray-600 border-0 text-xs font-semibold cursor-pointer hover:bg-gray-200" data-testid="badge-anamnese-missing" title="Aucune anamnèse reçue — cliquez pour envoyer un questionnaire.">
+                    Aucune anamnèse
+                  </Badge>
+                </Link>
+              )}
             </p>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground mt-0.5">
               {client.email && (
@@ -152,6 +181,16 @@ export default function ClientDetail() {
   const { data: allDiscussions = [] } = useQuery<AiDiscussion[]>({ queryKey: ["/api/discussions"] });
   const clientDiscussions = allDiscussions.filter((d) => d.clientId === Number(cid));
   const { data: categories = [] } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
+  // Lot 4 (action C4) — vues consolidées anamnèses / programmes de ce client.
+  const { data: anamneses = [] } = useQuery<AnamnesisResponse[]>({
+    queryKey: ["/api/anamnesis-responses", { clientId: cid }],
+    queryFn: async () => (await apiRequest("GET", `/api/anamnesis-responses?clientId=${cid}`)).json(),
+  });
+  const { data: programmes = [] } = useQuery<Program[]>({
+    queryKey: ["/api/programmes", { clientId: cid }],
+    queryFn: async () => (await apiRequest("GET", `/api/programmes?clientId=${cid}`)).json(),
+  });
+  const anamnesesRecues = anamneses.filter((a) => a.submittedAt).length;
 
   const lastApptAt = useMemo(() => (appts.length ? Math.max(...appts.map(a => a.startAt)) : null), [appts]);
 
@@ -169,6 +208,8 @@ export default function ClientDetail() {
   const [draft, setDraft] = useState<Partial<Client>>({});
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Lot 4 (action C8) — nature du prochain upload (null = document libre).
+  const uploadKindRef = useRef<string | null>(null);
   useEffect(() => { if (client) setDraft(client); }, [client]);
 
   // Lot 1 — le PATCH n'envoie QUE les champs réellement éditables du formulaire
@@ -180,12 +221,17 @@ export default function ClientDetail() {
       const payload: Partial<Client> = {
         firstName: draft.firstName, lastName: draft.lastName,
         email: draft.email, phone: draft.phone,
+        clientType: (draft as any).clientType || "particulier",
+        companyName: (draft as any).clientType === "entreprise" ? ((draft as any).companyName || null) : null,
+        companySiret: (draft as any).clientType === "entreprise" ? ((draft as any).companySiret || null) : null,
         ...(fullAccess ? {
           dateOfBirth: draft.dateOfBirth, address: draft.address,
           allergies: draft.allergies, antecedents: draft.antecedents,
           lifestyleNotes: draft.lifestyleNotes, penseBete: draft.penseBete,
+          heightCm: (draft as any).heightCm || null,
+          weightKg: (draft as any).weightKg || null,
         } : {}),
-      };
+      } as Partial<Client>;
       return apiRequest("PATCH", `/api/clients/${cid}`, payload);
     },
     onSuccess: () => {
@@ -245,6 +291,7 @@ export default function ClientDetail() {
           filename: file.name,
           mimeType: file.type || "application/octet-stream",
           dataBase64: base64,
+          kind: uploadKindRef.current,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] });
         toast({ title: "Document enregistré", description: file.name, variant: "success" });
@@ -284,7 +331,7 @@ export default function ClientDetail() {
           }
         />
 
-        <ClientSummaryCard client={client} cid={cid} apptsCount={appts.length} notesCount={notes.length} lastApptAt={lastApptAt} />
+        <ClientSummaryCard client={client} cid={cid} apptsCount={appts.length} notesCount={notes.length} lastApptAt={lastApptAt} anamnesesRecues={anamnesesRecues} />
 
         <Tabs defaultValue="timeline">
           <TabsList
@@ -296,6 +343,8 @@ export default function ClientDetail() {
             <TabsTrigger value="info" data-testid="tab-info">Informations</TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history">Historique ({notes.length})</TabsTrigger>
             <TabsTrigger value="appts" data-testid="tab-appts">Rendez-vous ({appts.length})</TabsTrigger>
+            <TabsTrigger value="anamneses" data-testid="tab-anamneses">Anamnèses ({anamneses.length})</TabsTrigger>
+            <TabsTrigger value="programmes" data-testid="tab-programmes">Programmes ({programmes.length})</TabsTrigger>
             <TabsTrigger value="documents" data-testid="tab-documents">Documents ({documents.length})</TabsTrigger>
           </TabsList>
 
@@ -362,6 +411,28 @@ export default function ClientDetail() {
 
           <TabsContent value="info">
             <div className="card-naturo space-y-4">
+              {/* Lot 4 (action C5) — type Particulier / Entreprise pour la facturation B2B */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Type de client</Label>
+                  <Select
+                    value={(draft as any).clientType || "particulier"}
+                    onValueChange={(v) => setDraft({ ...draft, clientType: v } as any)}
+                  >
+                    <SelectTrigger data-testid="select-client-type"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="particulier">Particulier</SelectItem>
+                      <SelectItem value="entreprise">Entreprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(draft as any).clientType === "entreprise" && (
+                  <>
+                    <div><Label>Raison sociale</Label><Input value={(draft as any).companyName || ""} onChange={e => setDraft({ ...draft, companyName: e.target.value } as any)} data-testid="input-company-name" /></div>
+                    <div><Label>SIRET</Label><Input value={(draft as any).companySiret || ""} onChange={e => setDraft({ ...draft, companySiret: e.target.value } as any)} data-testid="input-company-siret" /></div>
+                  </>
+                )}
+              </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div><Label>Prénom</Label><Input value={draft.firstName || ""} onChange={e => setDraft({ ...draft, firstName: e.target.value })} data-testid="input-firstName" /></div>
                 <div><Label>Nom</Label><Input value={draft.lastName || ""} onChange={e => setDraft({ ...draft, lastName: e.target.value })} data-testid="input-lastName" /></div>
@@ -376,6 +447,24 @@ export default function ClientDetail() {
               </div>
               {fullAccess ? (
                 <>
+                  {/* Lot 4 (action P10) — morphologie : IMC + poids idéal (Creff) calculés en direct */}
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div><Label>Taille (cm)</Label><Input type="number" min={0} max={300} value={(draft as any).heightCm ?? ""} onChange={e => setDraft({ ...draft, heightCm: e.target.value ? Number(e.target.value) : null } as any)} data-testid="input-height" /></div>
+                    <div><Label>Poids (kg)</Label><Input type="number" min={0} max={500} value={(draft as any).weightKg ?? ""} onChange={e => setDraft({ ...draft, weightKg: e.target.value ? Number(e.target.value) : null } as any)} data-testid="input-weight" /></div>
+                  </div>
+                  {(() => {
+                    const imc = computeImc(Number((draft as any).heightCm) || 0, Number((draft as any).weightKg) || 0);
+                    const age = ageFromDateOfBirth(draft.dateOfBirth);
+                    const pi = age != null ? poidsIdealCreff(Number((draft as any).heightCm) || 0, age) : null;
+                    if (imc == null && pi == null) return null;
+                    return (
+                      <div className="rounded-xl bg-secondary p-3 text-sm flex flex-wrap gap-x-6 gap-y-1" data-testid="text-morphologie">
+                        {imc != null && <span><strong>IMC :</strong> {imc.toLocaleString("fr-FR")} — {imcLabel(imc)}</span>}
+                        {pi != null && <span><strong>Poids idéal (Creff) :</strong> ≈ {pi.toLocaleString("fr-FR")} kg</span>}
+                        {pi == null && imc != null && !age && <span className="text-muted-foreground text-xs">Renseignez la date de naissance pour le poids idéal (formule de Creff).</span>}
+                      </div>
+                    );
+                  })()}
                   <div><Label>Allergies</Label><Textarea rows={2} value={draft.allergies || ""} onChange={e => setDraft({ ...draft, allergies: e.target.value })} data-testid="input-allergies" /></div>
                   <div><Label>Antécédents</Label><Textarea rows={3} value={draft.antecedents || ""} onChange={e => setDraft({ ...draft, antecedents: e.target.value })} data-testid="input-antecedents" /></div>
                   <div><Label>Hygiène de vie</Label><Textarea rows={3} value={draft.lifestyleNotes || ""} onChange={e => setDraft({ ...draft, lifestyleNotes: e.target.value })} data-testid="input-lifestyle" /></div>
@@ -465,6 +554,77 @@ export default function ClientDetail() {
             )}
           </TabsContent>
 
+          {/* Lot 4 (action C4) — vue consolidée des anamnèses de ce client (données du module Anamnèses) */}
+          <TabsContent value="anamneses">
+            {anamneses.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="Aucune anamnèse pour ce client"
+                description="Envoyez un questionnaire depuis le module Anamnèses en l'associant à cette fiche."
+                action={
+                  <Link href="/app/anamnese">
+                    <Button size="sm" className="rounded-lg font-bold" data-testid="button-go-anamnese">
+                      <ClipboardList className="h-4 w-4 mr-1" /> Ouvrir les anamnèses
+                    </Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <ul className="space-y-3">
+                {anamneses.map((a) => (
+                  <li key={a.id} className="card-naturo flex items-center justify-between gap-3" data-testid={`client-anamnese-${a.id}`}>
+                    <div>
+                      <p className="font-bold">{a.submittedAt ? `Soumise le ${formatDay(a.submittedAt)}` : "En attente de réponse"}</p>
+                      <p className="text-sm text-muted-foreground">Lien créé le {formatDay(a.createdAt)}</p>
+                    </div>
+                    {a.submittedAt
+                      ? <Badge className="bg-accent/30 text-primary border-0 text-xs"><Check className="h-3 w-3 mr-1" />Reçue</Badge>
+                      : <Badge variant="secondary" className="text-xs">En attente</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {anamneses.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-3">
+                Le détail des réponses se consulte dans <Link href="/app/anamnese" className="underline text-primary">Anamnèses</Link>.
+              </p>
+            )}
+          </TabsContent>
+
+          {/* Lot 4 (action C4) — vue consolidée des programmes de ce client */}
+          <TabsContent value="programmes">
+            {programmes.length === 0 ? (
+              <EmptyState
+                icon={FileText}
+                title="Aucun programme pour ce client"
+                description="Créez un programme d'hygiène de vie depuis le module Programmes, ou générez-en un depuis une anamnèse reçue."
+                action={
+                  <Link href="/app/programmes">
+                    <Button size="sm" className="rounded-lg font-bold" data-testid="button-go-programmes">
+                      <FileText className="h-4 w-4 mr-1" /> Ouvrir les programmes
+                    </Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <ul className="space-y-3">
+                {programmes.map((p) => (
+                  <li key={p.id} className="card-naturo" data-testid={`client-programme-${p.id}`}>
+                    <Link href="/app/programmes" className="flex items-center justify-between gap-3 hover:text-primary">
+                      <div className="min-w-0">
+                        <p className="font-bold truncate">{p.title}</p>
+                        <p className="text-sm text-muted-foreground">Mis à jour le {formatDay(p.updatedAt)}</p>
+                      </div>
+                      {p.status === "sent"
+                        ? <Badge className="bg-accent/30 text-primary border-0 text-xs">Envoyé</Badge>
+                        : <Badge variant="secondary" className="text-xs">Brouillon</Badge>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+
           <TabsContent value="documents">
             <HelpNote title="Documents client" defaultOpen={false}>
               <p>
@@ -484,7 +644,7 @@ export default function ClientDetail() {
                 <p className="text-sm text-muted-foreground">
                   {documents.length === 0 ? "Aucun document joint pour l'instant." : `${documents.length} document${documents.length > 1 ? "s" : ""} joint${documents.length > 1 ? "s" : ""}.`}
                 </p>
-                <div>
+                <div className="flex flex-wrap gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -493,9 +653,21 @@ export default function ClientDetail() {
                     data-testid="input-file-upload"
                     accept="*/*"
                   />
+                  {/* Lot 4 (action C8) — import de questionnaire externe, taggé distinctement */}
                   <Button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    variant="outline"
+                    onClick={() => { uploadKindRef.current = "formulaire_externe"; fileInputRef.current?.click(); }}
+                    disabled={uploading}
+                    className="rounded-lg font-bold"
+                    title="Rattacher un questionnaire rempli ailleurs (PDF, export Google Forms…)"
+                    data-testid="button-upload-external-form"
+                  >
+                    <ClipboardList className="h-4 w-4 mr-2" /> Formulaire externe
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => { uploadKindRef.current = null; fileInputRef.current?.click(); }}
                     disabled={uploading}
                     className="rounded-lg font-bold"
                     data-testid="button-upload-document"
@@ -516,7 +688,12 @@ export default function ClientDetail() {
                   <div className="flex items-center gap-3 min-w-0">
                     <File className="h-5 w-5 text-primary flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-semibold truncate" data-testid={`text-doc-name-${doc.id}`}>{doc.filename}</p>
+                      <p className="font-semibold truncate flex items-center gap-2" data-testid={`text-doc-name-${doc.id}`}>
+                        {doc.filename}
+                        {doc.kind === "formulaire_externe" && (
+                          <Badge className="bg-violet-100 text-violet-700 border-0 text-xs shrink-0">Formulaire externe</Badge>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {formatFileSize(doc.sizeBytes)} · {new Date(doc.createdAt).toLocaleDateString("fr-FR")}
                       </p>
