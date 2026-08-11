@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPrice } from "@/lib/format";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,7 +76,7 @@ function getPeriodeRange(p: Periode): { from: number; to: number } {
 
 // ── Composant principal ──────────────────────────────────────────────────────
 
-export default function Stats() {
+function Stats() {
   const [periode, setPeriode] = useState<Periode>("mois_courant");
   const [downloading, setDownloading] = useState(false);
 
@@ -277,4 +279,14 @@ export default function Stats() {
       </div>
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function StatsGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les statistiques" description="Les statistiques détaillées et l'export du journal des recettes sont réservés à l'abonnement Naturo Pro." />;
+  }
+  return <Stats />;
 }

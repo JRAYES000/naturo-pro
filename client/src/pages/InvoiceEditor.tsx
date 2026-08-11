@@ -16,6 +16,8 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatPrice } from "@/lib/format";
 import type { Client, Invoice, InvoiceItem } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 interface ItemDraft {
   description: string;
@@ -70,7 +72,7 @@ function readQueryParam(name: string): string | null {
   return null;
 }
 
-export default function InvoiceEditor() {
+function InvoiceEditor() {
   const [, params] = useRoute("/app/invoices/:id");
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -580,4 +582,14 @@ export default function InvoiceEditor() {
       </div>
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function InvoiceEditorGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="La facturation" description="Création de factures, PDF, envoi par email et suivi des paiements sont réservés à l'abonnement Naturo Pro." />;
+  }
+  return <InvoiceEditor />;
 }

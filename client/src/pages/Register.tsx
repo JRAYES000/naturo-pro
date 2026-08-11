@@ -81,6 +81,11 @@ export default function Register() {
           <p className="mt-4 text-center text-xs text-muted-foreground">
             Essai gratuit 7 jours, sans engagement, sans carte bancaire.
           </p>
+          {/* Lot 1 (action 11, décision 6) — mention obligatoire de la purge des
+              comptes gratuits inactifs, affichée à l'inscription. */}
+          <p className="mt-2 text-center text-xs text-muted-foreground" data-testid="text-purge-mention">
+            Un compte gratuit inactif pendant 12 mois est supprimé automatiquement, avec toutes ses données.
+          </p>
         </div>
         <div className="mt-6 text-center text-sm text-muted-foreground">
           Vous avez déjà un compte ? <Link href="/login" className="text-primary font-bold" data-testid="link-to-login">Se connecter</Link>

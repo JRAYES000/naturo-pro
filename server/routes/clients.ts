@@ -12,6 +12,17 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { insertClientSchema, clientEmailSchema } from "@shared/schema-active";
+import { hasFullAccess, sanitizeClientForPlan, stripClientHealthFields } from "@shared/plan-access";
+
+// Lot 1 (décisions 5-6) — la fiche client du socle gratuit se limite aux
+// coordonnées (nom, email, téléphone). Les champs santé/étendus (naissance,
+// adresse, allergies, antécédents, hygiène de vie, pense-bête) sont neutralisés
+// en lecture ET ignorés en écriture pour un compte sans accès complet : le
+// serveur fait foi, l'interface (ClientDetail/Clients) affiche l'état bloqué.
+async function fullAccessFor(req: AuthedRequest): Promise<boolean> {
+  const u = req.user ?? (await storage.getUserById(req.userId!));
+  return hasFullAccess(u);
+}
 
 // Limite les champs modifiables via PATCH (empêche le transfert via {userId:X}).
 // email réutilise clientEmailSchema (shared/schema.ts) — même règle qu'à la création,
@@ -32,25 +43,31 @@ const patchClientSchema = z.object({
 export function registerClientRoutes(app: Express): void {
   app.get("/api/clients", requireAuth, async (req: AuthedRequest, res) => {
     const search = String(req.query.search || "");
-    res.json(await storage.listClients(req.userId!, search));
+    const full = await fullAccessFor(req);
+    const list = await storage.listClients(req.userId!, search);
+    res.json(list.map((c) => sanitizeClientForPlan(c as any, full)));
   });
   app.get("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
     const c = await storage.getClient(Number(req.params.id));
     if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    res.json(c);
+    res.json(sanitizeClientForPlan(c as any, await fullAccessFor(req)));
   });
   app.post("/api/clients", requireAuth, async (req: AuthedRequest, res) => {
-    const parsed = insertClientSchema.safeParse(req.body);
+    const full = await fullAccessFor(req);
+    const parsed = insertClientSchema.safeParse(stripClientHealthFields(req.body ?? {}, full));
     if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
-    res.json(await storage.createClient(req.userId!, parsed.data));
+    const created = await storage.createClient(req.userId!, parsed.data);
+    res.json(sanitizeClientForPlan(created as any, full));
   });
   app.patch("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const c = await storage.getClient(id);
     if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    const parsed = patchClientSchema.safeParse(req.body);
+    const full = await fullAccessFor(req);
+    const parsed = patchClientSchema.safeParse(stripClientHealthFields(req.body ?? {}, full));
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
-    res.json(await storage.updateClient(id, parsed.data as any));
+    const updated = await storage.updateClient(id, parsed.data as any);
+    res.json(sanitizeClientForPlan(updated as any, full));
   });
   app.delete("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);

@@ -21,6 +21,7 @@ import {
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
+  analyticsEvents,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -31,7 +32,7 @@ import type {
   Program, InsertProgram, ClientDocument, InsertClientDocument,
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage, AiChatMessage, AiChatUsage,
-  AssistantSettings, KbDocument, KbChunk, ContentPost,
+  AssistantSettings, KbDocument, KbChunk, ContentPost, AnalyticsEvent,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull } from "drizzle-orm";
@@ -239,6 +240,7 @@ export const USER_SCOPED_TABLES = [
   aiChatUsage,
   contentPosts,
   stripeProcessedSessions,
+  analyticsEvents,
 ] as const;
 
 /**
@@ -446,6 +448,13 @@ export interface IStorage {
   getClientThemeStats(userId: number, sinceMs: number): Promise<Array<{ theme: string; count: number }>>;
   updateUserMarketing(userId: number, patch: { marketingTone: string | null; marketingAudience: string | null }): Promise<void>;
   markStudioIntroSeen(userId: number): Promise<void>;
+
+  // Lot 1 (action 9) — analytics de conversion
+  createAnalyticsEvent(userId: number, event: string, metadata?: Record<string, unknown>): Promise<void>;
+  countAnalyticsByEvent(sinceMs?: number): Promise<Array<{ event: string; count: number }>>;
+  listRecentAnalyticsEvents(limit?: number): Promise<AnalyticsEvent[]>;
+  // Lot 1 (action 11) — purge des comptes gratuits inactifs
+  listPurgeCandidates(cutoffMs: number): Promise<User[]>;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -1518,6 +1527,42 @@ export class DatabaseStorage implements IStorage {
 
   async listAllKbChunks(): Promise<KbChunk[]> {
     return db.select().from(kbChunks);
+  }
+
+  // ── Lot 1 (action 9) — analytics de conversion ───────────────────────────────
+  async createAnalyticsEvent(userId: number, event: string, metadata?: Record<string, unknown>): Promise<void> {
+    await dbInsertReturning<AnalyticsEvent>(analyticsEvents, {
+      userId,
+      event,
+      metadata: metadata ? JSON.stringify(metadata) : null,
+      createdAt: Date.now(),
+    });
+  }
+
+  async countAnalyticsByEvent(sinceMs?: number): Promise<Array<{ event: string; count: number }>> {
+    const q = db
+      .select({ event: analyticsEvents.event, count: sql<number>`count(*)` })
+      .from(analyticsEvents);
+    const rows = sinceMs
+      ? await q.where(gte(analyticsEvents.createdAt, sinceMs)).groupBy(analyticsEvents.event)
+      : await q.groupBy(analyticsEvents.event);
+    return rows as Array<{ event: string; count: number }>;
+  }
+
+  async listRecentAnalyticsEvents(limit = 50): Promise<AnalyticsEvent[]> {
+    return db.select().from(analyticsEvents)
+      .orderBy(desc(analyticsEvents.createdAt), desc(analyticsEvents.id))
+      .limit(limit);
+  }
+
+  // ── Lot 1 (action 11) — purge des comptes gratuits inactifs ──────────────────
+  // Candidats : aucun accès complet (ni abonné, ni essai en cours) ET aucune
+  // connexion depuis cutoffMs (last_login_at, sinon created_at pour les comptes
+  // antérieurs à la colonne). Le filtre d'accès complet est rejoué en TypeScript
+  // par l'appelant (hasFullAccess) — la requête ne fait que dégrossir.
+  async listPurgeCandidates(cutoffMs: number): Promise<User[]> {
+    const lastSeen = sql<number>`coalesce(${users.lastLoginAt}, ${users.createdAt})`;
+    return db.select().from(users).where(lte(lastSeen, cutoffMs));
   }
 }
 

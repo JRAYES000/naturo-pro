@@ -63,6 +63,7 @@ const BookingManage = lazy(() => import("@/pages/BookingManage"));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminUserDetail = lazy(() => import("@/pages/admin/AdminUserDetail"));
 const AssistantAdmin = lazy(() => import("@/pages/admin/AssistantAdmin"));
+const AdminAnalytics = lazy(() => import("@/pages/admin/AdminAnalytics"));
 
 // Action 8 (scope resserré) — routes PUBLIQUES pré-login servies en URL propre
 // (pathname), en dehors du hash router. Voir le commentaire de tête de
@@ -125,6 +126,7 @@ function AppRouter() {
       <Route path="/admin/users" component={() => <ProtectedRoute><AdminUsers /></ProtectedRoute>} />
       <Route path="/admin/users/:id" component={() => <ProtectedRoute><AdminUserDetail /></ProtectedRoute>} />
       <Route path="/admin/assistant" component={() => <ProtectedRoute><AssistantAdmin /></ProtectedRoute>} />
+      <Route path="/admin/analytics" component={() => <ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
 
       <Route path="/p/:slug" component={PublicPage} />
       <Route path="/p/:slug/book/:catId?" component={BookingFlow} />

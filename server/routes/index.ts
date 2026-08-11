@@ -16,7 +16,10 @@ import cookieParser from "cookie-parser";
 import { apiLimiter, publicLimiter, adminLimiter } from "./limiters";
 import { storage } from "../storage";
 import { attachUser, type AuthedRequest } from "../auth";
+import { hasFullAccess, PAID_PATH_RE, FREE_CATEGORY_LIMIT, paidFeatureFromPath } from "@shared/plan-access";
+import { recordEvent } from "../analytics";
 import { startCrons } from "./cron";
+import { registerBillingRoutes } from "./billing";
 import { createContext } from "./_context";
 import { registerCategoryRoutes } from "./categories";
 import { registerAvailabilityRoutes } from "./availability";
@@ -76,11 +79,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     next();
   });
 
-  // ── Trial guard : bloque les mutations si plan='trial' et trial_ends_at < now
-  // Routes exemptées : /api/auth/* (login/logout/onboarding), /api/profile (settings),
-  // /api/internal/* (cron), /api/public/* (lecture publique), GET (lecture).
+  // ── Gating par fonctionnalité (Lot 1, action 6) — remplace l'essai chronométré
+  // tout-ou-rien. Un compte sans accès complet (essai expiré, plan "free" ou
+  // "suspended") garde le socle gratuit de la décision 5 (agenda, page publique,
+  // 1 prestation, fiche client coordonnées, export RGPD) et reçoit un 402
+  // explicite — code PLAN_UPGRADE_REQUIRED, exploitable par l'interface — sur
+  // toute route payante (PAID_PATH_RE, shared/plan-access.ts). Lecture ET
+  // écriture : un GET sur des notes de consultation est une donnée de santé.
+  // Routes exemptées : auth, internal, public, admin, profile, billing.
   app.use(async (req: AuthedRequest, res, next) => {
-    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+    if (req.method === "OPTIONS") return next();
     if (!req.userId) return next();
     const p = req.path;
     if (
@@ -94,15 +102,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!p.startsWith("/api/")) return next();
     try {
       const u = req.user ?? (await storage.getUserById(req.userId));
-      if (u && u.plan === "trial" && u.trialEndsAt && u.trialEndsAt < Date.now()) {
-        return res.status(402).json({
-          message: "Votre essai gratuit est terminé. Activez votre abonnement pour continuer à utiliser Naturo Pro.",
-          code: "TRIAL_EXPIRED",
-          trialEndsAt: u.trialEndsAt,
-        });
+      if (u && !hasFullAccess(u)) {
+        if (PAID_PATH_RE.test(p)) {
+          const feature = paidFeatureFromPath(p);
+          recordEvent(u.id, "paid_feature_blocked", { feature, path: p, method: req.method });
+          return res.status(402).json({
+            message: "Cette fonctionnalité fait partie de l'abonnement Naturo Pro (19 €/mois). Votre socle gratuit reste actif : agenda, page de réservation et fiches clients (coordonnées).",
+            code: "PLAN_UPGRADE_REQUIRED",
+            feature,
+          });
+        }
+        // Cap du socle gratuit : une seule prestation/catégorie (décision 5).
+        if (req.method === "POST" && p === "/api/categories") {
+          const existing = await storage.listCategories(u.id);
+          if (existing.length >= FREE_CATEGORY_LIMIT) {
+            recordEvent(u.id, "paid_feature_blocked", { feature: "categories", path: p, method: req.method });
+            return res.status(402).json({
+              message: `Le plan gratuit inclut ${FREE_CATEGORY_LIMIT} prestation. Passez à Naturo Pro (19 €/mois) pour en créer d'autres.`,
+              code: "PLAN_UPGRADE_REQUIRED",
+              feature: "categories",
+            });
+          }
+        }
       }
     } catch (e: any) {
-      console.error("[trial-guard]", e?.message || e);
+      console.error("[plan-guard]", e?.message || e);
     }
     next();
   });
@@ -140,6 +164,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerDiscussionRoutes(app);
   registerContentRoutes(app);
   registerAssistantAdminRoutes(app);
+  registerBillingRoutes(app);
 
   startCrons();
 

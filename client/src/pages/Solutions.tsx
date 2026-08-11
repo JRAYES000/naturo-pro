@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { NaturalSolution } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Plante": "bg-emerald-50 border-emerald-200 text-emerald-800",
@@ -34,7 +36,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 const CATEGORIES = ["Plante", "Huile essentielle", "Complément", "Fleur de Bach"];
 
-export default function Solutions() {
+function Solutions() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { data: solutions = [], isLoading } = useQuery<NaturalSolution[]>({ queryKey: ["/api/solutions"] });
@@ -212,4 +214,14 @@ function SolutionEditor({ editing, onClose }: { editing: NaturalSolution | "new"
       </DialogContent>
     </Dialog>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function SolutionsGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="La bibliothèque de référence" description="La bibliothèque complète de solutions naturelles est réservée à l'abonnement Naturo Pro." />;
+  }
+  return <Solutions />;
 }

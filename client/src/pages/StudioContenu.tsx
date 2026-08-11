@@ -15,9 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth";
 import { renderCarouselSlides, buildCaptionFile, type CarouselDeck, type RenderedSlide } from "@/lib/slide-canvas";
 import { createZip, triggerDownload, type ZipEntry } from "@/lib/zip";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 type Channel = "instagram" | "facebook";
 type ContentFormat = "carrousel" | "reel" | "story" | "post_groupe" | "legende";
@@ -36,7 +37,7 @@ const FORMAT_LABELS: Record<ContentFormat, string> = {
   legende: "Légende + hashtags",
 };
 
-export default function StudioContenu() {
+function StudioContenu() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [channel, setChannel] = useState<Channel>("instagram");
@@ -497,4 +498,14 @@ function PostVisuals({ post, practitionerName }: { post: ContentPost; practition
       ) : null}
     </div>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function StudioContenuGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Le Studio contenu" description="La génération de contenus pour vos réseaux sociaux est réservée à l'abonnement Naturo Pro." />;
+  }
+  return <StudioContenu />;
 }

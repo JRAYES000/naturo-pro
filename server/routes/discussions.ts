@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { streamNaturoAssistant, generateDiscussionMeta, type ChatTurn } from "../mistral";
 import { retrieveRelevantChunks } from "../rag";
+import { programmeFromMarkdown } from "./helpers/programme-bridge";
 import type { Client } from "@shared/schema";
 
 const CONTEXT_LIMIT = 30;
@@ -74,6 +75,32 @@ export function registerDiscussionRoutes(app: Express): void {
     if (!d) return res.status(404).json({ message: "Discussion introuvable" });
     await storage.deleteDiscussion(d.id);
     res.json({ ok: true });
+  });
+
+  // Lot 1 (action 10) — pont Naturobot → Programme : la dernière réponse de
+  // l'assistant devient un Programme pré-rempli (brouillon), éditable dans la
+  // page Programmes et exportable via la route PDF existante.
+  app.post("/api/discussions/:id/create-programme", requireAuth, async (req: AuthedRequest, res) => {
+    const d = await ownDiscussion(req, Number(req.params.id));
+    if (!d) return res.status(404).json({ message: "Discussion introuvable" });
+    const messages = await storage.listDiscussionMessages(d.id);
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant" && m.content?.trim());
+    if (!lastAssistant) {
+      return res.status(400).json({ message: "Cette discussion ne contient pas encore de réponse de Naturobot à transformer en programme." });
+    }
+    const sections = programmeFromMarkdown(lastAssistant.content);
+    if (!sections.length) {
+      return res.status(400).json({ message: "La réponse de Naturobot ne contient aucun conseil exploitable en programme." });
+    }
+    const prog = await storage.createProgram({
+      userId: req.userId!,
+      clientId: d.clientId ?? null,
+      appointmentId: null,
+      title: d.title?.trim() ? d.title : "Programme issu de Naturobot",
+      content: JSON.stringify(sections),
+      status: "draft",
+    } as any);
+    res.json(prog);
   });
 
   app.get("/api/discussions/:id/messages", requireAuth, async (req: AuthedRequest, res) => {

@@ -5,11 +5,12 @@ import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, 
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { useAuth } from "@/lib/auth";
 import { formatTime, formatDay, durationLabel, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 import type { Appointment, Client, AppointmentCategory } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 interface StatsOverview {
   caEncaisseCents: number;
@@ -19,7 +20,7 @@ interface StatsOverview {
   topPrestations: Array<{ name: string; count: number; caCents: number }>;
 }
 
-export default function Dashboard() {
+function Dashboard() {
   const { user } = useAuth();
   const now = useMemo(() => Date.now(), []);
   const in14d = now + 14 * 86400000;
@@ -254,4 +255,14 @@ function StatCard({ label, value, icon: Icon, testid, sub }: any) {
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function DashboardGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Le tableau de bord" description="Vos indicateurs d'activité (RDV, CA, remplissage) sont réservés à l'abonnement Naturo Pro." />;
+  }
+  return <Dashboard />;
 }
