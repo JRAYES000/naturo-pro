@@ -146,3 +146,74 @@ export async function sendBookingConfirmationEmail(
     console.error(`[booking-confirm] Exception pour appt ${appt.id}:`, e?.message || e);
   }
 }
+
+// ─── Notification praticienne : nouvelle réservation en ligne (Lot 3) ─────────
+// La praticienne n'était prévenue qu'en cas d'annulation ou de report : sans
+// synchro Google Agenda, une réservation pouvait passer totalement inaperçue.
+
+/** Config praticien si complète, sinon clé système — même règle que la confirmation client. */
+export function getEmailConfigOrSystem(u: any): EmailConfig | null {
+  return getEmailConfigForUser(u) ?? getSystemEmailConfig();
+}
+
+function escapeHtmlLocal(s: string | null | undefined): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/** Rendu pur de la notification (testé) — sujet + HTML + texte. */
+export function renderNewBookingNotification(opts: {
+  clientName: string;
+  rdvDateText: string;
+  categoryName?: string | null;
+  clientEmail?: string | null;
+  clientPhone?: string | null;
+  depositCents?: number | null;
+  appUrl?: string;
+}): { subject: string; html: string; text: string } {
+  const nom = opts.clientName.trim() || "(cliente inconnue)";
+  const appUrl = opts.appUrl || process.env.APP_URL || "https://app.ecole-naturo.fr";
+  const subject = `Nouvelle réservation — ${nom}, ${opts.rdvDateText}`;
+  const lignes: string[] = [];
+  if (opts.categoryName) lignes.push(`Prestation : ${opts.categoryName}`);
+  if (opts.clientEmail) lignes.push(`Email : ${opts.clientEmail}`);
+  if (opts.clientPhone) lignes.push(`Téléphone : ${opts.clientPhone}`);
+  if (opts.depositCents && opts.depositCents > 0) {
+    lignes.push(`Acompte réglé en ligne : ${(opts.depositCents / 100).toFixed(2).replace(".", ",")} €`);
+  }
+  const html =
+    `<p>Bonjour,</p>` +
+    `<p><strong>${escapeHtmlLocal(nom)}</strong> vient de réserver un rendez-vous le ` +
+    `<strong>${escapeHtmlLocal(opts.rdvDateText)}</strong>.</p>` +
+    (lignes.length ? `<p>${lignes.map(escapeHtmlLocal).join("<br>")}</p>` : "") +
+    `<p><a href="${appUrl}/#/app/agenda">Voir mon agenda</a></p>`;
+  const text = `${nom} vient de réserver un rendez-vous le ${opts.rdvDateText}.\n` +
+    (lignes.length ? lignes.join("\n") + "\n" : "") + `${appUrl}/#/app/agenda`;
+  return { subject, html, text };
+}
+
+/** Envoie la notification à la praticienne. Échec logué, jamais bloquant. */
+export async function sendNewBookingNotificationEmail(
+  user: any,
+  appt: any,
+  cat: any,
+  opts?: { depositCents?: number | null },
+): Promise<void> {
+  if (!user?.email) return;
+  const cfg = getEmailConfigOrSystem(user);
+  if (!cfg) {
+    console.warn("[booking-notif] aucune config email — praticienne non notifiée pour appt", appt.id);
+    return;
+  }
+  const { subject, html, text } = renderNewBookingNotification({
+    clientName: `${appt.clientFirstName || ""} ${appt.clientLastName || ""}`.trim(),
+    rdvDateText: formatRdvDate(appt.startAt),
+    categoryName: cat?.name || null,
+    clientEmail: appt.clientEmail || null,
+    clientPhone: appt.clientPhone || null,
+    depositCents: opts?.depositCents ?? appt.depositAmountCents ?? null,
+  });
+  const r = await sendEmail(cfg, user.email, subject, html, text);
+  if (!r.ok) console.error(`[booking-notif] échec pour appt ${appt.id}: ${r.error}`);
+}

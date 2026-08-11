@@ -13,6 +13,7 @@ import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { insertClientSchema, clientEmailSchema } from "@shared/schema-active";
 import { hasFullAccess, sanitizeClientForPlan, stripClientHealthFields } from "@shared/plan-access";
+import { parseClientsCsv } from "./helpers/csv-clients";
 
 // Lot 1 (décisions 5-6) — la fiche client du socle gratuit se limite aux
 // coordonnées (nom, email, téléphone). Les champs santé/étendus (naissance,
@@ -41,6 +42,50 @@ const patchClientSchema = z.object({
 }).strict();
 
 export function registerClientRoutes(app: Express): void {
+  // Import CSV de coordonnées (Lot 3) — la vraie barrière d'entrée depuis
+  // Excel/carnet. Coordonnées uniquement, jamais de champ santé.
+  app.post("/api/clients/import", requireAuth, async (req: AuthedRequest, res) => {
+    const schema = z.object({ csv: z.string().min(1).max(500_000) });
+    const parsed = schema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ message: "Fichier CSV manquant ou trop volumineux" });
+
+    const result = parseClientsCsv(parsed.data.csv);
+    if (result.erreurGlobale) return res.status(400).json({ message: result.erreurGlobale });
+
+    const existants = await storage.listClients(req.userId!);
+    const emailsVus = new Set(existants.map((c) => (c.email || "").toLowerCase()).filter(Boolean));
+    const nomsVus = new Set(existants.map((c) => `${c.firstName} ${c.lastName}`.toLowerCase().trim()));
+
+    let crees = 0;
+    let doublons = 0;
+    for (const row of result.rows) {
+      const cleEmail = (row.email || "").toLowerCase();
+      const cleNom = `${row.firstName} ${row.lastName}`.toLowerCase().trim();
+      if ((cleEmail && emailsVus.has(cleEmail)) || nomsVus.has(cleNom)) {
+        doublons++;
+        continue;
+      }
+      await storage.createClient(req.userId!, {
+        firstName: row.firstName,
+        lastName: row.lastName,
+        email: row.email,
+        phone: row.phone,
+      } as any);
+      if (cleEmail) emailsVus.add(cleEmail);
+      nomsVus.add(cleNom);
+      crees++;
+    }
+    res.json({
+      ok: true,
+      crees,
+      doublons,
+      erreurs: result.erreurs.slice(0, 20),
+      avertissements: result.avertissements.slice(0, 20),
+      totalErreurs: result.erreurs.length,
+      totalAvertissements: result.avertissements.length,
+    });
+  });
+
   app.get("/api/clients", requireAuth, async (req: AuthedRequest, res) => {
     const search = String(req.query.search || "");
     const full = await fullAccessFor(req);

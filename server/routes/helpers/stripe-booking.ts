@@ -28,7 +28,7 @@
 import { storage } from "../../storage";
 import { listRecentPaidSessions } from "../../stripe";
 import { syncApptToGoogle } from "./google-sync";
-import { sendBookingConfirmationEmail } from "./email-sending";
+import { sendBookingConfirmationEmail, sendNewBookingNotificationEmail } from "./email-sending";
 
 export type ResultatSessionPayee =
   | { statut: "cree"; appointmentId: number }
@@ -98,6 +98,11 @@ export async function creerRdvDepuisSessionPayee(
       console.error("[stripe-booking] email de confirmation:", e),
     );
   }
+  // Lot 3 — notification praticienne, y compris pour les RDV repêchés par le
+  // rattrapage périodique (créés sans aucun passage par l'interface).
+  void sendNewBookingNotificationEmail(user, appt, cat, { depositCents }).catch((e) =>
+    console.error("[stripe-booking] notification praticienne:", e),
+  );
   return { statut: "cree", appointmentId: appt.id };
 }
 

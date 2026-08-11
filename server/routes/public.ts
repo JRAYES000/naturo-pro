@@ -31,7 +31,7 @@ import { createCheckoutSession, retrieveCheckoutSession } from "../stripe";
 import { renderUserTemplate } from "../email-templates/render-user";
 import type { TemplateVars } from "../email-templates/render";
 import { syncApptToGoogle } from "./helpers/google-sync";
-import { getEmailConfigForUser, sendBookingConfirmationEmail } from "./helpers/email-sending";
+import { getEmailConfigOrSystem, sendBookingConfirmationEmail, sendNewBookingNotificationEmail } from "./helpers/email-sending";
 import { creerRdvDepuisSessionPayee } from "./helpers/stripe-booking";
 import { escapeHtmlMin, htmlFeedbackPage } from "./helpers/html";
 import { zonedCivilDays, zonedDateKey, zonedTimeToUtc, zonedTimeKey } from "../timezone";
@@ -291,6 +291,13 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       );
     }
 
+    // Lot 3 — la praticienne est prévenue de toute réservation en ligne : elle ne
+    // l'était qu'en cas d'annulation ou de report, et sans synchro Google une
+    // réservation pouvait passer totalement inaperçue.
+    void sendNewBookingNotificationEmail(u, appt, cat).catch((e) =>
+      console.error("[booking-notif]", e),
+    );
+
     res.json({ appointment: appt, category: cat });
   });
 
@@ -482,7 +489,9 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     //   2) au PRATICIEN : notification "tel client a annulé" (hardcodé)
     try {
       const user = await storage.getUserById(appt.userId);
-      const cfg = user ? getEmailConfigForUser(user) : null;
+      // Clé du praticien si configurée, sinon clé système — sans le fallback, une
+      // praticienne sans config Resend n'était jamais prévenue des annulations.
+      const cfg = user ? getEmailConfigOrSystem(user) : null;
       if (user && cfg) {
         let clientName = `${appt.clientFirstName || ""} ${appt.clientLastName || ""}`.trim();
         let clientEmailAddr = appt.clientEmail || "";
@@ -661,7 +670,7 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
         );
       }
       // Notification à la praticienne : son planning vient de changer sans elle.
-      const cfg = getEmailConfigForUser(u);
+      const cfg = getEmailConfigOrSystem(u);
       if (cfg && u.email) {
         const nom = `${newAppt.clientFirstName || ""} ${newAppt.clientLastName || ""}`.trim() || "(cliente inconnue)";
         await sendEmail(
@@ -670,7 +679,7 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
           `<p>Bonjour,</p><p><strong>${escapeHtmlMin(nom)}</strong> a reporté son rendez-vous.</p>` +
             `<p>Ancien créneau : ${escapeHtmlMin(formatRdvDate(appt.startAt))}<br>` +
             `Nouveau créneau : <strong>${escapeHtmlMin(formatRdvDate(newAppt.startAt))}</strong></p>` +
-            `<p><a href="${APP_URL}/#/agenda">Voir mon agenda</a></p>`,
+            `<p><a href="${APP_URL}/#/app/agenda">Voir mon agenda</a></p>`,
         );
       }
     } catch (e: any) {

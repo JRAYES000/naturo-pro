@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- PWA installable (Lot 3) : manifest + icônes PNG générées depuis favicon.svg
+         (scratchpad gen-icons.py). Pas de service worker : pas de promesse offline,
+         pas de cache à invalider — l'installation sur l'écran d'accueil suffit. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#186749" />
     <title>Naturo Pro — Le logiciel des naturopathes</title>
     <meta name="description" content="Le logiciel tout-en-un pour naturopathes : agenda, dossiers clients, page publique de réservation, et gestion en ligne." />
     <!-- og:image (Action 12, 07/08/2026) : og-image.png, 1200×630, généré aux couleurs

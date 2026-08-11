@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Mail, Phone, ArrowRight, Users } from "lucide-react";
+import { Plus, Search, Mail, Phone, ArrowRight, Users, Upload, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -18,10 +18,34 @@ import type { Client } from "@shared/schema";
 export default function Clients() {
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
   const { data: list, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients", { search }],
     queryFn: async () => (await apiRequest("GET", `/api/clients?search=${encodeURIComponent(search)}`)).json(),
   });
+
+  // Lot 3 — import CSV de coordonnées (prénom, nom, email, téléphone).
+  const importMut = useMutation({
+    mutationFn: async (csv: string) => (await apiRequest("POST", "/api/clients/import", { csv })).json(),
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      const details = [
+        `${r.crees} fiche(s) créée(s)`,
+        r.doublons ? `${r.doublons} doublon(s) ignoré(s)` : null,
+        r.totalErreurs ? `${r.totalErreurs} ligne(s) en erreur` : null,
+        r.totalAvertissements ? `${r.totalAvertissements} email(s) invalide(s) ignoré(s)` : null,
+      ].filter(Boolean).join(" · ");
+      toast({ title: "Import terminé", description: details });
+    },
+    onError: (e: any) => toast({ title: "Import impossible", description: e?.message || "Vérifie le fichier CSV.", variant: "destructive" }),
+  });
+
+  async function onImportFile(file: File | undefined) {
+    if (!file) return;
+    importMut.mutate(await file.text());
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   return (
     <AppLayout>
@@ -31,9 +55,30 @@ export default function Clients() {
           title="Clients"
           subtitle="Vos fiches clients : coordonnées, antécédents et historique de consultations."
           actions={
-            <Button onClick={() => setCreating(true)} className="rounded-lg font-bold" data-testid="button-new-client">
-              <Plus className="h-4 w-4 mr-1" /> Nouveau client
-            </Button>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => onImportFile(e.target.files?.[0])}
+                data-testid="input-import-csv"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileRef.current?.click()}
+                disabled={importMut.isPending}
+                className="rounded-lg font-bold"
+                title="CSV avec colonnes Prénom, Nom, Email, Téléphone (export Excel ou Google Sheets)"
+                data-testid="button-import-clients"
+              >
+                {importMut.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                Importer CSV
+              </Button>
+              <Button onClick={() => setCreating(true)} className="rounded-lg font-bold" data-testid="button-new-client">
+                <Plus className="h-4 w-4 mr-1" /> Nouveau client
+              </Button>
+            </div>
           }
         />
 
