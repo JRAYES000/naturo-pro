@@ -93,6 +93,7 @@ export function buildProgrammePrompt(opts: {
     "Format STRICT : 4 à 6 sections markdown (## Titre de section), chacune avec 3 à 6 puces courtes, concrètes et actionnables.",
     "Sections attendues (adapte selon l'anamnèse) : alimentation, hygiène de vie/sommeil, activité physique, gestion du stress, plantes et compléments (avec prudence), suivi.",
     "Pas d'introduction ni de conclusion hors sections, pas de diagnostic, pas de prescription médicamenteuse.",
+    "Pas de posologie chiffrée pour les plantes et compléments : nomme-les avec leurs précautions, la praticienne fixe elle-même les dosages.",
   ].join("\n");
 }
 
