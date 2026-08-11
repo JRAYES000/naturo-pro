@@ -1,0 +1,23 @@
+# Diagnostic temporaire — à supprimer une fois le problème SSH runners résolu.
+# Teste la connectivité TCP vers le serveur de prod depuis un runner GitHub,
+# et affiche une empreinte SHA256 tronquée de "hote:port" pour vérifier que les
+# secrets correspondent bien à la prod actuelle, sans révéler leurs valeurs.
+name: Debug SSH
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SSH_HOTE: ${{ secrets.SSH_HOTE }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+    steps:
+      - name: Test TCP + empreinte des secrets
+        run: |
+          echo -n "$SSH_HOTE:$SSH_PORT" | sha256sum | cut -c1-12
+          if timeout 15 bash -c "exec 3<>/dev/tcp/$SSH_HOTE/$SSH_PORT"; then
+            echo "TCP-OUVERT"
+          else
+            echo "TCP-INJOIGNABLE"
+          fi
