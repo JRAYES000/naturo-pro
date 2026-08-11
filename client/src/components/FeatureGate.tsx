@@ -75,7 +75,7 @@ export function FeatureGate({ feature, description }: { feature: string; descrip
     <AppLayout>
       <div className="max-w-4xl pt-8">
         <GateCard
-          title={`${feature} fait partie de l'abonnement`}
+          title={`${feature} — abonnement Naturo Pro`}
           description={description || "Cette fonctionnalité est réservée à l'abonnement Naturo Pro : un seul palier, 19 €/mois, sans engagement."}
           source={feature.toLowerCase().replace(/\s+/g, "-").normalize("NFD").replace(/[̀-ͯ]/g, "")}
         />
