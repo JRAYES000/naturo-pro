@@ -11,6 +11,7 @@ import { storage } from "../storage";
 import { isGoogleConfigured } from "../google";
 import { importFromGoogleForUser } from "./helpers/google-sync";
 import { reconcilierPaiementsStripe } from "./helpers/stripe-booking";
+import { purgeInactiveFreeAccounts } from "./helpers/purge";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   getLocalHour, getLocalDayKey, TZ,
@@ -70,6 +71,14 @@ export function startCrons(): void {
       if (n) console.log(`[sessions] ${n} session(s) expirée(s) purgée(s)`);
     } catch (e: any) {
       console.error("[sessions]", e?.message || e);
+    }
+    // Lot 1 (action 11, décision 6) — un compte gratuit sans connexion depuis
+    // 12 mois est supprimé avec ses données (mention affichée à l'inscription).
+    try {
+      const bilan = await purgeInactiveFreeAccounts();
+      if (bilan.purged) console.log(`[purge-inactifs] ${bilan.purged} compte(s) purgé(s) : ${bilan.ids.join(", ")}`);
+    } catch (e: any) {
+      console.error("[purge-inactifs]", e?.message || e);
     }
   };
   setInterval(purger, PURGE_MS);

@@ -27,6 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -144,7 +146,7 @@ function StatusBadge({ status }: { status: ReminderStatus }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
-export default function Reminders() {
+function Reminders() {
   const {
     data: stats,
     isLoading: statsLoading,
@@ -373,4 +375,14 @@ export default function Reminders() {
       </p>
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function RemindersGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les rappels automatiques" description="Les rappels J-1 automatiques par email (réduction des rendez-vous manqués) sont réservés à l'abonnement Naturo Pro." />;
+  }
+  return <Reminders />;
 }

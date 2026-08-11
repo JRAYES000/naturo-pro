@@ -132,6 +132,15 @@ function NavLinks({
             <BookOpen className={`h-4 w-4 shrink-0 ${location.startsWith("/admin/assistant") ? "" : "text-muted-foreground group-hover:text-primary"}`} />
             <span>Naturobot (admin)</span>
           </Link>
+          <Link
+            href="/admin/analytics"
+            onClick={onNavigate}
+            className={navItemClass(location.startsWith("/admin/analytics"))}
+            data-testid="nav-admin-analytics"
+          >
+            <BarChart2 className={`h-4 w-4 shrink-0 ${location.startsWith("/admin/analytics") ? "" : "text-muted-foreground group-hover:text-primary"}`} />
+            <span>Conversion (admin)</span>
+          </Link>
         </div>
       )}
     </nav>

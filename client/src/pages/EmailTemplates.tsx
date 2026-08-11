@@ -39,6 +39,8 @@ import {
   BtnBulletList, BtnNumberedList, BtnLink, BtnClearFormatting,
   BtnUndo, BtnRedo, Separator,
 } from "react-simple-wysiwyg";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,7 +82,7 @@ function isFullDoc(html: string): boolean {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function EmailTemplates() {
+function EmailTemplates() {
   const { toast } = useToast();
   const [activeKind, setActiveKind] = useState<EmailKind>("confirmation");
   const emptyByKind = { confirmation: "", reminder_d1: "", cancellation: "" };
@@ -519,4 +521,14 @@ export default function EmailTemplates() {
       </div>
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function EmailTemplatesGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les templates email" description="La personnalisation des emails envoyés à vos clients est réservée à l'abonnement Naturo Pro." />;
+  }
+  return <EmailTemplates />;
 }

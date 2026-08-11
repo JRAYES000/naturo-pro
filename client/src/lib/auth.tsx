@@ -14,6 +14,8 @@ export type AuthUser = {
   emailVerifiedAt?: number | null;
   onboardingCompletedAt?: number | null;
   daysUntilTrialEnds?: number;
+  /** Lot 1 — calculé par le serveur (publicUser) : abonné ou essai en cours. */
+  hasFullAccess?: boolean;
 };
 
 type AuthCtx = {

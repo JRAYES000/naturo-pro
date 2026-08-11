@@ -25,6 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, NaturalSolution } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -384,7 +386,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
 
 // ── Page principale ───────────────────────────────────────────────────────────
 
-export default function ProgrammesPage() {
+function ProgrammesPage() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const [editing, setEditing] = useState<Program | "new" | null>(null);
@@ -593,4 +595,14 @@ export default function ProgrammesPage() {
       </Dialog>
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function ProgrammesPageGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les programmes d'hygiène de vie" description="La création de programmes personnalisés et leur export PDF sont réservés à l'abonnement Naturo Pro." />;
+  }
+  return <ProgrammesPage />;
 }

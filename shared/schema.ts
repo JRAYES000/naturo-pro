@@ -74,6 +74,11 @@ export const users = sqliteTable("users", {
   // Avis Google — lien de dépôt d'avis + activation de l'envoi automatique
   googleReviewUrl: text("google_review_url"),
   reviewRequestEnabled: integer("review_request_enabled", { mode: "boolean" }).default(false),
+  // Lot 1 (actions 8 et 11) — abonnement Naturo Pro + purge des comptes inactifs.
+  // lastLoginAt alimente la purge à 12 mois des comptes gratuits (décision 6).
+  lastLoginAt: integer("last_login_at"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -458,6 +463,20 @@ export const kbChunks = sqliteTable("kb_chunks", {
   idx_kb_chunks_document_id: index("idx_kb_chunks_document_id").on(t.documentId),
 }));
 
+// Lot 1 (action 9) — analytics de conversion. 5 événements posés AVANT l'ouverture :
+// signup · paid_feature_blocked · subscribe_click · subscription_started ·
+// subscription_canceled. Une ligne par occurrence, métadonnées JSON libres.
+export const analyticsEvents = sqliteTable("analytics_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  event: text("event").notNull(),
+  metadata: text("metadata"), // JSON
+  createdAt: integer("created_at").notNull(),
+}, (t) => ({
+  idx_analytics_user: index("idx_analytics_user").on(t.userId),
+  idx_analytics_event: index("idx_analytics_event").on(t.event),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(appointmentCategories).omit({ id: true });
@@ -484,6 +503,7 @@ export const insertAssistantSettingsSchema = createInsertSchema(assistantSetting
 export const insertKbDocumentSchema = createInsertSchema(kbDocuments).omit({ id: true, createdAt: true });
 export const insertKbChunkSchema = createInsertSchema(kbChunks).omit({ id: true, createdAt: true });
 export const insertContentPostSchema = createInsertSchema(contentPosts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -528,6 +548,8 @@ export type KbChunk = typeof kbChunks.$inferSelect;
 export type InsertKbChunk = z.infer<typeof insertKbChunkSchema>;
 export type ContentPost = typeof contentPosts.$inferSelect;
 export type InsertContentPost = z.infer<typeof insertContentPostSchema>;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

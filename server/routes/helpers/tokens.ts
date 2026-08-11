@@ -7,6 +7,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { hasFullAccess } from "@shared/plan-access";
 
 export function genToken(): string {
   return randomBytes(24).toString("hex");
@@ -42,5 +43,8 @@ export function publicUser(u: any) {
     emailVerified: !!rest.emailVerifiedAt,
     onboardingCompleted: !!rest.onboardingCompletedAt,
     daysUntilTrialEnds,
+    // Lot 1 — le serveur fait foi sur l'accès complet (abonné ou essai en cours) ;
+    // l'interface s'en sert pour afficher les états bloqués (FeatureGate).
+    hasFullAccess: hasFullAccess(rest as { plan: string | null; trialEndsAt: number | null }),
   };
 }

@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Appointment, ConsultationNote } from "@shared/schema";
 import { formatDay, formatTime } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 const FIELDS: Array<[keyof Draft, string, string]> = [
   ["motif", "Motif de consultation", "Pourquoi le client vient aujourd'hui."],
@@ -22,7 +24,7 @@ const FIELDS: Array<[keyof Draft, string, string]> = [
 
 type Draft = Pick<ConsultationNote, "motif" | "anamnese" | "bilan" | "conseilsAlimentaires" | "hygieneDeVie" | "suivi" | "notesLibres">;
 
-export default function ConsultationNotePage() {
+function ConsultationNotePage() {
   const { appointmentId } = useParams();
   const apptId = Number(appointmentId);
   const { data: appt } = useQuery<Appointment>({ queryKey: ["/api/appointments", apptId],
@@ -113,4 +115,14 @@ export default function ConsultationNotePage() {
       </div>
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function ConsultationNotePageGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les notes de consultation" description="Les notes de consultation sont des données de santé : elles font partie de l'abonnement Naturo Pro." />;
+  }
+  return <ConsultationNotePage />;
 }

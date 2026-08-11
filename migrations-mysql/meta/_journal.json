@@ -15,6 +15,13 @@
       "when": 1785268104489,
       "tag": "0001_spicy_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786472908252,
+      "tag": "0002_bent_meltdown",
+      "breakpoints": true
     }
   ]
 }

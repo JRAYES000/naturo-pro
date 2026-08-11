@@ -33,6 +33,7 @@ import {
   renderWelcomeVerifyEmail, renderPasswordResetEmail,
 } from "../email";
 import { slugify, publicUser } from "./helpers/tokens";
+import { recordEvent } from "../analytics";
 import type { RouteContext } from "./_context";
 
 export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
@@ -143,6 +144,10 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     } catch (e: any) {
       console.error("[register] welcome email failed:", e?.message || e);
     }
+
+    // Lot 1 — analytics (action 9) + horodatage d'activité pour la purge (action 11).
+    recordEvent(user.id, "signup");
+    await storage.updateUser(user.id, { lastLoginAt: now } as any);
 
     const token = await createSessionFor(user.id);
     setSessionCookie(res, token);
@@ -298,6 +303,9 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({ message: "Identifiants incorrects" });
     }
+    // Horodatage d'activité — alimente la purge des comptes gratuits inactifs
+    // 12 mois (action 11, décision 6).
+    await storage.updateUser(user.id, { lastLoginAt: Date.now() } as any);
     const token = await createSessionFor(user.id);
     setSessionCookie(res, token);
     res.json({ user: publicUser(user), token });

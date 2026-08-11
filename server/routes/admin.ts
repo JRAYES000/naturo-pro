@@ -30,7 +30,8 @@ export function registerAdminRoutes(app: Express): void {
   // L'admin est défini par la whitelist ADMIN_EMAILS (défaut: jrayes000@gmail.com).
 
   const patchAdminUserSchema = z.object({
-    plan: z.enum(["trial", "active", "suspended"]).optional(),
+    // "free" = socle gratuit à vie (Lot 1, décision 5)
+    plan: z.enum(["trial", "active", "free", "suspended"]).optional(),
     trialEndsAt: z.number().int().nullable().optional(),
     emailVerifiedAt: z.number().int().nullable().optional(),
   }).strict();
@@ -107,5 +108,17 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/api/admin/me", requireAuth, async (req: AuthedRequest, res) => {
     const u = await storage.getUserById(req.userId!);
     res.json({ isAdmin: isAdminEmail(u?.email) });
+  });
+
+  // Lot 1 (action 9) — tableau de bord des 5 événements de conversion :
+  // totaux depuis l'origine + sur 30 jours, et les derniers événements reçus.
+  app.get("/api/admin/analytics", requireAuth, requireAdmin, async (_req: AuthedRequest, res) => {
+    const THIRTY_D = 30 * 24 * 60 * 60 * 1000;
+    const [total, last30d, recent] = await Promise.all([
+      storage.countAnalyticsByEvent(),
+      storage.countAnalyticsByEvent(Date.now() - THIRTY_D),
+      storage.listRecentAnalyticsEvents(50),
+    ]);
+    res.json({ total, last30d, recent });
   });
 }

@@ -28,6 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Package } from "@shared/schema";
 import type { Client } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // ── Zod form schema ──────────────────────────────────────────────────────────
 
@@ -62,7 +64,7 @@ function progressColor(used: number, total: number): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Packages() {
+function Packages() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const [editing, setEditing] = useState<Package | "new" | null>(null);
@@ -467,4 +469,14 @@ function PackageDialog({ pkg, clients, onClose, onSave, isPending }: PackageDial
       </DialogContent>
     </Dialog>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function PackagesGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les forfaits" description="La vente de forfaits de séances est réservée à l'abonnement Naturo Pro." />;
+  }
+  return <Packages />;
 }

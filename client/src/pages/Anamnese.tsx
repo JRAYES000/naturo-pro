@@ -35,6 +35,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AnamnesisTemplate, AnamnesisResponse, Client } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // ─── Types locaux ─────────────────────────────────────────────────────────────
 
@@ -106,7 +108,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
-export default function AnamnesePage() {
+function AnamnesePage() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const [editingTpl, setEditingTpl] = useState<AnamnesisTemplate | "new" | null>(null);
@@ -775,4 +777,14 @@ function ResponseViewDialog({ open, response, templates, onClose }: {
       </DialogContent>
     </Dialog>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function AnamnesePageGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Les anamnèses" description="Les questionnaires d'anamnèse et leurs réponses sont des données de santé : elles font partie de l'abonnement Naturo Pro." />;
+  }
+  return <AnamnesePage />;
 }

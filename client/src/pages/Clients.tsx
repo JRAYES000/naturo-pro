@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
 import type { Client } from "@shared/schema";
 
 export default function Clients() {
@@ -96,6 +97,11 @@ export default function Clients() {
 
 function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  // Lot 1 (décision 5) — la fiche client gratuite se limite aux coordonnées :
+  // le champ « Date de naissance » (donnée étendue, ignorée par le serveur en
+  // gratuit) est masqué au lieu d'être silencieusement perdu à l'enregistrement.
+  const fullAccess = !!user?.hasFullAccess;
   const [data, setData] = useState({ firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "" });
   const createMut = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/clients", data),
@@ -118,7 +124,9 @@ function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void
           </div>
           <div><Label>Email</Label><Input type="email" value={data.email} onChange={e => setData({ ...data, email: e.target.value })} data-testid="input-email" /></div>
           <div><Label>Téléphone</Label><Input value={data.phone} onChange={e => setData({ ...data, phone: e.target.value })} data-testid="input-phone" /></div>
-          <div><Label>Date de naissance</Label><Input type="date" value={data.dateOfBirth} onChange={e => setData({ ...data, dateOfBirth: e.target.value })} data-testid="input-dob" /></div>
+          {fullAccess && (
+            <div><Label>Date de naissance</Label><Input type="date" value={data.dateOfBirth} onChange={e => setData({ ...data, dateOfBirth: e.target.value })} data-testid="input-dob" /></div>
+          )}
           <Button
             onClick={() => createMut.mutate()}
             disabled={createMut.isPending || !data.firstName || !data.lastName}

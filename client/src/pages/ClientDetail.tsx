@@ -16,6 +16,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useAuth } from "@/lib/auth";
+import { FeatureGateInline } from "@/components/FeatureGate";
 import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
 
@@ -140,6 +142,8 @@ export default function ClientDetail() {
   const { id } = useParams();
   const cid = Number(id);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const fullAccess = !!user?.hasFullAccess;
   const confirm = useConfirm();
   const { data: client, isLoading } = useQuery<Client>({ queryKey: ["/api/clients", cid] });
   const { data: appts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/clients", cid, "appointments"] });
@@ -167,8 +171,23 @@ export default function ClientDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (client) setDraft(client); }, [client]);
 
+  // Lot 1 — le PATCH n'envoie QUE les champs réellement éditables du formulaire
+  // (le spread de l'entité complète renvoyait aussi id/userId/createdAt, rejetés
+  // par le schéma .strict() côté serveur), et les champs santé uniquement en
+  // accès complet — en gratuit le serveur les ignorerait silencieusement.
   const saveMut = useMutation({
-    mutationFn: async () => apiRequest("PATCH", `/api/clients/${cid}`, draft),
+    mutationFn: async () => {
+      const payload: Partial<Client> = {
+        firstName: draft.firstName, lastName: draft.lastName,
+        email: draft.email, phone: draft.phone,
+        ...(fullAccess ? {
+          dateOfBirth: draft.dateOfBirth, address: draft.address,
+          allergies: draft.allergies, antecedents: draft.antecedents,
+          lifestyleNotes: draft.lifestyleNotes, penseBete: draft.penseBete,
+        } : {}),
+      };
+      return apiRequest("PATCH", `/api/clients/${cid}`, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", cid] });
       toast({ title: "Fiche enregistrée", variant: "success" });
@@ -348,13 +367,30 @@ export default function ClientDetail() {
                 <div><Label>Nom</Label><Input value={draft.lastName || ""} onChange={e => setDraft({ ...draft, lastName: e.target.value })} data-testid="input-lastName" /></div>
                 <div><Label>Email</Label><Input type="email" value={draft.email || ""} onChange={e => setDraft({ ...draft, email: e.target.value })} data-testid="input-email" /></div>
                 <div><Label>Téléphone</Label><Input value={draft.phone || ""} onChange={e => setDraft({ ...draft, phone: e.target.value })} data-testid="input-phone" /></div>
-                <div><Label>Date de naissance</Label><Input type="date" value={draft.dateOfBirth || ""} onChange={e => setDraft({ ...draft, dateOfBirth: e.target.value })} data-testid="input-dob" /></div>
-                <div><Label>Adresse</Label><Input value={draft.address || ""} onChange={e => setDraft({ ...draft, address: e.target.value })} data-testid="input-address" /></div>
+                {fullAccess && (
+                  <>
+                    <div><Label>Date de naissance</Label><Input type="date" value={draft.dateOfBirth || ""} onChange={e => setDraft({ ...draft, dateOfBirth: e.target.value })} data-testid="input-dob" /></div>
+                    <div><Label>Adresse</Label><Input value={draft.address || ""} onChange={e => setDraft({ ...draft, address: e.target.value })} data-testid="input-address" /></div>
+                  </>
+                )}
               </div>
-              <div><Label>Allergies</Label><Textarea rows={2} value={draft.allergies || ""} onChange={e => setDraft({ ...draft, allergies: e.target.value })} data-testid="input-allergies" /></div>
-              <div><Label>Antécédents</Label><Textarea rows={3} value={draft.antecedents || ""} onChange={e => setDraft({ ...draft, antecedents: e.target.value })} data-testid="input-antecedents" /></div>
-              <div><Label>Hygiène de vie</Label><Textarea rows={3} value={draft.lifestyleNotes || ""} onChange={e => setDraft({ ...draft, lifestyleNotes: e.target.value })} data-testid="input-lifestyle" /></div>
-              <div><Label>Pense-bête (privé)</Label><Textarea rows={2} value={draft.penseBete || ""} onChange={e => setDraft({ ...draft, penseBete: e.target.value })} data-testid="input-pensebete" /></div>
+              {fullAccess ? (
+                <>
+                  <div><Label>Allergies</Label><Textarea rows={2} value={draft.allergies || ""} onChange={e => setDraft({ ...draft, allergies: e.target.value })} data-testid="input-allergies" /></div>
+                  <div><Label>Antécédents</Label><Textarea rows={3} value={draft.antecedents || ""} onChange={e => setDraft({ ...draft, antecedents: e.target.value })} data-testid="input-antecedents" /></div>
+                  <div><Label>Hygiène de vie</Label><Textarea rows={3} value={draft.lifestyleNotes || ""} onChange={e => setDraft({ ...draft, lifestyleNotes: e.target.value })} data-testid="input-lifestyle" /></div>
+                  <div><Label>Pense-bête (privé)</Label><Textarea rows={2} value={draft.penseBete || ""} onChange={e => setDraft({ ...draft, penseBete: e.target.value })} data-testid="input-pensebete" /></div>
+                </>
+              ) : (
+                // Lot 1 (décisions 5-6) — état bloqué explicite à la place des champs
+                // santé (naissance, adresse, allergies, antécédents…), plutôt que des
+                // champs vides qui perdraient la saisie à l'enregistrement.
+                <FeatureGateInline
+                  title="Dossier de santé — abonnement Naturo Pro"
+                  description="Date de naissance, adresse, allergies, antécédents, hygiène de vie et pense-bête font partie de l'abonnement. Vos coordonnées client restent gratuites."
+                  source="fiche-client-sante"
+                />
+              )}
               <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="rounded-lg font-bold" data-testid="button-save-client">
                 <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
               </Button>

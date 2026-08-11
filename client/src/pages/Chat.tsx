@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus } from "lucide-react";
+import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
@@ -23,11 +23,12 @@ import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/lib/auth";
 import { NewDiscussionDialog } from "@/components/assistant/NewDiscussionDialog";
 import { DiscussionSidebar } from "@/components/assistant/DiscussionSidebar";
 import { NaturobotTabs } from "@/components/assistant/NaturobotTabs";
 import type { AiChatMessage, AiDiscussion, Client } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // Portrait de Naturobot — fichier statique servi à la racine (client/public/naturobot.jpg).
 // Si absent, l'avatar retombe proprement sur une icône.
@@ -122,7 +123,7 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName }: {
   );
 }
 
-export default function Chat() {
+function Chat() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { user } = useAuth();
@@ -188,6 +189,17 @@ export default function Chat() {
       setPending(null); setStreamText(""); setSources([]);
       toast({ title: "Erreur", description: e?.message || "L'assistant n'a pas pu répondre.", variant: "destructive" });
     },
+  });
+
+  // Lot 1 (action 10) — pont Naturobot → Programme.
+  const createProgrammeMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/discussions/${selectedId}/create-programme`)).json(),
+    onSuccess: async (prog: { id: number; title: string }) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
+      toast({ title: "Programme créé 🌿", description: `« ${prog.title} » est prêt dans vos Programmes (brouillon, modifiable, exportable en PDF).`, variant: "success" });
+      navigate("/app/programmes");
+    },
+    onError: (e: any) => toast({ title: "Impossible de créer le programme", description: e?.message, variant: "destructive" }),
   });
 
   const renameMut = useMutation({
@@ -298,6 +310,19 @@ export default function Chat() {
                   </p>
                 )}
               </div>
+              {/* Lot 1 (action 10) — pont Naturobot → Programme : la dernière réponse
+                  de l'assistant devient un Programme brouillon, exportable en PDF. */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-lg font-bold shrink-0"
+                onClick={() => createProgrammeMut.mutate()}
+                disabled={createProgrammeMut.isPending || messages.every((m) => m.role !== "assistant")}
+                data-testid="button-create-programme"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                {createProgrammeMut.isPending ? "Création…" : "Créer un programme"}
+              </Button>
               <button onClick={del} className="text-muted-foreground hover:text-destructive" aria-label="Supprimer" data-testid="button-delete-discussion"><Trash2 className="h-4 w-4" /></button>
             </div>
           )}
@@ -366,4 +391,14 @@ export default function Chat() {
       <NewDiscussionDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={(d) => navigate(`/app/chat/${d.id}`)} />
     </AppLayout>
   );
+}
+
+// Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
+// explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.
+export default function ChatGated() {
+  const { user } = useAuth();
+  if (user && !user.hasFullAccess) {
+    return <FeatureGate feature="Naturobot" description="L'assistant IA Naturobot est réservé à l'abonnement Naturo Pro." />;
+  }
+  return <Chat />;
 }

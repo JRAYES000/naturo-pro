@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useSubscribe } from "@/components/FeatureGate";
 
 export function TrialBanner() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [resending, setResending] = useState(false);
+  const { subscribe, pending } = useSubscribe("banniere");
 
   if (!user) return null;
 
@@ -18,26 +20,27 @@ export function TrialBanner() {
   const emailVerified = !!user.emailVerifiedAt;
 
   let trialBanner: React.ReactNode = null;
-  if (isTrial && days !== null) {
-    if (days === 0) {
-      trialBanner = (
-        <div
-          className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
-          style={{ background: "rgba(220, 38, 38, 0.10)", border: "1px solid rgba(220, 38, 38, 0.35)" }}
-          data-testid="trial-banner-expired"
-        >
-          <AlertTriangle className="h-5 w-5 flex-shrink-0 text-destructive" />
-          <p className="text-sm font-semibold flex-1 min-w-0" style={{ color: "#7f1d1d" }}>
-            Votre essai est terminé · Activez votre abonnement pour continuer.
-          </p>
-          <Link href="/app/settings">
-            <Button size="sm" className="rounded-lg font-bold" data-testid="button-activate-trial">
-              Activer maintenant
-            </Button>
-          </Link>
-        </div>
-      );
-    } else if (days <= 3) {
+  // Lot 1 — essai expiré ou plan gratuit : le compte reste utilisable (socle
+  // gratuit, décision 5) ; la bannière l'explique et mène à l'abonnement 19 €.
+  if ((isTrial && days === 0) || user.plan === "free") {
+    trialBanner = (
+      <div
+        className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
+        style={{ background: "rgba(234, 88, 12, 0.10)", border: "1px solid rgba(234, 88, 12, 0.35)" }}
+        data-testid="trial-banner-expired"
+      >
+        <AlertTriangle className="h-5 w-5 flex-shrink-0" style={{ color: "#c2410c" }} />
+        <p className="text-sm font-semibold flex-1 min-w-0" style={{ color: "#7c2d12" }}>
+          {isTrial ? "Votre essai est terminé · " : ""}Vous êtes sur le socle gratuit (agenda, réservation, 1 prestation).
+          Passez à Naturo Pro pour retrouver toutes les fonctionnalités.
+        </p>
+        <Button size="sm" onClick={subscribe} disabled={pending} className="rounded-lg font-bold" data-testid="button-activate-trial">
+          {pending ? "Redirection…" : "Passer à Naturo Pro — 19 €/mois"}
+        </Button>
+      </div>
+    );
+  } else if (isTrial && days !== null) {
+    if (days <= 3) {
       trialBanner = (
         <div
           className="rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 mb-4"
