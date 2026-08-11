@@ -10,6 +10,9 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { genToken } from "./helpers/tokens";
+import { SYSTEM_PROMPT, completeText, AI_DAILY_LIMIT } from "../mistral";
+import { programmeFromMarkdown } from "./helpers/programme-bridge";
+import { recordEvent } from "../analytics";
 
 // ── Schémas de validation ─────────────────────────────────────────────────────
 
@@ -59,6 +62,38 @@ export function findMissingRequiredAnswers(
   return questions
     .filter(q => q.required && isAnswerEmpty(answers[q.id]))
     .map(q => q.id);
+}
+
+/**
+ * Prompt de génération de programme depuis une anamnèse soumise (Lot 2, action 15).
+ * Fonction PURE (testée) : questions + réponses → consigne markdown structurée.
+ * Le cadre de sécurité (pas de diagnostic, pas de prescription) vient du
+ * SYSTEM_PROMPT commun, envoyé en message system à côté de ce prompt.
+ */
+export function buildProgrammePrompt(opts: {
+  templateName: string;
+  questions: Array<{ id: string; label: string }>;
+  answers: Record<string, string | string[] | number>;
+  clientFirstName?: string | null;
+}): string {
+  const labelById = new Map(opts.questions.map((q) => [q.id, q.label]));
+  const lines: string[] = [];
+  for (const [id, ans] of Object.entries(opts.answers)) {
+    const val = Array.isArray(ans) ? ans.join(", ") : String(ans);
+    if (!val.trim()) continue;
+    lines.push(`- ${labelById.get(id) || id} : ${val}`);
+  }
+  const pour = opts.clientFirstName ? ` pour ${opts.clientFirstName}` : "";
+  return [
+    `Voici les réponses au questionnaire d'anamnèse « ${opts.templateName} »${pour} :`,
+    "",
+    ...lines,
+    "",
+    "À partir de cette anamnèse, rédige un PROGRAMME D'HYGIÈNE DE VIE personnalisé, directement exploitable par la praticienne.",
+    "Format STRICT : 4 à 6 sections markdown (## Titre de section), chacune avec 3 à 6 puces courtes, concrètes et actionnables.",
+    "Sections attendues (adapte selon l'anamnèse) : alimentation, hygiène de vie/sommeil, activité physique, gestion du stress, plantes et compléments (avec prudence), suivi.",
+    "Pas d'introduction ni de conclusion hors sections, pas de diagnostic, pas de prescription médicamenteuse.",
+  ].join("\n");
 }
 
 // ── Enregistrement des routes ─────────────────────────────────────────────────
@@ -141,6 +176,68 @@ export function registerAnamneseRoutes(app: Express): void {
     const clientId = req.query.clientId ? Number(req.query.clientId) : undefined;
     const list = await storage.listAnamnesisResponses(req.userId!, clientId);
     res.json(list);
+  });
+
+  // ── Génération IA d'un programme depuis une anamnèse soumise (action 15) ──
+  // Le programme est créé en BROUILLON : la praticienne relit et ajuste avant
+  // tout envoi (même logique de validation humaine que le pont Naturobot).
+  app.post("/api/anamnesis-responses/:id/generate-programme", requireAuth, async (req: AuthedRequest, res) => {
+    try {
+      const resp = await storage.getAnamnesisResponse(Number(req.params.id));
+      if (!resp || resp.userId !== req.userId) return res.status(404).json({ message: "Réponse introuvable" });
+      if (!resp.submittedAt || !resp.answers) {
+        return res.status(400).json({ message: "Ce questionnaire n'a pas encore été rempli par la cliente." });
+      }
+
+      const day = new Date().toISOString().slice(0, 10);
+      if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
+        return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} générations/jour). Réessaie demain.` });
+      }
+
+      const tpl = resp.templateId ? await storage.getAnamnesisTemplate(resp.templateId) : null;
+      let questions: Array<{ id: string; label: string }> = [];
+      try { questions = JSON.parse(tpl?.questions || "[]"); } catch { questions = []; }
+      let answers: Record<string, string | string[] | number> = {};
+      try { answers = JSON.parse(resp.answers); } catch { answers = {}; }
+
+      let clientFirstName: string | null = null;
+      let clientName: string | null = null;
+      if (resp.clientId) {
+        const c = await storage.getClient(resp.clientId);
+        if (c && c.userId === req.userId) {
+          clientFirstName = c.firstName;
+          clientName = `${c.firstName} ${c.lastName}`.trim();
+        }
+      }
+
+      const prompt = buildProgrammePrompt({
+        templateName: tpl?.name || "Anamnèse",
+        questions,
+        answers,
+        clientFirstName,
+      });
+      const markdown = await completeText([
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ]);
+      const sections = programmeFromMarkdown(markdown);
+      if (!sections.length) return res.status(502).json({ message: "La génération n'a rien produit d'exploitable, réessaie." });
+
+      const prog = await storage.createProgram({
+        userId: req.userId!,
+        clientId: resp.clientId ?? null,
+        appointmentId: resp.appointmentId ?? null,
+        title: `Programme proposé — ${clientName || tpl?.name || "anamnèse"}`,
+        content: JSON.stringify(sections),
+        status: "draft",
+      });
+      recordEvent(req.userId!, "programme_ia_genere", { anamnesisResponseId: resp.id, programId: prog.id });
+      res.json(prog);
+    } catch (e: any) {
+      if (e?.status === 503) return res.status(503).json({ message: "La génération IA n'est pas disponible (clé API absente)." });
+      console.error("[anamnese generate-programme]", e?.message || e);
+      res.status(502).json({ message: "La génération a échoué, réessaie dans un instant." });
+    }
   });
 
   // ── Endpoints publics par token (sans auth) ───────────────────────────────

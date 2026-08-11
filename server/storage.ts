@@ -380,6 +380,7 @@ export interface IStorage {
   deleteAnamnesisTemplate(id: number): Promise<void>;
   createAnamnesisResponse(data: Omit<InsertAnamnesisResponse, "createdAt"> & { userId: number; token: string }): Promise<AnamnesisResponse>;
   getAnamnesisResponseByToken(token: string): Promise<AnamnesisResponse | undefined>;
+  getAnamnesisResponse(id: number): Promise<AnamnesisResponse | undefined>;
   updateAnamnesisResponse(id: number, patch: Partial<AnamnesisResponse>): Promise<AnamnesisResponse | undefined>;
   listAnamnesisResponses(userId: number, clientId?: number): Promise<AnamnesisResponse[]>;
 
@@ -1199,6 +1200,10 @@ export class DatabaseStorage implements IStorage {
     return first(
       db.select().from(anamnesisResponses).where(eq(anamnesisResponses.token, token)),
     );
+  }
+
+  async getAnamnesisResponse(id: number): Promise<AnamnesisResponse | undefined> {
+    return first(db.select().from(anamnesisResponses).where(eq(anamnesisResponses.id, id)));
   }
 
   async updateAnamnesisResponse(

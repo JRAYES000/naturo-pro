@@ -44,7 +44,7 @@ import { FeatureGate } from "@/components/FeatureGate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type EmailKind = "confirmation" | "reminder_d1" | "cancellation";
+type EmailKind = "confirmation" | "reminder_d1" | "cancellation" | "relance";
 
 interface EmailTemplate {
   id: number | null;
@@ -67,12 +67,14 @@ const KIND_LABELS: Record<EmailKind, string> = {
   confirmation: "Confirmation",
   reminder_d1: "Rappel J-1",
   cancellation: "Annulation",
+  relance: "Relance",
 };
 
 const KIND_DESCRIPTIONS: Record<EmailKind, string> = {
   confirmation: "Envoyé au client après la prise de rendez-vous.",
   reminder_d1: "Envoyé la veille du rendez-vous pour rappeler et demander confirmation.",
   cancellation: "Envoyé au client pour confirmer l'annulation de son rendez-vous. Vous recevez aussi une notification de votre côté.",
+  relance: "Envoyé automatiquement 30 jours après la dernière consultation d'un client sans nouveau rendez-vous. La séquence s'active en enregistrant ce template (et reste inactive tant qu'il n'est pas enregistré).",
 };
 
 /** Un bodyHtml est « ancien format » s'il contient un document HTML complet. */
@@ -85,15 +87,15 @@ function isFullDoc(html: string): boolean {
 function EmailTemplates() {
   const { toast } = useToast();
   const [activeKind, setActiveKind] = useState<EmailKind>("confirmation");
-  const emptyByKind = { confirmation: "", reminder_d1: "", cancellation: "" };
+  const emptyByKind = { confirmation: "", reminder_d1: "", cancellation: "", relance: "" };
   const [subjectDraft, setSubjectDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
   const [bodyDraft, setBodyDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
   const [initialized, setInitialized] = useState<Record<EmailKind, boolean>>({
-    confirmation: false, reminder_d1: false, cancellation: false,
+    confirmation: false, reminder_d1: false, cancellation: false, relance: false,
   });
   // Mode « Avancé (HTML) » par kind. Forcé à true pour les anciens full-HTML.
   const [advanced, setAdvanced] = useState<Record<EmailKind, boolean>>({
-    confirmation: false, reminder_d1: false, cancellation: false,
+    confirmation: false, reminder_d1: false, cancellation: false, relance: false,
   });
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -295,7 +297,7 @@ function EmailTemplates() {
         {/* Kind selector */}
         <Tabs value={activeKind} onValueChange={handleKindChange} className="mb-6">
           <TabsList className="grid grid-cols-3 w-full max-w-md">
-            {(["confirmation", "reminder_d1", "cancellation"] as EmailKind[]).map((kind) => (
+            {(["confirmation", "reminder_d1", "cancellation", "relance"] as EmailKind[]).map((kind) => (
               <TabsTrigger key={kind} value={kind} data-testid={`tab-${kind}`}>
                 {KIND_LABELS[kind]}
               </TabsTrigger>

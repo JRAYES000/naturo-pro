@@ -36,6 +36,7 @@ import { registerPublicRoutes } from "./public";
 import { registerAuthRoutes } from "./auth";
 import { registerAnamneseRoutes } from "./anamnese";
 import { registerProgrammeRoutes } from "./programmes";
+import { registerCompteRenduRoutes } from "./compte-rendu";
 import { registerDocumentRoutes } from "./documents";
 import { registerStatsRoutes } from "./stats";
 import { registerSolutionRoutes } from "./solutions";
@@ -157,6 +158,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerEmailTemplateRoutes(app);
   registerAnamneseRoutes(app);
   registerProgrammeRoutes(app);
+  registerCompteRenduRoutes(app);
   registerDocumentRoutes(app);
   registerStatsRoutes(app);
   registerSolutionRoutes(app);

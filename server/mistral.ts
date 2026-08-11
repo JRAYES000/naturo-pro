@@ -206,6 +206,55 @@ export async function* streamNaturoAssistant(
   yield* streamCompletion(messages);
 }
 
+/**
+ * Quota IA quotidien par praticienne (action 18, calibré le 11/08/2026).
+ * Coût réel deepseek-v4-flash via OpenRouter : 0,14 $/M tokens entrée, 0,28 $/M sortie.
+ * Message type ≈ 3 000 tokens entrée (system + RAG + historique) + 800 sortie ≈ 0,0006 €.
+ * 100/jour → pire cas 3 000 appels/mois ≈ 1,8 €/praticienne — marge ×2,7 sous le
+ * plafond de 5 €/mois par praticienne payante. Détail : docs/NOTE-MODELE-IA.md.
+ */
+export const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 100);
+
+/**
+ * Complétion non-streamée (réponse d'un bloc) — génération de programme (action 15).
+ * ponytail: un seul segment, pas de reprise auto — un brouillon coupé reste éditable.
+ */
+export async function completeText(
+  messages: Array<{ role: string; content: string }>,
+  opts?: { maxTokens?: number; temperature?: number },
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    const e: any = new Error("OPENROUTER_API_KEY manquante");
+    e.status = 503;
+    throw e;
+  }
+  const res = await fetch(OPENROUTER_CHAT_URL, {
+    method: "POST",
+    headers: openrouterHeaders(apiKey),
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      messages,
+      max_tokens: opts?.maxTokens ?? 3000,
+      temperature: opts?.temperature ?? 0.4,
+    }),
+    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const e: any = new Error(`OpenRouter ${res.status}`);
+    e.status = 502;
+    throw e;
+  }
+  const data: any = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) {
+    const e: any = new Error("Réponse OpenRouter vide");
+    e.status = 502;
+    throw e;
+  }
+  return text;
+}
+
 // Génère un titre court + une thématique (parmi ASSISTANT_THEMES) depuis la 1re question.
 // Appel non-streaming, court. Fallback robuste : titre tronqué + « Autre… ».
 export async function generateDiscussionMeta(firstQuestion: string): Promise<{ title: string; theme: string }> {

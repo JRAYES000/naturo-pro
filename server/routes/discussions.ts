@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
-import { streamNaturoAssistant, generateDiscussionMeta, type ChatTurn } from "../mistral";
+import { streamNaturoAssistant, generateDiscussionMeta, AI_DAILY_LIMIT, type ChatTurn } from "../mistral";
 import { retrieveRelevantChunks } from "../rag";
 import { programmeFromMarkdown } from "./helpers/programme-bridge";
 import type { Client } from "@shared/schema";
@@ -116,7 +116,6 @@ export function registerDiscussionRoutes(app: Express): void {
     if (!p.success) return res.status(400).json({ message: "Données invalides" });
     const userMessage = p.data.message;
 
-    const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 50);
     const day = new Date().toISOString().slice(0, 10);
     if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
       return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} messages/jour). Réessaie demain.` });

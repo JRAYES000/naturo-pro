@@ -12,7 +12,7 @@
  * Les variables {{x.y}} sont interpolées au moment de l'envoi par render.ts.
  */
 
-export type EmailKind = "confirmation" | "reminder_d1" | "cancellation";
+export type EmailKind = "confirmation" | "reminder_d1" | "cancellation" | "relance";
 
 export interface EmailTemplateDefault {
   subject: string;
@@ -150,6 +150,27 @@ const cancellationBody = `
   <a href="mailto:{{practitioner.email}}" style="color:#186749;">{{practitioner.email}}</a></p>
 `;
 
+// ─── Relance post-consultation (Lot 2, action 17) ────────────────────────────
+// Envoyée automatiquement RELANCE_DAYS jours après le dernier RDV d'un client
+// sans nouveau RDV planifié. La séquence ne s'active que si la praticienne a
+// enregistré ce template depuis /app/email-templates (opt-in explicite).
+const relanceSubject = "Comment allez-vous depuis votre dernière consultation ?";
+
+const relanceBody = `
+  <h1>Bonjour {{client.name}},</h1>
+  <p>Un petit mot pour prendre de vos nouvelles depuis notre dernière consultation.</p>
+  <p>Les changements d'hygiène de vie portent leurs fruits dans la durée : un point
+  de suivi permet d'ajuster vos conseils et de consolider vos progrès.</p>
+
+  <div class="btn-row">
+    <a href="{{bookingLink}}" class="btn btn-primary">Reprendre rendez-vous</a>
+  </div>
+
+  <h2>À bientôt,</h2>
+  <p>{{practitioner.name}}<br>
+  <a href="mailto:{{practitioner.email}}" style="color:#186749;">{{practitioner.email}}</a></p>
+`;
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 export const DEFAULT_TEMPLATES: Record<EmailKind, EmailTemplateDefault> = {
   confirmation: {
@@ -163,6 +184,10 @@ export const DEFAULT_TEMPLATES: Record<EmailKind, EmailTemplateDefault> = {
   cancellation: {
     subject: cancellationSubject,
     bodyHtml: cancellationBody,
+  },
+  relance: {
+    subject: relanceSubject,
+    bodyHtml: relanceBody,
   },
 };
 

@@ -10,10 +10,11 @@
  */
 
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus, Pencil, Trash2, ClipboardList, Link2, ChevronDown, ChevronUp,
-  Eye, Check, GripVertical,
+  Eye, Check, GripVertical, Sparkles, Loader2,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
@@ -128,6 +129,20 @@ function AnamnesePage() {
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
     queryFn: () => apiRequest("GET", "/api/clients").then(r => r.json()),
+  });
+
+  // Lot 2 (action 15) — génération IA d'un programme (brouillon) depuis une
+  // anamnèse soumise. La praticienne relit et ajuste avant tout envoi.
+  const [, navigate] = useLocation();
+  const genProgMut = useMutation({
+    mutationFn: (respId: number) =>
+      apiRequest("POST", `/api/anamnesis-responses/${respId}/generate-programme`, {}).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
+      toast({ title: "Programme généré (brouillon)", description: "Relisez-le et ajustez-le avant de l'envoyer." });
+      navigate("/app/programmes");
+    },
+    onError: (e: any) => toast({ title: "Génération impossible", description: e?.message || "Réessaie dans un instant.", variant: "destructive" }),
   });
 
   const delMut = useMutation({
@@ -306,6 +321,20 @@ function AnamnesePage() {
                           data-testid={`button-view-${resp.id}`}
                         >
                           <Eye className="h-4 w-4" />
+                        </button>
+                      )}
+                      {resp.submittedAt && (
+                        <button
+                          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                          onClick={() => genProgMut.mutate(resp.id)}
+                          disabled={genProgMut.isPending}
+                          aria-label="Générer un programme (IA)"
+                          title="Générer un programme (IA)"
+                          data-testid={`button-generate-programme-${resp.id}`}
+                        >
+                          {genProgMut.isPending && genProgMut.variables === resp.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Sparkles className="h-4 w-4" />}
                         </button>
                       )}
                     </div>

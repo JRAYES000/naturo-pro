@@ -5,6 +5,7 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { ASSISTANT_THEMES, THEME_OTHER } from "@shared/assistant-themes";
 import { retrieveRelevantChunks } from "../rag";
 import { streamContentStudio, suggestContentAngles, structureCarouselSlides, buildBackgroundPrompt, type Channel, type ContentFormat } from "../social-content";
+import { AI_DAILY_LIMIT } from "../mistral";
 import { generateBackgroundImage } from "../openrouter-image";
 
 const CHANNELS = ["instagram", "facebook"] as const;
@@ -66,7 +67,6 @@ export function registerContentRoutes(app: Express): void {
     // il est conservé dans le contrat pour l'intention côté client (UX) et la compatibilité future.
     const { channel, format, topic } = p.data;
 
-    const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 50);
     const day = new Date().toISOString().slice(0, 10);
     if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
       return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} générations/jour). Réessaie demain.` });
@@ -114,7 +114,6 @@ export function registerContentRoutes(app: Express): void {
     const p = slidesSchema.safeParse(req.body);
     if (!p.success) return res.status(400).json({ message: "Données invalides" });
 
-    const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 50);
     const day = new Date().toISOString().slice(0, 10);
     if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
       return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} générations/jour). Réessaie demain.` });

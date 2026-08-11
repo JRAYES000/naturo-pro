@@ -1,12 +1,15 @@
 import { useParams } from "wouter";
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Check, Loader2, FileText } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Check, Loader2, FileText, Download, Send } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Appointment, ConsultationNote } from "@shared/schema";
 import { formatDay, formatTime } from "@/lib/format";
@@ -59,6 +62,26 @@ function ConsultationNotePage() {
     }
   }, [existing]);
 
+  const { toast } = useToast();
+  const confirm = useConfirm();
+  // Lot 2 (action 14) — envoi du compte-rendu PDF au client, après validation
+  // explicite : la praticienne prévisualise le PDF puis confirme l'envoi.
+  const sendCompteRendu = useMutation({
+    mutationFn: async () =>
+      (await apiRequest("POST", `/api/notes/${existing!.id}/compte-rendu/envoyer`, {})).json(),
+    onSuccess: () => toast({ title: "Compte-rendu envoyé", description: "Le client l'a reçu par email en pièce jointe." }),
+    onError: (e: any) => toast({ title: "Envoi impossible", description: e?.message || "Réessaie dans un instant.", variant: "destructive" }),
+  });
+
+  async function onSendCompteRendu() {
+    const ok = await confirm({
+      title: "Envoyer le compte-rendu au client ?",
+      description: "Le PDF sera envoyé par email au client lié à cette note. Vérifie d'abord l'aperçu PDF.",
+      confirmLabel: "Envoyer",
+    });
+    if (ok) sendCompteRendu.mutate();
+  }
+
   function onChange<K extends keyof Draft>(k: K, v: string) {
     setDraft(prev => ({ ...prev, [k]: v }));
     setStatus("saving");
@@ -108,9 +131,34 @@ function ConsultationNotePage() {
           ))}
           <div>
             <Label className="font-bold">Notes libres</Label>
-            <p className="text-xs text-muted-foreground mb-1">Ce que vous voulez ajouter d'autre.</p>
+            <p className="text-xs text-muted-foreground mb-1">Ce que vous voulez ajouter d'autre. (Jamais transmis au client.)</p>
             <Textarea rows={5} value={draft.notesLibres || ""} onChange={e => onChange("notesLibres", e.target.value)} className="rounded-[10px]" data-testid="input-notesLibres" />
           </div>
+
+          {existing?.id && (
+            <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+              <Button
+                variant="outline"
+                onClick={() => window.open(`/api/notes/${existing.id}/compte-rendu.pdf`, "_blank")}
+                data-testid="button-compte-rendu-pdf"
+              >
+                <Download className="h-4 w-4 mr-2" /> Compte-rendu PDF
+              </Button>
+              <Button
+                onClick={onSendCompteRendu}
+                disabled={sendCompteRendu.isPending}
+                data-testid="button-envoyer-compte-rendu"
+              >
+                {sendCompteRendu.isPending
+                  ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  : <Send className="h-4 w-4 mr-2" />}
+                Envoyer au client
+              </Button>
+              <p className="text-xs text-muted-foreground w-full">
+                Le compte-rendu reprend les sections ci-dessus (hors notes libres). Prévisualisez le PDF avant l'envoi.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

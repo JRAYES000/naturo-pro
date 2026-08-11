@@ -20,7 +20,7 @@ import { getDefaultTemplate } from "../email-templates/defaults";
 import { renderTemplate } from "../email-templates/render";
 import { APP_TZ } from "../timezone";
 
-const VALID_KINDS = ["confirmation", "reminder_d1", "cancellation"] as const;
+const VALID_KINDS = ["confirmation", "reminder_d1", "cancellation", "relance"] as const;
 type ValidKind = typeof VALID_KINDS[number];
 
 function isValidKind(k: unknown): k is ValidKind {
@@ -58,7 +58,7 @@ export function registerEmailTemplateRoutes(app: Express): void {
   app.get("/api/email-templates/:kind", requireAuth, async (req: AuthedRequest, res) => {
     try {
       const kind = req.params.kind;
-      if (!isValidKind(kind)) return res.status(400).json({ message: "kind invalide (confirmation|reminder_d1|cancellation)" });
+      if (!isValidKind(kind)) return res.status(400).json({ message: "kind invalide (confirmation|reminder_d1|cancellation|relance)" });
       const userId = req.userId!;
       const saved = await storage.getEmailTemplate(userId, kind);
       if (saved) return res.json(saved);
@@ -90,7 +90,7 @@ export function registerEmailTemplateRoutes(app: Express): void {
   app.put("/api/email-templates/:kind", requireAuth, async (req: AuthedRequest, res) => {
     try {
       const kind = req.params.kind;
-      if (!isValidKind(kind)) return res.status(400).json({ message: "kind invalide (confirmation|reminder_d1|cancellation)" });
+      if (!isValidKind(kind)) return res.status(400).json({ message: "kind invalide (confirmation|reminder_d1|cancellation|relance)" });
       const schema = z.object({
         subject: z.string().min(1).max(500),
         bodyHtml: z.string().min(1),
@@ -146,6 +146,7 @@ export function registerEmailTemplateRoutes(app: Express): void {
         "practitioner.name": user.name,
         "practitioner.email": user.email,
         "cancelLink": "https://exemple.fr/annuler/XXXXX",
+        "bookingLink": `${process.env.PUBLIC_URL || "https://app.ecole-naturo.fr"}/p/${user.slug}`,
       };
 
       // Si un appointmentId est fourni, on essaie de charger le vrai RDV
@@ -175,6 +176,7 @@ export function registerEmailTemplateRoutes(app: Express): void {
             "practitioner.name": user.name,
             "practitioner.email": user.email,
             "cancelLink": (appt as any).cancelToken ? `${req.protocol}://${req.get("host")}/api/public/cancel/${(appt as any).cancelToken}` : "https://exemple.fr/annuler/TOKEN",
+            "bookingLink": `${process.env.PUBLIC_URL || "https://app.ecole-naturo.fr"}/p/${user.slug}`,
           };
         }
       }

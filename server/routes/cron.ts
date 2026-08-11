@@ -14,7 +14,7 @@ import { reconcilierPaiementsStripe } from "./helpers/stripe-booking";
 import { purgeInactiveFreeAccounts } from "./helpers/purge";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
-  getLocalHour, getLocalDayKey, TZ,
+  sendFollowupsForUser, getLocalHour, getLocalDayKey, TZ,
 } from "./helpers/reminders";
 
 // État mutable d'idempotence du cron email, PAR PRATICIEN.
@@ -33,6 +33,7 @@ import {
 const lastReminderRunDay = new Map<number, string>();
 const lastRecapRunDay = new Map<number, string>();
 const lastReviewRunDay = new Map<number, string>();
+const lastRelanceRunDay = new Map<number, string>();
 
 export function startCrons(): void {
   const isProd = process.env.NODE_ENV === "production";
@@ -138,6 +139,20 @@ export function startCrons(): void {
               lastRecapRunDay.set(u.id, dayKey);
             } catch (e: any) {
               console.error(`[recap-cron] user=${u.id}:`, e?.message || e);
+            }
+          }
+          // Relance post-consultation J+30 (Lot 2, action 17) — même heure que le
+          // récap, 1×/jour. Opt-in vérifié DANS sendFollowupsForUser (template
+          // « relance » enregistré) — pas de colonne de réglage dédiée.
+          if (hour === recapHour && lastRelanceRunDay.get(u.id) !== dayKey) {
+            try {
+              const r = await sendFollowupsForUser(u);
+              if (r.sent || r.errors) {
+                console.log(`[relance-cron] user=${u.id} sent=${r.sent} skipped=${r.skipped} errors=${r.errors}`);
+              }
+              lastRelanceRunDay.set(u.id, dayKey);
+            } catch (e: any) {
+              console.error(`[relance-cron] user=${u.id}:`, e?.message || e);
             }
           }
           // Avis Google — tourne à la même heure que le récap, 1×/jour

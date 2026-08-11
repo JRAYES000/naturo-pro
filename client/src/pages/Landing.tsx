@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import {
   Calendar, CalendarClock, Globe, Video, Users, ClipboardList, FileText,
   Sprout, BookOpen, Package, Receipt, CreditCard, BellRing, BarChart3,
-  ShieldCheck, ArrowRight, Check, ChevronDown,
+  ShieldCheck, ArrowRight, Check, ChevronDown, Sparkles,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
@@ -236,6 +236,35 @@ export default function Landing() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Studio contenu — argumentaire (Lot 2, action 19) : le seul terrain où
+          Naturo Pro devance les logiciels naturo concurrents, mis en avant seul. */}
+      <section id="studio" className="py-14 lg:py-20 bg-primary/[0.04] scroll-mt-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <SectionHeading
+            eyebrow="Studio contenu"
+            title="Votre communication, sans y passer vos soirées."
+            lead="Unique parmi les logiciels de naturopathie : un studio qui rédige avec vous vos publications Instagram et Facebook, dans votre ton, à partir de votre vraie pratique."
+          />
+          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-9">
+            {[
+              { title: "Des posts dans votre ton", desc: "Le Studio écrit avec votre voix : votre spécialité, votre ville, votre audience et le ton que vous avez choisis." },
+              { title: "Des idées tirées de vos consultations", desc: "Les thèmes qui reviennent dans les questions de vos clientes deviennent des suggestions de publications qui parlent à votre patientèle." },
+              { title: "Carrousels prêts à publier", desc: "Slides visuelles générées avec fond illustré, légende et hashtags, exportées en un clic pour Instagram." },
+              { title: "Votre bibliothèque de contenus", desc: "Brouillons, contenus publiés, réutilisation : tout votre historique de communication au même endroit, relié à votre cabinet." },
+            ].map((f) => (
+              <div key={f.title} className="border-t border-primary/15 pt-5">
+                <Sparkles className="h-5 w-5 text-primary" strokeWidth={2} />
+                <h3 className="font-display text-xl mt-2 text-heading">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mt-2">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground mt-10">
+            Le Studio contenu est inclus dans Naturo Pro, avec l'assistant Naturobot formé à la naturopathie — sans outil d'IA à payer en plus.
+          </p>
         </div>
       </section>
 

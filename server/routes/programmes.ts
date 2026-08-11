@@ -65,12 +65,14 @@ function formatDateLocalFR(ms: number): string {
 
 type ProgramSection = { section: string; items: string[] };
 
-async function generateProgramPdf(opts: {
+// Exporté : réutilisé par compte-rendu.ts (action 14) avec un bandeau différent.
+export async function generateProgramPdf(opts: {
   title: string;
   content: ProgramSection[];
   createdAt: number;
   clientName?: string | null;
   practitionerName: string;
+  bannerTitle?: string;
 }): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     try {
@@ -86,7 +88,7 @@ async function generateProgramPdf(opts: {
       // ── Bandeau vert ──
       doc.rect(0, 0, doc.page.width, 80).fill(COLOR_GREEN);
       doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(20)
-        .text("Programme d'hygiène de vie", leftX, 22, { width: pageWidth });
+        .text(opts.bannerTitle ?? "Programme d'hygiène de vie", leftX, 22, { width: pageWidth });
       doc.font("Helvetica").fontSize(11)
         .text(opts.practitionerName, leftX, 46, { width: pageWidth });
 

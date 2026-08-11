@@ -17,6 +17,10 @@ export const ANALYTICS_EVENTS = [
   "subscribe_click",
   "subscription_started",
   "subscription_canceled",
+  // Lot 2 — usage des nouvelles fonctionnalités (actions 14, 15, 17)
+  "compte_rendu_envoye",
+  "programme_ia_genere",
+  "relance_envoyee",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

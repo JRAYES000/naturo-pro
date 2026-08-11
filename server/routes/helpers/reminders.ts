@@ -13,6 +13,7 @@ import { renderUserTemplate } from "../../email-templates/render-user";
 import type { TemplateVars } from "../../email-templates/render";
 import { storage } from "../../storage";
 import { getEmailConfigForUser } from "./email-sending";
+import { recordEvent } from "../../analytics";
 import { genToken } from "./tokens";
 import { APP_TZ, zonedHour, zonedDateKey, zonedParts, zonedTimeToUtc, zonedTimeKey } from "../../timezone";
 
@@ -286,6 +287,106 @@ export async function sendReviewRequestsForUser(user: any): Promise<{ sent: numb
     } catch (e: any) {
       out.errors++;
       console.error(`[review-request] exception user=${user.id} appt=${a.id}:`, e);
+    }
+  }
+  return out;
+}
+
+// ─── Séquence de relance post-consultation (Lot 2, action 17) ─────────────────
+//
+// Cadrage chiffré : un client est relancé UNE fois, RELANCE_DAYS jours après son
+// dernier RDV honoré, s'il n'a aucun RDV futur planifié. La fenêtre d'un jour
+// [J+30, J+31) rend l'envoi idempotent d'un jour à l'autre sans marqueur en base ;
+// au lancement de la fonctionnalité, les clients dont le dernier RDV est plus
+// ancien ne sont volontairement JAMAIS relancés (pas de rattrapage massif).
+//
+// Opt-in : la séquence ne tourne que si la praticienne a enregistré le template
+// « relance » depuis /app/email-templates (l'enregistrer = activer ; le défaut
+// seul ne déclenche rien).
+//
+// ponytail: une seule séquence à une seule étape, portée par les briques
+// existantes (templates email + cron). Multi-étapes / multi-séquences le jour
+// où une praticienne en demande une deuxième.
+export const RELANCE_DAYS = 30;
+
+export type RelanceClient = { id: number; firstName: string; lastName: string; email: string | null };
+export type RelanceAppointment = { clientId: number | null; startAt: number; status: string | null };
+
+/**
+ * Clients à relancer aujourd'hui — fonction PURE (testée) :
+ * dernier RDV non annulé tombé dans [now - (RELANCE_DAYS+1)j, now - RELANCE_DAYS j),
+ * aucun RDV futur, et une adresse email présente.
+ */
+export function clientsARelancer(
+  clients: RelanceClient[],
+  appointments: RelanceAppointment[],
+  nowMs: number,
+): Array<{ client: RelanceClient; lastApptMs: number }> {
+  const lastPast = new Map<number, number>();
+  const hasFuture = new Set<number>();
+  for (const a of appointments) {
+    if (!a.clientId) continue;
+    if (a.status === "cancelled" || a.status === "blocked") continue;
+    if (a.startAt > nowMs) {
+      hasFuture.add(a.clientId);
+    } else {
+      const prev = lastPast.get(a.clientId);
+      if (!prev || a.startAt > prev) lastPast.set(a.clientId, a.startAt);
+    }
+  }
+  const windowEnd = nowMs - RELANCE_DAYS * 86400000;        // dernier RDV avant J-30…
+  const windowStart = windowEnd - 86400000;                  // …mais après J-31
+  const out: Array<{ client: RelanceClient; lastApptMs: number }> = [];
+  for (const c of clients) {
+    if (!c.email) continue;
+    const last = lastPast.get(c.id);
+    if (!last || hasFuture.has(c.id)) continue;
+    if (last >= windowStart && last < windowEnd) out.push({ client: c, lastApptMs: last });
+  }
+  return out;
+}
+
+/** Envoie la relance J+30 pour un praticien. Idempotence journalière côté cron. */
+export async function sendFollowupsForUser(user: any): Promise<{ sent: number; skipped: number; errors: number }> {
+  const out = { sent: 0, skipped: 0, errors: 0 };
+  const cfg = getEmailConfigForUser(user);
+  if (!cfg) return out;
+  // Opt-in : template « relance » enregistré en DB par la praticienne.
+  const optIn = await storage.getEmailTemplate(user.id, "relance");
+  if (!optIn) return out;
+
+  const [clients, appointments] = await Promise.all([
+    storage.listClients(user.id),
+    storage.listAllAppointments(user.id),
+  ]);
+  const eligibles = clientsARelancer(
+    clients as RelanceClient[],
+    appointments as RelanceAppointment[],
+    Date.now(),
+  );
+
+  for (const { client } of eligibles) {
+    try {
+      const vars: TemplateVars = {
+        "client.name": `${client.firstName} ${client.lastName}`.trim(),
+        "client.email": client.email || "",
+        "practitioner.name": user.name || "",
+        "practitioner.email": user.email || "",
+        "bookingLink": `${process.env.PUBLIC_URL || APP_URL}/p/${user.slug}`,
+      };
+      const rendered = await renderUserTemplate(user.id, "relance", vars);
+      if (!rendered) { out.skipped++; continue; }
+      const res = await sendEmail(cfg, client.email!, rendered.subject, rendered.html);
+      if (res.ok) {
+        out.sent++;
+        recordEvent(user.id, "relance_envoyee", { clientId: client.id });
+      } else {
+        out.errors++;
+        console.error(`[relance] failed user=${user.id} client=${client.id}: ${res.error}`);
+      }
+    } catch (e: any) {
+      out.errors++;
+      console.error(`[relance] exception user=${user.id} client=${client.id}:`, e?.message || e);
     }
   }
   return out;

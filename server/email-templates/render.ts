@@ -19,6 +19,8 @@ export interface TemplateVars {
   "practitioner.name"?: string;
   "practitioner.email"?: string;
   "cancelLink"?: string;
+  // Lot 2 (action 17) — lien de prise de RDV de la page publique (template relance)
+  "bookingLink"?: string;
 }
 
 /** Échappe les caractères spéciaux HTML pour éviter les injections XSS. */
