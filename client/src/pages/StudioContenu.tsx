@@ -148,8 +148,8 @@ function StudioContenu() {
 
   return (
     <AppLayout>
-      <PageHeader title="Naturobot" subtitle="Crée des contenus prêts à publier pour attirer des clientes." icon={Sparkles} />
       <NaturobotTabs />
+      <PageHeader title="Naturobot" subtitle="Crée des contenus prêts à publier pour attirer des clientes." icon={Sparkles} />
       <Tabs defaultValue="creer">
         <TabsList className="rounded-[12px]">
           <TabsTrigger value="creer" data-testid="tab-studio-creer">Créer</TabsTrigger>

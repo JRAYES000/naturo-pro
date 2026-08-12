@@ -93,12 +93,12 @@ function SavedRepliesPage() {
 
   return (
     <AppLayout>
+      <NaturobotTabs />
       <PageHeader
         title="Bibliothèque Naturobot"
         subtitle="Vos meilleures réponses IA, archivées pour ne pas reposer deux fois la même question."
         icon={BookMarked}
       />
-      <NaturobotTabs />
       {isLoading ? (
         <Loading variant="list" label="Chargement de la bibliothèque…" />
       ) : replies.length === 0 ? (

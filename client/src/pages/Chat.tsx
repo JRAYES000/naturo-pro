@@ -340,6 +340,7 @@ function Chat() {
 
   return (
     <AppLayout>
+      <NaturobotTabs />
       <PageHeader title="Naturobot" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
 
       {/* Lot 5 (N10) — intro Discussion vs Studio, affichée jusqu'à fermeture */}
@@ -362,8 +363,7 @@ function Chat() {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        <NaturobotTabs />
+      <div className="flex justify-end sm:hidden">
         <Button
           onClick={() => setDialogOpen(true)}
           className="sm:hidden rounded-[12px] shrink-0 mb-4 h-11 w-11"
