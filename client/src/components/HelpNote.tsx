@@ -2,7 +2,8 @@
  * HelpNote — encart d'aide repliable, à destination des praticiennes peu à
  * l'aise avec l'informatique.
  *
- * Affiché en haut d'une page, ouvert par défaut, refermable via le chevron.
+ * Affiché en haut d'une page, fermé par défaut (le contenu réel passe en
+ * premier), dépliable via le chevron.
  * Le contenu (children) utilise du HTML simple : <p>, <strong>, <code>,
  * <ul>/<li>, <ol>/<li>. La mise en forme est appliquée automatiquement par les
  * sélecteurs Tailwind ci-dessous — pas besoin de styler chaque balise.
@@ -18,14 +19,14 @@ import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 interface HelpNoteProps {
   /** Titre affiché dans l'en-tête cliquable. */
   title?: string;
-  /** Ouvert par défaut au chargement de la page. */
+  /** Ouvert au chargement de la page (fermé par défaut). */
   defaultOpen?: boolean;
   children: ReactNode;
 }
 
 export function HelpNote({
   title = "À quoi sert cette page ?",
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: HelpNoteProps) {
   const [open, setOpen] = useState(defaultOpen);

@@ -1,7 +1,8 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { DOMAIN_TONES, toneForRoute } from "@/components/SubNav";
 
 interface PageHeaderProps {
   /** Titre de la page (obligatoire). */
@@ -24,6 +25,10 @@ interface PageHeaderProps {
  * (auparavant réinventé sur chaque page).
  */
 export function PageHeader({ title, subtitle, kicker, icon: Icon, backTo, actions }: PageHeaderProps) {
+  // Teinte de domaine dérivée de la route — colore la pastille d'icône sans
+  // qu'aucune page n'ait à passer de prop.
+  const [location] = useLocation();
+  const tone = DOMAIN_TONES[toneForRoute(location)];
   return (
     <div className="mb-6">
       {backTo && (
@@ -39,7 +44,7 @@ export function PageHeader({ title, subtitle, kicker, icon: Icon, backTo, action
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           {Icon && (
-            <span className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+            <span className={`hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone.chip}`}>
               <Icon className="h-5 w-5" />
             </span>
           )}

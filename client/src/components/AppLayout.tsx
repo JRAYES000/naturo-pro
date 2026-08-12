@@ -11,8 +11,9 @@ import { TrialBanner } from "./TrialBanner";
 import { useAuth, type AuthUser } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { DOMAIN_TONES, type DomainTone } from "@/components/SubNav";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; match?: string[] };
+type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; match?: string[]; tone?: DomainTone };
 
 // Consolidation navigation : 9 entrées plates. Les pages regroupées gardent leur
 // URL et s'atteignent via la sous-nav (SubNav) en tête de page ; `match` liste
@@ -20,15 +21,15 @@ type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean;
 const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   {
     items: [
-      { href: "/app", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
-      { href: "/app/agenda", label: "Agenda", icon: Calendar },
-      { href: "/app/clients", label: "Clients", icon: Users },
-      { href: "/app/invoices", label: "Factures", icon: Receipt },
-      { href: "/app/anamnese", label: "Suivi", icon: ClipboardList, match: ["/app/programmes", "/app/forfaits"] },
-      { href: "/app/chat", label: "Naturobot", icon: Sparkles, match: ["/app/studio-contenu", "/app/naturobot-bibliotheque"] },
-      { href: "/app/solutions", label: "Ressources", icon: Leaf, match: ["/app/cadre-legal"] },
-      { href: "/app/public-page", label: "Ma page publique", icon: Globe, match: ["/app/categories", "/app/availability"] },
-      { href: "/app/settings", label: "Paramètres", icon: Settings, match: ["/app/reminders", "/app/email-templates"] },
+      { href: "/app", label: "Tableau de bord", icon: LayoutDashboard, exact: true, tone: "brand" },
+      { href: "/app/agenda", label: "Agenda", icon: Calendar, tone: "agenda" },
+      { href: "/app/clients", label: "Clients", icon: Users, tone: "clients" },
+      { href: "/app/invoices", label: "Factures", icon: Receipt, tone: "factures" },
+      { href: "/app/anamnese", label: "Suivi", icon: ClipboardList, match: ["/app/programmes", "/app/forfaits"], tone: "suivi" },
+      { href: "/app/chat", label: "Naturobot", icon: Sparkles, match: ["/app/studio-contenu", "/app/naturobot-bibliotheque"], tone: "naturobot" },
+      { href: "/app/solutions", label: "Ressources", icon: Leaf, match: ["/app/cadre-legal"], tone: "ressources" },
+      { href: "/app/public-page", label: "Ma page publique", icon: Globe, match: ["/app/categories", "/app/availability"], tone: "page-publique" },
+      { href: "/app/settings", label: "Paramètres", icon: Settings, match: ["/app/reminders", "/app/email-templates"], tone: "parametres" },
     ],
   },
 ];
@@ -48,7 +49,7 @@ function initials(name?: string) {
 }
 
 const navItemClass = (active: boolean) =>
-  `group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition ${
+  `group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
     active
       ? "bg-primary text-primary-foreground shadow-sm"
       : "text-foreground/80 hover:bg-secondary hover:text-primary"
@@ -86,7 +87,8 @@ function NavLinks({
                 data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${active ? "" : "text-muted-foreground group-hover:text-primary"}`} />
+                {/* Icône teintée par domaine (repère de zone) ; blanche quand l'entrée est active. */}
+                <Icon className={`h-4 w-4 shrink-0 ${active ? "" : DOMAIN_TONES[item.tone ?? "brand"].icon}`} />
                 <span className="truncate">{item.label}</span>
               </Link>
             );

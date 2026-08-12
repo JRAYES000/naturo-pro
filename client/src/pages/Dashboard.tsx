@@ -176,6 +176,7 @@ function Dashboard() {
 
         <OnboardingChecklistCard />
 
+        <h2 className="text-lg font-extrabold mb-3">Activité</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <StatCard label="RDV aujourd'hui" value={todayCount} icon={Calendar} testid="stat-today" />
           <StatCard label="Cette semaine" value={thisWeekCount} icon={Sparkles} testid="stat-week" />
@@ -183,8 +184,8 @@ function Dashboard() {
           <StatCard label="Consultations terminées (30j)" value={completed} icon={Tag} testid="stat-completed" />
         </div>
 
-        <div className="flex items-center gap-3 mb-3 flex-wrap" data-testid="row-periode-stats">
-          <span className="text-sm font-semibold text-muted-foreground">Période :</span>
+        <div className="flex items-center gap-3 mt-6 mb-3 flex-wrap" data-testid="row-periode-stats">
+          <h2 className="text-lg font-extrabold">Finances</h2>
           <Select value={periode} onValueChange={(v) => setPeriode(v as Periode)}>
             <SelectTrigger className="w-44" data-testid="select-periode">
               <SelectValue placeholder="Choisir une période" />
@@ -525,7 +526,7 @@ function StatCard({ label, value, icon: Icon, testid, sub }: any) {
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
         <Icon className="h-4 w-4 text-primary" />
       </div>
-      <p className="text-3xl font-extrabold text-heading">{value}</p>
+      <p className="text-3xl font-extrabold text-heading tabular-nums">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
     </div>
   );

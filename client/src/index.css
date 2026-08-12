@@ -61,6 +61,7 @@
 
 /* LIGHT MODE — Naturo Pro green palette */
 :root {
+  color-scheme: light;
   --button-outline: rgba(0, 0, 0, 0.08);
   --badge-outline: rgba(0, 0, 0, 0.05);
   --opaque-button-border-intensity: -8;
@@ -134,6 +135,7 @@
 }
 
 .dark {
+  color-scheme: dark; /* scrollbars et inputs natifs sombres */
   --button-outline: rgba(255, 255, 255, 0.1);
   --badge-outline: rgba(255, 255, 255, 0.05);
   --opaque-button-border-intensity: 9;
@@ -207,7 +209,7 @@
     @apply font-sans antialiased bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.01em; color: hsl(var(--heading)); }
+  h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.01em; color: hsl(var(--heading)); text-wrap: balance; }
   .dark h1, .dark h2, .dark h3, .dark h4 { color: hsl(36 38% 95%); }
 }
 

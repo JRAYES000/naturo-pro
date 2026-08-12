@@ -301,7 +301,7 @@ function EmailTemplates() {
 
         {/* Kind selector */}
         <Tabs value={activeKind} onValueChange={handleKindChange} className="mb-6">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-xl">
             {(["confirmation", "reminder_d1", "cancellation", "relance"] as EmailKind[]).map((kind) => (
               <TabsTrigger key={kind} value={kind} data-testid={`tab-${kind}`}>
                 {KIND_LABELS[kind]}
