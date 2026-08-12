@@ -4,7 +4,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { wrapLines, buildCaptionFile, stripMarkdown } from "./slide-canvas";
+import { wrapLines, buildCaptionFile, stripMarkdown, slideRole } from "./slide-canvas";
 
 // Mesure factice : 10 px par caractère (espaces compris).
 const measure = (s: string) => s.length * 10;
@@ -43,6 +43,15 @@ test("stripMarkdown — retire le gras ** et les autres marqueurs", () => {
   assert.equal(stripMarkdown("Le microbiote, ton **allié** silencieux"), "Le microbiote, ton allié silencieux");
   assert.equal(stripMarkdown("__gras__ et *italique* et `code`"), "gras et italique et code");
   assert.equal(stripMarkdown("## Titre"), "Titre");
+});
+
+test("slideRole — couverture, contenu, CTA selon la position", () => {
+  assert.equal(slideRole(0, 5), "cover");
+  assert.equal(slideRole(1, 5), "content");
+  assert.equal(slideRole(3, 5), "content");
+  assert.equal(slideRole(4, 5), "cta");
+  assert.equal(slideRole(0, 1), "cover");   // slide unique = couverture
+  assert.equal(slideRole(1, 2), "cta");     // 2 slides = couverture + CTA
 });
 
 test("stripMarkdown — n'altère pas un texte sans marqueur ni les underscores internes", () => {
