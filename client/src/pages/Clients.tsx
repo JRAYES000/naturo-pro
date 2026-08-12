@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import type { Client } from "@shared/schema";
@@ -19,11 +20,22 @@ import type { Client } from "@shared/schema";
 export default function Clients() {
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  // Lot 5 (action P21) — tri de la liste (nom / dernier RDV / fiche récente).
+  const [sortBy, setSortBy] = useState<"name" | "lastAppt" | "recent">("name");
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const { data: list, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients", { search }],
     queryFn: async () => (await apiRequest("GET", `/api/clients?search=${encodeURIComponent(search)}`)).json(),
+  });
+  const { data: lastAppts = [] } = useQuery<Array<{ clientId: number; lastApptAt: number }>>({
+    queryKey: ["/api/clients-last-appointment"],
+  });
+  const lastApptByClient = new Map(lastAppts.map((r) => [r.clientId, r.lastApptAt]));
+  const sorted = [...(list || [])].sort((a, b) => {
+    if (sortBy === "lastAppt") return (lastApptByClient.get(b.id) || 0) - (lastApptByClient.get(a.id) || 0);
+    if (sortBy === "recent") return b.createdAt - a.createdAt;
+    return `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "fr");
   });
 
   // Lot 3 — import CSV de coordonnées (prénom, nom, email, téléphone).
@@ -83,8 +95,8 @@ export default function Clients() {
           }
         />
 
-        <div className="card-naturo mb-6">
-          <div className="relative">
+        <div className="card-naturo mb-6 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher par nom, prénom, email…"
@@ -94,6 +106,16 @@ export default function Clients() {
               data-testid="input-search-clients"
             />
           </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+            <SelectTrigger className="w-full sm:w-56" data-testid="select-sort-clients">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Tri : nom (A → Z)</SelectItem>
+              <SelectItem value="lastAppt">Tri : dernier RDV</SelectItem>
+              <SelectItem value="recent">Tri : fiche la plus récente</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
@@ -112,38 +134,51 @@ export default function Clients() {
           />
         ) : (
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(list || []).map(c => (
-              <li key={c.id}>
-                <Link href={`/app/clients/${c.id}`} className="card-naturo block hover:-translate-y-0.5 transition" data-testid={`card-client-${c.id}`}>
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="h-12 w-12 rounded-full bg-secondary text-primary flex items-center justify-center text-lg font-extrabold">
-                      {c.firstName[0]}{c.lastName[0]}
+            {sorted.map(c => {
+              const lastAppt = lastApptByClient.get(c.id);
+              // Actif = au moins un RDV (passé ou à venir) dans une fenêtre de 90 jours.
+              const actif = lastAppt != null && lastAppt > Date.now() - 90 * 86400000;
+              return (
+                <li key={c.id}>
+                  <Link href={`/app/clients/${c.id}`} className="card-naturo block hover:-translate-y-0.5 transition" data-testid={`card-client-${c.id}`}>
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="h-12 w-12 rounded-full bg-secondary text-primary flex items-center justify-center text-lg font-extrabold">
+                        {c.firstName[0]}{c.lastName[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-extrabold truncate">{c.firstName} {c.lastName}</p>
+                        {c.dateOfBirth && <p className="text-xs text-muted-foreground">Né(e) le {new Date(c.dateOfBirth).toLocaleDateString("fr-FR")}</p>}
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-extrabold truncate">{c.firstName} {c.lastName}</p>
-                      {c.dateOfBirth && <p className="text-xs text-muted-foreground">Né(e) le {new Date(c.dateOfBirth).toLocaleDateString("fr-FR")}</p>}
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      {c.email && <p className="flex items-center gap-2 truncate"><Mail className="h-3.5 w-3.5" /> {c.email}</p>}
+                      {c.phone && <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {c.phone}</p>}
+                      {/* Lot 5 (P21) — dernier RDV + statut d'activité sur la carte */}
+                      <p className="flex items-center gap-2 pt-1" data-testid={`text-last-appt-${c.id}`}>
+                        <span className={`inline-block h-2 w-2 rounded-full ${actif ? "bg-primary" : "bg-gray-300"}`} />
+                        {lastAppt
+                          ? `Dernier RDV : ${new Date(lastAppt).toLocaleDateString("fr-FR")}${actif ? "" : " — inactif"}`
+                          : "Aucun RDV"}
+                      </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    {c.email && <p className="flex items-center gap-2 truncate"><Mail className="h-3.5 w-3.5" /> {c.email}</p>}
-                    {c.phone && <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {c.phone}</p>}
-                  </div>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
 
-      <NewClientDialog open={creating} onClose={() => setCreating(false)} />
+      <NewClientDialog open={creating} onClose={() => setCreating(false)} existing={list || []} />
     </AppLayout>
   );
 }
 
-function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function NewClientDialog({ open, onClose, existing }: { open: boolean; onClose: () => void; existing: Client[] }) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const confirm = useConfirm();
   // Lot 1 (décision 5) — la fiche client gratuite se limite aux coordonnées :
   // le champ « Date de naissance » (donnée étendue, ignorée par le serveur en
   // gratuit) est masqué au lieu d'être silencieusement perdu à l'enregistrement.
@@ -196,7 +231,25 @@ function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void
             <div><Label>Date de naissance</Label><Input type="date" value={data.dateOfBirth} onChange={e => setData({ ...data, dateOfBirth: e.target.value })} data-testid="input-dob" /></div>
           )}
           <Button
-            onClick={() => createMut.mutate()}
+            onClick={async () => {
+              // Lot 5 (QC Client) — détection de doublon à la création : même nom
+              // complet ou même email → confirmation avant de créer une 2e fiche.
+              const nom = `${data.firstName} ${data.lastName}`.trim().toLowerCase();
+              const email = data.email.trim().toLowerCase();
+              const doublon = existing.find((c) =>
+                `${c.firstName} ${c.lastName}`.trim().toLowerCase() === nom ||
+                (email && (c.email || "").toLowerCase() === email));
+              if (doublon) {
+                const ok = await confirm({
+                  title: "Cette cliente existe peut-être déjà",
+                  description: `Une fiche « ${doublon.firstName} ${doublon.lastName}${doublon.email ? ` — ${doublon.email}` : ""} » existe déjà. Créer une seconde fiche éclaterait son historique. Créer quand même ?`,
+                  confirmLabel: "Créer quand même",
+                  cancelLabel: "Annuler",
+                });
+                if (!ok) return;
+              }
+              createMut.mutate();
+            }}
             disabled={createMut.isPending || !data.firstName || !data.lastName}
             className="w-full rounded-lg py-5 font-bold" data-testid="button-submit-client"
           >{createMut.isPending ? "Création…" : "Créer"}</Button>

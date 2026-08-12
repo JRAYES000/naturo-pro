@@ -36,7 +36,7 @@ export const FREE_CATEGORY_LIMIT = 1;
  * availability — le socle gratuit de la décision 5.
  */
 export const PAID_PATH_RE =
-  /^\/api\/(invoices|programmes|anamnesis-templates|anamnesis-responses|reminders|email-templates|packages|google|solutions|discussions|content|stats|documents|notes)([/?]|$)|^\/api\/appointments\/\d+\/(note|send-reminder)([/?]|$)|^\/api\/clients\/\d+\/(notes|documents)([/?]|$)/;
+  /^\/api\/(invoices|programmes|anamnesis-templates|anamnesis-responses|reminders|email-templates|packages|google|solutions|discussions|content|stats|documents|notes|saved-replies)([/?]|$)|^\/api\/appointments\/\d+\/(note|send-reminder)([/?]|$)|^\/api\/clients\/\d+\/(notes|documents)([/?]|$)/;
 
 /** Libellé de fonctionnalité déduit du chemin — alimente le corps du 402 et les analytics. */
 export function paidFeatureFromPath(path: string): string {
@@ -53,6 +53,8 @@ export function paidFeatureFromPath(path: string): string {
 export const CLIENT_HEALTH_FIELDS = [
   "dateOfBirth",
   "address",
+  "postalCode",
+  "city",
   "allergies",
   "antecedents",
   "lifestyleNotes",

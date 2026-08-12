@@ -21,7 +21,7 @@ import {
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
-  analyticsEvents,
+  analyticsEvents, aiSavedReplies, blockedDates,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -33,6 +33,7 @@ import type {
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage, AiChatMessage, AiChatUsage,
   AssistantSettings, KbDocument, KbChunk, ContentPost, AnalyticsEvent,
+  AiSavedReply, BlockedDate,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull } from "drizzle-orm";
@@ -241,6 +242,8 @@ export const USER_SCOPED_TABLES = [
   contentPosts,
   stripeProcessedSessions,
   analyticsEvents,
+  aiSavedReplies,
+  blockedDates,
 ] as const;
 
 /**
@@ -686,10 +689,31 @@ export class DatabaseStorage implements IStorage {
     await db.delete(anamnesisResponses).where(eq(anamnesisResponses.clientId, id));
     await db.delete(programs).where(eq(programs.clientId, id));
     await db.delete(packages).where(eq(packages.clientId, id));
+    // Lot 5 (QC Client) — les RDV FUTURS du client supprimé sont annulés, pas
+    // laissés « confirmed » et anonymes sur le calendrier (RDV fantômes).
+    await db.update(appointments)
+      .set({ status: "cancelled" } as any)
+      .where(and(eq(appointments.clientId, id), gte(appointments.startAt, Date.now())));
     await db.update(appointments)
       .set({ clientId: null, clientFirstName: null, clientLastName: null, clientEmail: null, clientPhone: null } as any)
       .where(eq(appointments.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  /**
+   * Lot 5 (action P21) — date du dernier RDV par client (map clientId → startAt max),
+   * pour enrichir la liste des Clients sans rapatrier tout l'historique.
+   */
+  async mapClientLastAppointment(userId: number): Promise<Array<{ clientId: number; lastApptAt: number }>> {
+    const rows = await db
+      .select({
+        clientId: appointments.clientId,
+        lastApptAt: sql<number>`max(${appointments.startAt})`,
+      })
+      .from(appointments)
+      .where(and(eq(appointments.userId, userId), sql`${appointments.clientId} IS NOT NULL`, sql`${appointments.status} != 'cancelled'`))
+      .groupBy(appointments.clientId);
+    return rows.filter((r: { clientId: number | null }) => r.clientId != null) as Array<{ clientId: number; lastApptAt: number }>;
   }
 
   // ── Appointments ───────────────────────────────────────────────────────────
@@ -1519,6 +1543,42 @@ export class DatabaseStorage implements IStorage {
     }
     await dbInsertReturning<AiChatUsage>(aiChatUsage, { userId, day, count: 1 });
     return 1;
+  }
+
+  // ── Lot 5 (NaturoBot N4) — bibliothèque de réponses IA ─────────────────────
+
+  async listAiSavedReplies(userId: number): Promise<AiSavedReply[]> {
+    return db.select().from(aiSavedReplies).where(eq(aiSavedReplies.userId, userId)).orderBy(desc(aiSavedReplies.createdAt));
+  }
+
+  async createAiSavedReply(data: { userId: number; title: string; content: string }): Promise<AiSavedReply> {
+    return dbInsertReturning<AiSavedReply>(aiSavedReplies, { ...data, createdAt: Date.now() });
+  }
+
+  async getAiSavedReply(id: number): Promise<AiSavedReply | undefined> {
+    return first(db.select().from(aiSavedReplies).where(eq(aiSavedReplies.id, id)));
+  }
+
+  async deleteAiSavedReply(id: number): Promise<void> {
+    await db.delete(aiSavedReplies).where(eq(aiSavedReplies.id, id));
+  }
+
+  // ── Lot 5 (QC Disponibilité) — dates bloquées ──────────────────────────────
+
+  async listBlockedDates(userId: number): Promise<BlockedDate[]> {
+    return db.select().from(blockedDates).where(eq(blockedDates.userId, userId)).orderBy(blockedDates.startDate);
+  }
+
+  async createBlockedDate(data: { userId: number; startDate: string; endDate: string; reason?: string | null }): Promise<BlockedDate> {
+    return dbInsertReturning<BlockedDate>(blockedDates, { reason: null, ...data, createdAt: Date.now() });
+  }
+
+  async getBlockedDate(id: number): Promise<BlockedDate | undefined> {
+    return first(db.select().from(blockedDates).where(eq(blockedDates.id, id)));
+  }
+
+  async deleteBlockedDate(id: number): Promise<void> {
+    await db.delete(blockedDates).where(eq(blockedDates.id, id));
   }
 
   /** Lot 4 — total d'appels IA sur un mois ('YYYY-MM') + aujourd'hui, pour l'indicateur d'usage. */

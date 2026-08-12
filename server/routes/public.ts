@@ -80,6 +80,11 @@ export function clampSlotWindow(rawFrom: number, rawTo: number, defaultSpanMs: n
  *
  * `busy` : intervalles [début, fin] déjà occupés (RDV non annulés).
  */
+/** Lot 5 — la date civile "YYYY-MM-DD" tombe-t-elle dans une période bloquée (bornes incluses) ? */
+export function isDateBlocked(dateKey: string, blocked: Array<{ startDate: string; endDate: string }>): boolean {
+  return blocked.some((b) => dateKey >= b.startDate && dateKey <= b.endDate);
+}
+
 export function computeSlotsByDay(opts: {
   avail: Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
   busy: Array<[number, number]>;
@@ -87,12 +92,17 @@ export function computeSlotsByDay(opts: {
   to: number;
   durationMin: number;
   stepMin?: number;
+  // Lot 5 (QC Disponibilité) — congés / fermetures ponctuelles : aucun créneau
+  // proposé sur ces dates, sans toucher au planning hebdomadaire récurrent.
+  blocked?: Array<{ startDate: string; endDate: string }>;
 }): Record<string, string[]> {
-  const { avail, busy, from, to, durationMin, stepMin = 30 } = opts;
+  const { avail, busy, from, to, durationMin, stepMin = 30, blocked = [] } = opts;
   const slotsByDay: Record<string, string[]> = {};
   const minBookHorizon = Date.now() + 2 * 3600 * 1000;
 
   for (const jour of zonedCivilDays(from, to)) {
+    const jourKey = `${jour.year}-${String(jour.month).padStart(2, "0")}-${String(jour.day).padStart(2, "0")}`;
+    if (isDateBlocked(jourKey, blocked)) continue;
     for (const a of avail) {
       if (a.dayOfWeek !== jour.weekday) continue;
       const [sh, sm] = a.startTime.split(":").map(Number);
@@ -130,7 +140,8 @@ async function creneauProposable(
   const busy = existants
     .filter((a) => a.status !== "cancelled" && a.id !== exclureApptId)
     .map((a) => [a.startAt, (a as any).endAt] as [number, number]);
-  const proposes = computeSlotsByDay({ avail, busy, from: startMs, to: startMs, durationMin });
+  const blocked = await storage.listBlockedDates(userId);
+  const proposes = computeSlotsByDay({ avail, busy, from: startMs, to: startMs, durationMin, blocked });
   return (proposes[zonedDateKey(startMs)] || []).includes(new Date(startMs).toISOString());
 }
 
@@ -192,8 +203,9 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     const avail = await storage.listAvailability(u.id);
     const appts = await storage.listAppointments(u.id, from, to);
     const busy = appts.filter(a => a.status !== "cancelled").map(a => [a.startAt, a.endAt] as [number, number]);
+    const blocked = await storage.listBlockedDates(u.id);
 
-    res.json({ slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin }) });
+    res.json({ slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin, blocked }) });
   });
 
   app.post("/api/public/:slug/book", ctx.bookingLimiter, async (req, res) => {
@@ -298,7 +310,9 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       console.error("[booking-notif]", e),
     );
 
-    res.json({ appointment: appt, category: cat });
+    // Lot 5 (QC Page publique) — le frontend ne doit plus affirmer « une
+    // confirmation a été envoyée » sans savoir si un envoi est seulement possible.
+    res.json({ appointment: appt, category: cat, emailConfigured: !!getEmailConfigOrSystem(u) });
   });
 
   // ── Retour de paiement Stripe (acompte) ──────────────────────────────────────
@@ -576,9 +590,10 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     const busy = existing
       .filter(a => a.status !== "cancelled" && a.id !== appt.id)
       .map(a => [a.startAt, (a as any).endAt] as [number, number]);
+    const blocked = await storage.listBlockedDates(u.id);
 
     res.json({
-      slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin }),
+      slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin, blocked }),
       durationMinutes: durationMin,
     });
   });

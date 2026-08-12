@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus, Pencil, Trash2, ClipboardList, Link2, ChevronDown, ChevronUp,
-  Eye, Check, GripVertical, Sparkles, Loader2, Copy, Send,
+  Eye, Check, GripVertical, Sparkles, Loader2, Copy, Send, UserPlus,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
@@ -212,6 +212,31 @@ function AnamnesePage() {
     onError: (e: any) => toast({ title: "Génération impossible", description: e?.message || "Réessaie dans un instant.", variant: "destructive" }),
   });
 
+  // Lot 5 (QC Anamnèse) — activer/désactiver un modèle (l'alternative propre à la
+  // suppression quand des réponses ont déjà été reçues).
+  const toggleActiveMut = useMutation({
+    mutationFn: (tpl: AnamnesisTemplate) =>
+      apiRequest("PATCH", `/api/anamnesis-templates/${tpl.id}`, { isActive: !tpl.isActive }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/anamnesis-templates"] }),
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  // Lot 5 (action P19) — report des réponses vers la fiche client.
+  const applyMut = useMutation({
+    mutationFn: (respId: number) =>
+      apiRequest("POST", `/api/anamnesis-responses/${respId}/apply-to-client`, {}).then(r => r.json()),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      const champs = [
+        data.applied?.allergies ? "Allergies" : null,
+        data.applied?.antecedents ? "Antécédents" : null,
+        data.applied?.lifestyleNotes ? "Hygiène de vie" : null,
+      ].filter(Boolean).join(", ");
+      toast({ title: "Fiche cliente mise à jour", description: `Réponses ajoutées dans : ${champs}.`, variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Report impossible", description: e.message, variant: "destructive" }),
+  });
+
   // Lot 4 (action C6) — duplication d'un modèle en un clic.
   const dupMut = useMutation({
     mutationFn: (tpl: AnamnesisTemplate) =>
@@ -236,9 +261,10 @@ function AnamnesePage() {
         (old ?? []).filter((it: any) => it.id !== id));
       return { prev };
     },
-    onError: (_e, _id, ctx: any) => {
+    onError: (e: any, _id, ctx: any) => {
       if (ctx?.prev) queryClient.setQueryData(["/api/anamnesis-templates"], ctx.prev);
-      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" });
+      // Lot 5 — le serveur explique désormais POURQUOI (réponses reçues → désactiver).
+      toast({ title: "Suppression impossible", description: e?.message || "Réessayez.", variant: "destructive" });
     },
     onSuccess: () => {
       toast({ title: "Modèle supprimé", variant: "success" });
@@ -308,9 +334,15 @@ function AnamnesePage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-extrabold truncate">{tpl.name}</h3>
-                        {tpl.isActive
-                          ? <Badge className="bg-accent/30 text-primary border-0 text-xs">Actif</Badge>
-                          : <Badge variant="secondary" className="text-xs">Inactif</Badge>}
+                        <button
+                          onClick={() => toggleActiveMut.mutate(tpl)}
+                          title={tpl.isActive ? "Cliquer pour désactiver (archive le modèle sans le supprimer)" : "Cliquer pour réactiver"}
+                          data-testid={`button-toggle-active-${tpl.id}`}
+                        >
+                          {tpl.isActive
+                            ? <Badge className="bg-accent/30 text-primary border-0 text-xs cursor-pointer">Actif</Badge>
+                            : <Badge variant="secondary" className="text-xs cursor-pointer">Inactif</Badge>}
+                        </button>
                       </div>
                       {tpl.description && (
                         <p className="text-sm text-muted-foreground mb-2">{tpl.description}</p>
@@ -415,13 +447,36 @@ function AnamnesePage() {
                           <Eye className="h-4 w-4" />
                         </button>
                       )}
+                      {/* Lot 5 (P19) — reporter les réponses vers la fiche cliente liée */}
+                      {resp.submittedAt && resp.clientId && (
+                        <button
+                          className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                          onClick={async () => {
+                            if (!(await confirm({
+                              title: "Reporter vers la fiche cliente ?",
+                              description: "Les réponses pertinentes seront AJOUTÉES (sans rien écraser) dans les champs Allergies, Antécédents et Hygiène de vie de la fiche, avec la mention de leur origine. Vous pourrez les modifier ensuite.",
+                              confirmLabel: "Reporter",
+                              cancelLabel: "Annuler",
+                            }))) return;
+                            applyMut.mutate(resp.id);
+                          }}
+                          disabled={applyMut.isPending}
+                          aria-label="Reporter vers la fiche cliente"
+                          title="Reporter les réponses vers la fiche cliente (Allergies / Antécédents / Hygiène de vie)"
+                          data-testid={`button-apply-client-${resp.id}`}
+                        >
+                          {applyMut.isPending && applyMut.variables === resp.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <UserPlus className="h-4 w-4" />}
+                        </button>
+                      )}
                       {resp.submittedAt && (
                         <button
                           className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                           onClick={() => genProgMut.mutate(resp.id)}
                           disabled={genProgMut.isPending}
                           aria-label="Générer un programme (IA)"
-                          title="Générer un programme (IA)"
+                          title="Générer un programme (IA) · ~1 appel IA"
                           data-testid={`button-generate-programme-${resp.id}`}
                         >
                           {genProgMut.isPending && genProgMut.variables === resp.id

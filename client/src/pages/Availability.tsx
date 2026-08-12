@@ -10,7 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { AvailabilitySlot } from "@shared/schema";
+import type { AvailabilitySlot, BlockedDate } from "@shared/schema";
+import { Label } from "@/components/ui/label";
+import { CalendarOff } from "lucide-react";
 
 const DAYS = [
   { dow: 1, label: "Lundi" },
@@ -337,7 +339,112 @@ export default function Availability() {
             );
           })}
         </div>
+
+        {/* Lot 5 (QC Disponibilité) — dates bloquées : congés et fermetures
+            ponctuelles, sans démonter le planning hebdomadaire. */}
+        <BlockedDatesSection />
       </div>
     </AppLayout>
+  );
+}
+
+// ─── Lot 5 (QC Disponibilité) — section « Dates bloquées » ────────────────────
+function BlockedDatesSection() {
+  const { toast } = useToast();
+  const confirm = useConfirm();
+  const { data: blocked = [] } = useQuery<BlockedDate[]>({ queryKey: ["/api/blocked-dates"] });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reason, setReason] = useState("");
+
+  const addMut = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/blocked-dates", {
+      startDate,
+      endDate: endDate || startDate,
+      reason: reason.trim() || null,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blocked-dates"] });
+      setStartDate(""); setEndDate(""); setReason("");
+      toast({ title: "Période bloquée", description: "Aucun créneau ne sera proposé sur ces dates à la réservation en ligne.", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/blocked-dates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blocked-dates"] });
+      toast({ title: "Blocage retiré", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+
+  const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+
+  return (
+    <div className="card-naturo mt-8" data-testid="section-blocked-dates">
+      <div className="flex items-center gap-2 mb-2">
+        <CalendarOff className="h-5 w-5 text-primary" />
+        <h2 className="font-extrabold text-heading">Dates bloquées (congés, absences)</h2>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Bloquez une période ponctuelle (vacances, formation…) : aucun créneau n'est proposé à la réservation
+        en ligne sur ces dates, sans toucher à votre planning hebdomadaire.
+      </p>
+
+      <div className="grid sm:grid-cols-4 gap-3 items-end mb-4">
+        <div>
+          <Label>Du</Label>
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} data-testid="input-blocked-start" />
+        </div>
+        <div>
+          <Label>Au (inclus)</Label>
+          <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} data-testid="input-blocked-end" />
+        </div>
+        <div>
+          <Label>Motif (optionnel)</Label>
+          <Input placeholder="Vacances, formation…" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="input-blocked-reason" />
+        </div>
+        <Button
+          onClick={() => addMut.mutate()}
+          disabled={addMut.isPending || !startDate}
+          className="rounded-lg font-bold"
+          data-testid="button-add-blocked"
+        >
+          <Plus className="h-4 w-4 mr-1" /> Bloquer
+        </Button>
+      </div>
+
+      {blocked.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">Aucune période bloquée pour le moment.</p>
+      ) : (
+        <ul className="space-y-2">
+          {blocked.map((b) => (
+            <li key={b.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-2.5" data-testid={`blocked-date-${b.id}`}>
+              <div className="text-sm">
+                <span className="font-bold">
+                  {b.startDate === b.endDate ? fmt(b.startDate) : `${fmt(b.startDate)} → ${fmt(b.endDate)}`}
+                </span>
+                {b.reason && <span className="text-muted-foreground"> — {b.reason}</span>}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!(await confirm({ title: "Retirer ce blocage ?", description: "Les créneaux redeviendront réservables sur cette période.", confirmLabel: "Retirer", cancelLabel: "Annuler" }))) return;
+                  delMut.mutate(b.id);
+                }}
+                aria-label="Retirer le blocage"
+                data-testid={`button-delete-blocked-${b.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

@@ -44,6 +44,8 @@ function Solutions() {
   const [catFilter, setCatFilter] = useState<string>("all");
   const [editing, setEditing] = useState<NaturalSolution | "new" | null>(null);
 
+  // Lot 5 (QC Bibliothèque) — la recherche couvre aussi précautions et usage :
+  // « grossesse » doit remonter les fiches qui la mentionnent en contre-indication.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return solutions.filter((s) => {
@@ -51,7 +53,9 @@ function Solutions() {
       if (!q) return true;
       return (
         s.name.toLowerCase().includes(q) ||
-        (s.properties || "").toLowerCase().includes(q)
+        (s.properties || "").toLowerCase().includes(q) ||
+        (s.contraindications || "").toLowerCase().includes(q) ||
+        (s.usageNotes || "").toLowerCase().includes(q)
       );
     });
   }, [solutions, search, catFilter]);
@@ -125,6 +129,23 @@ function Solutions() {
               {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Lot 5 (QC Bibliothèque) — filtres rapides sur les précautions courantes */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
+          <span className="font-bold text-muted-foreground uppercase tracking-wide">Précautions :</span>
+          {["grossesse", "allaitement", "enfant", "anticoagulant"].map((mot) => (
+            <button
+              key={mot}
+              onClick={() => setSearch(search === mot ? "" : mot)}
+              className={`px-3 py-1 rounded-full border font-semibold transition ${
+                search === mot ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-secondary"
+              }`}
+              data-testid={`chip-precaution-${mot}`}
+            >
+              {mot}
+            </button>
+          ))}
         </div>
 
         {isLoading ? (

@@ -48,6 +48,9 @@ export const kbChunks = activeSchema.kbChunks;
 export const contentPosts = activeSchema.contentPosts;
 export const stripeProcessedSessions = activeSchema.stripeProcessedSessions;
 export const analyticsEvents = activeSchema.analyticsEvents;
+// Lot 5 — bibliothèque de réponses IA + dates bloquées
+export const aiSavedReplies = activeSchema.aiSavedReplies;
+export const blockedDates = activeSchema.blockedDates;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -73,6 +76,8 @@ export const insertKbDocumentSchema = activeSchema.insertKbDocumentSchema;
 export const insertKbChunkSchema = activeSchema.insertKbChunkSchema;
 export const insertContentPostSchema = activeSchema.insertContentPostSchema;
 export const insertAnalyticsEventSchema = activeSchema.insertAnalyticsEventSchema;
+export const insertAiSavedReplySchema = activeSchema.insertAiSavedReplySchema;
+export const insertBlockedDateSchema = activeSchema.insertBlockedDateSchema;
 
 // Re-exports types : on importe toujours depuis le schéma SQLite pour les types
 // (ils sont identiques entre les deux schémas, et TypeScript a besoin d'imports
@@ -96,4 +101,6 @@ export type {
   KbChunk, InsertKbChunk,
   ContentPost, InsertContentPost,
   AnalyticsEvent, InsertAnalyticsEvent,
+  AiSavedReply, InsertAiSavedReply,
+  BlockedDate, InsertBlockedDate,
 } from "./schema";

@@ -67,6 +67,8 @@ export function registerProfileRoutes(app: Express): void {
     emailReplyTo: z.string().email().nullable().optional().or(z.literal("").transform(() => null)),
     dashboardNote: z.string().max(5000).nullable().optional(),
     onboardingChecklistHiddenAt: z.number().int().nullable().optional(),
+    // Lot 5 (NaturoBot N10) — bannière d'intro Discussion vs Studio
+    naturobotIntroSeenAt: z.number().int().nullable().optional(),
   });
 
   app.patch("/api/profile", requireAuth, async (req: AuthedRequest, res) => {

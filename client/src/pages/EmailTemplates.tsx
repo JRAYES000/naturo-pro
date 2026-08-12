@@ -28,11 +28,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { MailOpen, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
 import { HelpNote } from "@/components/HelpNote";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
+import { findUnknownTemplateVars } from "@/lib/template-vars-check";
 import {
   EditorProvider, Editor, Toolbar,
   BtnBold, BtnItalic, BtnUnderline, BtnStrikeThrough,
@@ -86,6 +88,7 @@ function isFullDoc(html: string): boolean {
 
 function EmailTemplates() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [activeKind, setActiveKind] = useState<EmailKind>("confirmation");
   const emptyByKind = { confirmation: "", reminder_d1: "", cancellation: "", relance: "" };
   const [subjectDraft, setSubjectDraft] = useState<Record<EmailKind, string>>({ ...emptyByKind });
@@ -451,7 +454,20 @@ function EmailTemplates() {
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => saveMutation.mutate(activeKind)}
+                      onClick={async () => {
+                        // Lot 5 — avertir (sans bloquer) si une variable inconnue partirait telle quelle.
+                        const inconnues = findUnknownTemplateVars(`${subjectDraft[activeKind] || ""}\n${bodyDraft[activeKind] || ""}`);
+                        if (inconnues.length > 0) {
+                          const ok = await confirm({
+                            title: "Variable(s) non reconnue(s)",
+                            description: `${inconnues.join(", ")} ne correspond${inconnues.length > 1 ? "ent" : ""} à aucune variable connue : ce texte apparaîtra tel quel (accolades comprises) dans l'email reçu par la cliente. Enregistrer quand même ?`,
+                            confirmLabel: "Enregistrer quand même",
+                            cancelLabel: "Corriger",
+                          });
+                          if (!ok) return;
+                        }
+                        saveMutation.mutate(activeKind);
+                      }}
                       disabled={saveMutation.isPending}
                       data-testid="button-save"
                       className="bg-primary hover:bg-primary/90 text-primary-foreground"

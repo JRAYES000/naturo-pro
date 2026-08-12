@@ -130,9 +130,12 @@ function InvoicesPage() {
     });
   }, [invoices, statusFilter, typeFilter, search]);
 
-  // KPIs — les devis (Lot 4) n'ont pas de valeur comptable : exclus du CA.
+  // KPIs — devis exclus (Lot 4) et scope ANNÉE EN COURS (Lot 5, QC Facture) :
+  // le cumul depuis toujours à côté de la carte « Année en cours » induisait en erreur.
   const kpis = useMemo(() => {
-    const factures = invoices.filter((i) => ((i as any).docType || "invoice") !== "devis");
+    const debutAnnee = new Date(new Date().getFullYear(), 0, 1).getTime();
+    const factures = invoices.filter((i) =>
+      ((i as any).docType || "invoice") !== "devis" && i.issueDate >= debutAnnee);
     const paid = factures.filter((i) => i.status === "paid");
     const pending = factures.filter((i) => i.status === "sent" || i.status === "draft");
     return {
@@ -151,11 +154,22 @@ function InvoicesPage() {
           subtitle="Émettez et suivez vos factures."
           icon={Receipt}
           actions={
-            <Link href="/app/invoices/new">
-              <Button className="rounded-lg font-bold" data-testid="button-new-invoice">
-                <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              {/* Lot 5 (QC Facture) — export CSV du journal des recettes (année en cours) */}
+              <a
+                href={`/api/stats/recettes.csv?from=${new Date(new Date().getFullYear(), 0, 1).getTime()}&to=${Date.now()}`}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold border border-input hover:bg-secondary"
+                title="Journal des recettes de l'année en cours, pour votre comptable"
+                data-testid="button-export-csv"
+              >
+                <Download className="h-4 w-4" /> Export CSV
+              </a>
+              <Link href="/app/invoices/new">
+                <Button className="rounded-lg font-bold" data-testid="button-new-invoice">
+                  <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
+                </Button>
+              </Link>
+            </div>
           }
         />
 
@@ -183,7 +197,7 @@ function InvoicesPage() {
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="card-naturo">
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">CA encaissé</p>
+            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">CA encaissé ({new Date().getFullYear()})</p>
             <p className="text-2xl font-extrabold text-heading" data-testid="text-kpi-paid">
               {formatPrice(kpis.caEncaisseCents)}
             </p>

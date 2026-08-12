@@ -35,6 +35,9 @@ const patchClientSchema = z.object({
   phone: z.string().max(50).nullable().optional(),
   dateOfBirth: z.string().max(20).nullable().optional(),
   address: z.string().nullable().optional(),
+  // Lot 5 (QC Facture) — code postal / ville, repris sur les factures.
+  postalCode: z.string().max(20).nullable().optional(),
+  city: z.string().max(255).nullable().optional(),
   allergies: z.string().nullable().optional(),
   antecedents: z.string().nullable().optional(),
   lifestyleNotes: z.string().nullable().optional(),
@@ -97,6 +100,10 @@ export function registerClientRoutes(app: Express): void {
     const full = await fullAccessFor(req);
     const list = await storage.listClients(req.userId!, search);
     res.json(list.map((c) => sanitizeClientForPlan(c as any, full)));
+  });
+  // Lot 5 (action P21) — dernier RDV par client, pour enrichir la liste Clients.
+  app.get("/api/clients-last-appointment", requireAuth, async (req: AuthedRequest, res) => {
+    res.json(await storage.mapClientLastAppointment(req.userId!));
   });
   app.get("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
     const c = await storage.getClient(Number(req.params.id));

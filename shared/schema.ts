@@ -84,6 +84,8 @@ export const users = sqliteTable("users", {
   emailReplyTo: text("email_reply_to"),
   dashboardNote: text("dashboard_note"),
   onboardingChecklistHiddenAt: integer("onboarding_checklist_hidden_at"),
+  // Lot 5 (NaturoBot N10) — bannière d'intro Discussion vs Studio, vue une fois.
+  naturobotIntroSeenAt: integer("naturobot_intro_seen_at"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -207,6 +209,10 @@ export const clients = sqliteTable("clients", {
   phone: text("phone"),
   dateOfBirth: text("date_of_birth"),
   address: text("address"),
+  // Lot 5 (QC Facture) — code postal / ville : déjà lus par le pré-remplissage
+  // des factures, mais absents de la table jusqu'ici.
+  postalCode: text("postal_code"),
+  city: text("city"),
   allergies: text("allergies"),
   antecedents: text("antecedents"),
   lifestyleNotes: text("lifestyle_notes"),
@@ -439,6 +445,30 @@ export const contentPosts = sqliteTable("content_posts", {
   idx_content_posts_user: index("idx_content_posts_user").on(t.userId, t.status),
 }));
 
+// Lot 5 (NaturoBot N4) — réponses IA archivées dans la bibliothèque personnelle.
+export const aiSavedReplies = sqliteTable("ai_saved_replies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (t) => ({
+  idx_ai_saved_replies_user: index("idx_ai_saved_replies_user").on(t.userId),
+}));
+
+// Lot 5 (QC Disponibilité) — dates bloquées (congés, fermetures ponctuelles),
+// distinctes du planning hebdomadaire récurrent. Bornes en "YYYY-MM-DD" inclusives.
+export const blockedDates = sqliteTable("blocked_dates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  reason: text("reason"),
+  createdAt: integer("created_at").notNull(),
+}, (t) => ({
+  idx_blocked_dates_user: index("idx_blocked_dates_user").on(t.userId),
+}));
+
 // Assistant IA — quota d'usage quotidien par utilisatrice.
 export const aiChatUsage = sqliteTable("ai_chat_usage", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -522,6 +552,8 @@ export const insertKbDocumentSchema = createInsertSchema(kbDocuments).omit({ id:
 export const insertKbChunkSchema = createInsertSchema(kbChunks).omit({ id: true, createdAt: true });
 export const insertContentPostSchema = createInsertSchema(contentPosts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({ id: true, createdAt: true });
+export const insertAiSavedReplySchema = createInsertSchema(aiSavedReplies).omit({ id: true, createdAt: true });
+export const insertBlockedDateSchema = createInsertSchema(blockedDates).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -568,6 +600,10 @@ export type ContentPost = typeof contentPosts.$inferSelect;
 export type InsertContentPost = z.infer<typeof insertContentPostSchema>;
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+export type AiSavedReply = typeof aiSavedReplies.$inferSelect;
+export type InsertAiSavedReply = z.infer<typeof insertAiSavedReplySchema>;
+export type BlockedDate = typeof blockedDates.$inferSelect;
+export type InsertBlockedDate = z.infer<typeof insertBlockedDateSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;

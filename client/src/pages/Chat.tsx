@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText } from "lucide-react";
+import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText, BookMarked, ChevronDown, X } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
@@ -34,14 +34,37 @@ import { FeatureGate } from "@/components/FeatureGate";
 // Si absent, l'avatar retombe proprement sur une icône.
 const NATUROBOT_AVATAR = "/naturobot.jpg";
 
-// Lot 4 (action P3) — questions suggérées à l'ouverture d'une discussion vide.
-const SUGGESTED_QUESTIONS = [
-  "Quelles plantes conseiller pour un sommeil difficile ?",
-  "Comment accompagner une cliente stressée en période d'examens ?",
-  "Quels sont les émonctoires et comment les soutenir ?",
-  "Propose-moi une trame de première consultation",
-  "Quelles précautions avec le millepertuis ?",
-  "Idées de petits-déjeuners pour une cliente en fatigue chronique",
+// Lot 4 (action P3) + Lot 5 (N6) — questions suggérées PAR CATÉGORIE à
+// l'ouverture d'une discussion vide.
+const SUGGESTED_CATEGORIES: Array<{ label: string; questions: string[] }> = [
+  {
+    label: "Phytothérapie",
+    questions: [
+      "Quelles précautions avec le millepertuis ?",
+      "Quelles plantes conseiller pour un sommeil difficile ?",
+    ],
+  },
+  {
+    label: "Sommeil & stress",
+    questions: [
+      "Comment accompagner une cliente stressée en période d'examens ?",
+      "Routine du soir pour améliorer l'endormissement ?",
+    ],
+  },
+  {
+    label: "Digestion",
+    questions: [
+      "Quels sont les émonctoires et comment les soutenir ?",
+      "Idées de petits-déjeuners pour une cliente en fatigue chronique",
+    ],
+  },
+  {
+    label: "Programme client",
+    questions: [
+      "Propose-moi une trame de première consultation",
+      "Construis un programme type gestion du stress sur 4 semaines",
+    ],
+  },
 ];
 
 function initials(name?: string | null): string {
@@ -85,8 +108,9 @@ const mdComponents: Components = {
   ),
 };
 
-function Bubble({ role, content, typing, streaming, userPhoto, userName }: {
+function Bubble({ role, content, typing, streaming, userPhoto, userName, onSave, saved }: {
   role: string; content: string; typing?: boolean; streaming?: boolean; userPhoto?: string | null; userName?: string | null;
+  onSave?: () => void; saved?: boolean;
 }) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
@@ -118,14 +142,28 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName }: {
           </div>
         )}
         {!isUser && !typing && !streaming && content && (
-          <button
-            onClick={copy}
-            className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card border border-border rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
-            aria-label="Copier la réponse"
-            data-testid="button-copy-message"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
-          </button>
+          <>
+            <button
+              onClick={copy}
+              className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card border border-border rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
+              aria-label="Copier la réponse"
+              data-testid="button-copy-message"
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
+            {/* Lot 5 (N4) — archiver la réponse dans la bibliothèque */}
+            {onSave && (
+              <button
+                onClick={onSave}
+                className="absolute -bottom-3 right-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card border border-border rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
+                aria-label="Enregistrer dans la bibliothèque"
+                title="Enregistrer dans la bibliothèque"
+                data-testid="button-save-reply"
+              >
+                <BookMarked className={`h-3.5 w-3.5 ${saved ? "text-primary" : "text-muted-foreground"}`} />
+              </button>
+            )}
+          </>
         )}
       </div>
       {isUser && avatar}
@@ -136,7 +174,7 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName }: {
 function Chat() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { user } = useAuth();
+  const { user, refetch } = useAuth();
   const [, navigate] = useLocation();
   const params = useParams();
   const selectedId = params.discussionId ? Number(params.discussionId) : null;
@@ -156,6 +194,32 @@ function Chat() {
   // Lot 4 (action P4) — indicateur d'usage IA (jour + mois).
   const { data: aiUsage } = useQuery<{ month: number; today: number; dailyLimit: number }>({
     queryKey: ["/api/ai-usage"],
+  });
+
+  // Lot 5 (N7) — transparence : résumé dépliable de ce qui est transmis à l'IA.
+  const [clientSummaryOpen, setClientSummaryOpen] = useState(false);
+
+  // Lot 5 (N4) — archiver une réponse dans la bibliothèque.
+  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  const saveReplyMut = useMutation({
+    mutationFn: async (m: AiChatMessage) =>
+      apiRequest("POST", "/api/saved-replies", {
+        title: `${selected?.title || "Réponse Naturobot"} — ${new Date(m.createdAt).toLocaleDateString("fr-FR")}`,
+        content: m.content,
+      }),
+    onSuccess: (_r, m) => {
+      setSavedIds((s) => new Set(s).add(m.id));
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-replies"] });
+      toast({ title: "Réponse enregistrée 📚", description: "Retrouvez-la dans l'onglet Bibliothèque.", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+
+  // Lot 5 (N10) — bannière d'intro Discussion vs Studio (première visite).
+  const introSeen = !!(user as any)?.naturobotIntroSeenAt;
+  const dismissIntroMut = useMutation({
+    mutationFn: async () => apiRequest("PATCH", "/api/profile", { naturobotIntroSeenAt: Date.now() }),
+    onSuccess: () => refetch(),
   });
   const selected = discussions.find((d) => d.id === selectedId) || null;
   const { data: messages = [], isLoading } = useQuery<AiChatMessage[]>({
@@ -277,6 +341,27 @@ function Chat() {
   return (
     <AppLayout>
       <PageHeader title="Naturobot" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
+
+      {/* Lot 5 (N10) — intro Discussion vs Studio, affichée jusqu'à fermeture */}
+      {!introSeen && (
+        <div className="mb-4 rounded-lg border border-primary/20 bg-secondary/40 px-4 py-3 text-sm flex items-start gap-3" data-testid="banner-naturobot-intro">
+          <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+          <p className="flex-1">
+            <strong>Deux modes, deux usages :</strong> l'onglet <strong>Discussion</strong> est votre formateur virtuel
+            pour les conseils cliniques (protocoles, plantes, cas pratiques) ; l'onglet <strong>Studio contenu</strong>{" "}
+            génère vos posts marketing pour les réseaux sociaux. La <strong>Bibliothèque</strong> archive vos meilleures réponses.
+          </p>
+          <button
+            onClick={() => dismissIntroMut.mutate()}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Fermer l'introduction"
+            data-testid="button-dismiss-naturobot-intro"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <NaturobotTabs />
         <Button
@@ -325,9 +410,15 @@ function Chat() {
                   </p>
                 )}
                 {selected.clientId != null && (
-                  <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5" data-testid="text-rgpd-banner">
+                  <button
+                    className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 hover:text-primary"
+                    onClick={() => setClientSummaryOpen((o) => !o)}
+                    data-testid="text-rgpd-banner"
+                    title="Voir ce qui est transmis à l'IA"
+                  >
                     <ShieldCheck className="h-3 w-3" /> Fiche cliente prise en compte
-                  </p>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${clientSummaryOpen ? "rotate-180" : ""}`} />
+                  </button>
                 )}
               </div>
               {/* Lot 1 (action 10) — pont Naturobot → Programme : la dernière réponse
@@ -336,7 +427,17 @@ function Chat() {
                 size="sm"
                 variant="outline"
                 className="rounded-lg font-bold shrink-0"
-                onClick={() => createProgrammeMut.mutate()}
+                onClick={async () => {
+                  // Lot 5 (N7) — consentement explicite avant toute sauvegarde d'une
+                  // réponse IA dans le dossier (même formule que le benchmark).
+                  const ok = await confirm({
+                    title: "Créer un programme depuis cette discussion ?",
+                    description: "L'IA propose un contenu à titre indicatif. Rien n'est enregistré dans le dossier sans votre accord : le programme sera créé en brouillon, à relire et valider par vos soins avant tout envoi à la cliente.",
+                    confirmLabel: "Créer le brouillon",
+                    cancelLabel: "Annuler",
+                  });
+                  if (ok) createProgrammeMut.mutate();
+                }}
                 disabled={createProgrammeMut.isPending || messages.every((m) => m.role !== "assistant")}
                 data-testid="button-create-programme"
               >
@@ -346,6 +447,33 @@ function Chat() {
               <button onClick={del} className="text-muted-foreground hover:text-destructive" aria-label="Supprimer" data-testid="button-delete-discussion"><Trash2 className="h-4 w-4" /></button>
             </div>
           )}
+
+          {/* Lot 5 (N7) — résumé de ce qui est réellement transmis à l'IA */}
+          {selected && selected.clientId != null && clientSummaryOpen && (() => {
+            const c = clients.find((cl) => cl.id === selected.clientId);
+            if (!c) return null;
+            const age = c.dateOfBirth ? Math.floor((Date.now() - new Date(c.dateOfBirth).getTime()) / 3.15576e10) : null;
+            const lignes = [
+              `Prénom : ${c.firstName}`,
+              age && age > 0 && age < 120 ? `Âge : ${age} ans` : null,
+              `Allergies : ${c.allergies?.trim() || "aucune renseignée"}`,
+              `Antécédents : ${c.antecedents?.trim() || "aucun renseigné"}`,
+              `Hygiène de vie : ${c.lifestyleNotes?.trim() || "non renseignée"}`,
+              c.penseBete?.trim() ? `Notes : ${c.penseBete.trim()}` : null,
+            ].filter(Boolean) as string[];
+            return (
+              <div className="border-b border-border bg-secondary/40 px-4 py-2.5 text-xs" data-testid="panel-client-summary">
+                <p className="font-bold mb-1">Informations transmises à l'IA pour cette discussion :</p>
+                <ul className="space-y-0.5 text-muted-foreground">
+                  {lignes.map((l, i) => <li key={i} className="truncate">• {l}</li>)}
+                </ul>
+                <p className="mt-1.5 italic text-muted-foreground">
+                  L'IA propose des pistes à titre indicatif. Seule la praticienne valide : rien n'est enregistré dans le
+                  dossier client sans votre accord explicite.
+                </p>
+              </div>
+            );
+          })()}
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
             {selectedId == null ? (
@@ -368,23 +496,40 @@ function Chat() {
                   card={false}
                   testid="empty-state-discussion-vide"
                 />
-                {/* Lot 4 (action P3) — chips de questions suggérées, envoi direct au clic */}
-                <div className="flex flex-wrap justify-center gap-2 max-w-lg px-4" data-testid="suggested-questions">
-                  {SUGGESTED_QUESTIONS.map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => submit(q)}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/30 bg-card text-primary hover:bg-primary/10 transition"
-                      data-testid="chip-suggested-question"
-                    >
-                      {q}
-                    </button>
+                {/* Lot 4 (P3) + Lot 5 (N6) — chips de questions suggérées par catégorie */}
+                <div className="max-w-lg px-4 space-y-2.5" data-testid="suggested-questions">
+                  {SUGGESTED_CATEGORIES.map((cat) => (
+                    <div key={cat.label}>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{cat.label}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {cat.questions.map((q) => (
+                          <button
+                            key={q}
+                            onClick={() => submit(q)}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/30 bg-card text-primary hover:bg-primary/10 transition"
+                            data-testid="chip-suggested-question"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
             ) : (
               <>
-                {messages.map((m) => <Bubble key={m.id} role={m.role} content={m.content} userPhoto={user?.photoUrl} userName={user?.name} />)}
+                {messages.map((m) => (
+                  <Bubble
+                    key={m.id}
+                    role={m.role}
+                    content={m.content}
+                    userPhoto={user?.photoUrl}
+                    userName={user?.name}
+                    onSave={m.role === "assistant" ? () => { if (!savedIds.has(m.id)) saveReplyMut.mutate(m); } : undefined}
+                    saved={savedIds.has(m.id)}
+                  />
+                ))}
                 {pending && <Bubble role="user" content={pending} userPhoto={user?.photoUrl} userName={user?.name} />}
                 {sendMut.isPending && (
                   <div>
@@ -415,7 +560,11 @@ function Chat() {
                 <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder="Écris ta question…" className="resize-none overflow-y-auto min-h-[44px] max-h-[200px]" rows={1} data-testid="input-chat-message" />
                 <Button onClick={() => submit()} disabled={!input.trim() || sendMut.isPending} className="rounded-[12px] shrink-0" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
               </div>
-              <p className="hidden sm:block text-xs text-muted-foreground mt-1">Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne</p>
+              {/* Lot 5 (N9) — coût affiché sur l'action, au moment de décider */}
+              <p className="hidden sm:block text-xs text-muted-foreground mt-1">
+                Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · chaque envoi = <strong>1 appel IA</strong>
+                {aiUsage ? ` (${aiUsage.today}/${aiUsage.dailyLimit} aujourd'hui)` : ""}
+              </p>
             </div>
           )}
         </div>

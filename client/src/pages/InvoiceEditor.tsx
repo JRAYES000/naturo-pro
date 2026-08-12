@@ -230,6 +230,18 @@ function InvoiceEditor() {
     },
   });
 
+  // Lot 5 (QC Facture) — avoir : facture miroir à montants négatifs, dans la
+  // même séquence légale. Le message d'immutabilité promettait ce flux sans qu'il existe.
+  const avoirMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/invoices/${numericId}/avoir`, {})).json(),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Avoir créé", description: `${data.number} (brouillon, montants négatifs) — relisez-le puis envoyez-le à la cliente.`, variant: "success" });
+      navigate(`/app/invoices/${data.id}`);
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
   // Lot 4 (action C10) — devis → facture : le document reçoit un numéro FACT- de
   // la séquence légale et devient une facture normale.
   const convertMut = useMutation({
@@ -378,9 +390,23 @@ function InvoiceEditor() {
         )}
 
         {isLocked && (
-          <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3">
-            Cette facture est {invoice?.status === "paid" ? "payée" : "émise"} : le client et les lignes ne sont plus modifiables
-            (le PDF déjà transmis doit rester fidèle). Le statut, le mode de paiement, l'échéance et les notes restent modifiables.
+          <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+            <span className="flex-1">
+              Cette facture est {invoice?.status === "paid" ? "payée" : "émise"} : le client et les lignes ne sont plus modifiables
+              (le PDF déjà transmis doit rester fidèle). Le statut, le mode de paiement, l'échéance et les notes restent modifiables.
+            </span>
+            {!isDevis && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => avoirMut.mutate()}
+                disabled={avoirMut.isPending}
+                className="rounded-lg font-bold shrink-0 border-amber-300 bg-white hover:bg-amber-100"
+                data-testid="button-create-avoir"
+              >
+                {avoirMut.isPending ? "Création…" : "Créer un avoir"}
+              </Button>
+            )}
           </div>
         )}
 

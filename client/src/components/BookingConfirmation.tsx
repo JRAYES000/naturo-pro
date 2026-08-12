@@ -27,6 +27,9 @@ interface BookingConfirmationProps {
   naturo: NaturoInfo;
   email: string;
   backHref: string;
+  // Lot 5 (QC Page publique) — état réel de l'envoi d'email, renvoyé par /book :
+  // on n'affirme l'envoi que s'il est effectivement possible.
+  emailConfigured?: boolean;
 }
 
 // Heure du CABINET (Europe/Paris), pas celle du navigateur de la visiteuse :
@@ -34,7 +37,7 @@ interface BookingConfirmationProps {
 const formatDayFr = (date: Date): string => formatJourCabinet(date);
 const formatTimeFr = (date: Date): string => formatHeureCabinet(date);
 
-export function BookingConfirmation({ confirmed, naturo, email, backHref }: BookingConfirmationProps) {
+export function BookingConfirmation({ confirmed, naturo, email, backHref, emailConfigured }: BookingConfirmationProps) {
   const { when, cat } = confirmed;
 
   return (
@@ -54,12 +57,21 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref }: Book
       <p className="text-muted-foreground mb-2 max-w-sm mx-auto">
         Votre rendez-vous avec <strong>{naturo.name}</strong> est bien enregistré.
       </p>
-      <p className="text-sm text-muted-foreground mb-8 flex items-center justify-center gap-1.5">
-        <Mail className="h-3.5 w-3.5 shrink-0" />
-        Vous recevrez une confirmation par email à{" "}
-        <span className="font-bold text-foreground" data-testid="text-confirmation-email">{email}</span>
-        , si votre praticienne a activé l'envoi automatique
-      </p>
+      {emailConfigured === false ? (
+        <p className="text-sm text-amber-700 mb-8 max-w-sm mx-auto" data-testid="text-confirmation-no-email">
+          ⚠️ Notez bien la date et l'heure : votre praticienne n'a pas activé l'envoi d'emails,
+          vous ne recevrez <strong>pas</strong> d'email de confirmation.
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground mb-8 flex items-center justify-center gap-1.5">
+          <Mail className="h-3.5 w-3.5 shrink-0" />
+          {emailConfigured
+            ? <>Une confirmation par email vous a été envoyée à{" "}</>
+            : <>Vous recevrez une confirmation par email à{" "}</>}
+          <span className="font-bold text-foreground" data-testid="text-confirmation-email">{email}</span>
+          {emailConfigured ? "" : ", si votre praticienne a activé l'envoi automatique"}
+        </p>
+      )}
 
       {/* Recap card */}
       <div className="card-naturo max-w-sm mx-auto text-left mb-6 space-y-3" data-testid="card-booking-recap">

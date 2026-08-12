@@ -184,10 +184,20 @@ export function registerProgrammeRoutes(app: Express): void {
     res.json(prog);
   });
 
+  // Lot 5 (QC Programme) — même contrôle d'appartenance du client que sur la
+  // génération PDF : un clientId inexistant ou d'une autre praticienne était
+  // accepté sans erreur à la création comme à la modification.
+  async function clientInvalide(req: AuthedRequest, clientId: number | null | undefined): Promise<boolean> {
+    if (clientId == null) return false;
+    const c = await storage.getClient(clientId);
+    return !c || c.userId !== req.userId;
+  }
+
   // POST /api/programmes
   app.post("/api/programmes", requireAuth, async (req: AuthedRequest, res) => {
     const parsed = createProgramSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
+    if (await clientInvalide(req, parsed.data.clientId)) return res.status(400).json({ message: "Client invalide" });
     const { content, ...rest } = parsed.data;
     const prog = await storage.createProgram({
       ...rest,
@@ -204,6 +214,7 @@ export function registerProgrammeRoutes(app: Express): void {
     if (!prog || prog.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
     const parsed = patchProgramSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
+    if (await clientInvalide(req, parsed.data.clientId)) return res.status(400).json({ message: "Client invalide" });
     const { content, ...rest } = parsed.data;
     const patch: Record<string, unknown> = { ...rest };
     if (content !== undefined) patch.content = JSON.stringify(content);

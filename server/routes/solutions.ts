@@ -13,7 +13,9 @@ import { requireAuth, type AuthedRequest } from "../auth";
 
 const solutionBodySchema = z.object({
   name: z.string().min(1).max(255),
-  category: z.string().min(1).max(80),
+  // Lot 5 (QC Bibliothèque) — liste fermée, alignée sur le formulaire : une
+  // catégorie libre créait une fiche invisible dès qu'un filtre était actif.
+  category: z.enum(["Plante", "Huile essentielle", "Complément", "Fleur de Bach"]),
   properties: z.string().max(2000).nullable().optional(),
   contraindications: z.string().max(2000).nullable().optional(),
   usageNotes: z.string().max(2000).nullable().optional(),

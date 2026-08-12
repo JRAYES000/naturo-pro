@@ -54,6 +54,26 @@ export function registerDiscussionRoutes(app: Express): void {
     res.json({ month, today: todayCount, dailyLimit: AI_DAILY_LIMIT });
   });
 
+  // ── Lot 5 (NaturoBot N4) — bibliothèque de réponses IA archivées ───────────
+
+  app.get("/api/saved-replies", requireAuth, async (req: AuthedRequest, res) => {
+    res.json(await storage.listAiSavedReplies(req.userId!));
+  });
+
+  app.post("/api/saved-replies", requireAuth, async (req: AuthedRequest, res) => {
+    const schema = z.object({ title: z.string().min(1).max(255), content: z.string().min(1).max(50_000) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
+    res.status(201).json(await storage.createAiSavedReply({ ...parsed.data, userId: req.userId! }));
+  });
+
+  app.delete("/api/saved-replies/:id", requireAuth, async (req: AuthedRequest, res) => {
+    const reply = await storage.getAiSavedReply(Number(req.params.id));
+    if (!reply || reply.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    await storage.deleteAiSavedReply(reply.id);
+    res.json({ ok: true });
+  });
+
   app.post("/api/discussions", requireAuth, async (req: AuthedRequest, res) => {
     const p = createSchema.safeParse(req.body);
     if (!p.success) return res.status(400).json({ message: "Données invalides" });

@@ -194,6 +194,59 @@ export function registerInvoiceRoutes(app: Express): void {
     res.status(201).json({ ...inv, items });
   });
 
+  // POST /api/invoices/:id/avoir  (Lot 5, QC Facture — note de crédit)
+  // Facture miroir à montants négatifs, numérotée dans la même séquence légale,
+  // liée à la facture d'origine via la note. Le message d'immutabilité renvoyait
+  // vers cette fonctionnalité sans qu'elle existe.
+  app.post("/api/invoices/:id/avoir", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const inv = await storage.getInvoice(id);
+    if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if ((inv as any).docType === "devis") return res.status(400).json({ message: "Un devis ne donne pas lieu à un avoir : modifiez-le directement." });
+    if (inv.status === "draft") return res.status(400).json({ message: "Cette facture est encore en brouillon : modifiez-la directement plutôt que de créer un avoir." });
+
+    const now = Date.now();
+    const year = getYearFromMs(now);
+    const sourceItems = await storage.getInvoiceItems(id);
+    const avoir = await storage.createInvoiceNumbered(year, {
+      userId: req.userId!,
+      status: "draft",
+      docType: "invoice",
+      issueDate: now,
+      dueDate: null,
+      appointmentId: inv.appointmentId ?? null,
+      clientId: inv.clientId ?? null,
+      clientFirstName: inv.clientFirstName,
+      clientLastName: inv.clientLastName,
+      clientEmail: inv.clientEmail,
+      clientAddress: inv.clientAddress,
+      clientPostalCode: inv.clientPostalCode,
+      clientCity: inv.clientCity,
+      subtotalCents: -(inv.subtotalCents || 0),
+      vatCents: -(inv.vatCents || 0),
+      totalCents: -(inv.totalCents || 0),
+      vatRate: inv.vatRate,
+      vatEnabled: inv.vatEnabled,
+      paymentMethod: null,
+      paidAt: null,
+      sentAt: null,
+      notes: `AVOIR sur la facture ${inv.number}${inv.notes ? `\n${inv.notes}` : ""}`,
+      practitionerSnapshot: inv.practitionerSnapshot,
+      createdAt: now,
+      updatedAt: now,
+    } as any);
+    await storage.replaceInvoiceItems(avoir.id, sourceItems.map((it, i) => ({
+      invoiceId: avoir.id,
+      position: i,
+      description: `Avoir — ${it.description}`,
+      quantity: it.quantity,
+      unitPriceCents: -(it.unitPriceCents || 0),
+      totalCents: -(it.totalCents || 0),
+    })) as any);
+    const items = await storage.getInvoiceItems(avoir.id);
+    res.status(201).json({ ...avoir, items });
+  });
+
   // POST /api/invoices/:id/convert  (Lot 4 — devis → facture, numéro de la séquence légale)
   app.post("/api/invoices/:id/convert", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);

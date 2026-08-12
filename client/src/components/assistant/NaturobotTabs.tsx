@@ -1,9 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { MessageCircle, Sparkles } from "lucide-react";
+import { MessageCircle, Sparkles, BookMarked } from "lucide-react";
 
 const TABS = [
   { href: "/app/chat", match: "/app/chat", label: "Discussion", icon: MessageCircle, id: "discussion" },
   { href: "/app/studio-contenu", match: "/app/studio-contenu", label: "Studio contenu", icon: Sparkles, id: "studio" },
+  // Lot 5 (NaturoBot N4) — réponses IA archivées, consultables hors des fils.
+  { href: "/app/naturobot-bibliotheque", match: "/app/naturobot-bibliotheque", label: "Bibliothèque", icon: BookMarked, id: "bibliotheque" },
 ];
 
 export function NaturobotTabs() {

@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, FileText, Download, X, Leaf } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Download, X, Leaf, Copy as CopyIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
@@ -175,7 +175,8 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
       toast({ title: isNew ? "Programme créé" : "Programme mis à jour", variant: "success" });
       onClose();
     },
-    onError: () => toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" }),
+    // Lot 5 (QC Programme) — remonter le détail plutôt qu'un toast muet.
+    onError: (e: any) => toast({ title: "Erreur lors de la sauvegarde", description: e?.message || "Vérifiez le contenu du programme.", variant: "destructive" }),
   });
 
   return (
@@ -273,14 +274,21 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
             <div className="space-y-2 pl-2">
               {sec.items.map((item, iIdx) => (
                 <div key={iIdx} className="flex items-start gap-2">
-                  <Textarea
-                    placeholder="Conseil ou recommandation…"
-                    value={item}
-                    onChange={e => updateItem(sIdx, iIdx, e.target.value)}
-                    rows={2}
-                    className={`resize-none text-sm border ${PASTELS[iIdx % PASTELS.length]}`}
-                    data-testid={`input-item-${sIdx}-${iIdx}`}
-                  />
+                  <div className="flex-1 min-w-0">
+                    <Textarea
+                      placeholder="Conseil ou recommandation…"
+                      value={item}
+                      onChange={e => updateItem(sIdx, iIdx, e.target.value)}
+                      rows={2}
+                      maxLength={2000}
+                      className={`resize-none text-sm border w-full ${PASTELS[iIdx % PASTELS.length]}`}
+                      data-testid={`input-item-${sIdx}-${iIdx}`}
+                    />
+                    {/* Lot 5 (QC Programme) — la limite de 2000 caractères est visible avant l'échec */}
+                    {item.length > 1800 && (
+                      <p className="text-[11px] text-amber-600 mt-0.5">{item.length}/2000 caractères</p>
+                    )}
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -425,6 +433,25 @@ function ProgrammesPage() {
     return c ? `${c.firstName} ${c.lastName}` : "";
   }
 
+  // Lot 5 (action P22) — duplication : copie brouillon, rattachable à un autre client.
+  const dupMut = useMutation({
+    mutationFn: (prog: Program) => {
+      let content: Array<{ section: string; items: string[] }> = [];
+      try { content = JSON.parse(prog.content || "[]"); } catch { content = []; }
+      return apiRequest("POST", "/api/programmes", {
+        title: `${prog.title} (copie)`,
+        clientId: null,
+        content,
+        status: "draft",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
+      toast({ title: "Programme dupliqué", description: "La copie est en brouillon, sans client : rattachez-la et adaptez-la.", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+
   function downloadPdf(prog: Program) {
     const a = document.createElement("a");
     a.href = `/api/programmes/${prog.id}/pdf`;
@@ -536,6 +563,18 @@ function ProgrammesPage() {
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">PDF</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => dupMut.mutate(prog)}
+                      disabled={dupMut.isPending}
+                      className="rounded-[12px]"
+                      data-testid={`button-duplicate-${prog.id}`}
+                      title="Dupliquer ce programme"
+                      aria-label="Dupliquer ce programme"
+                    >
+                      <CopyIcon className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="outline"

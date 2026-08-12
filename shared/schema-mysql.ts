@@ -86,6 +86,8 @@ export const users = mysqlTable("users", {
   emailReplyTo: varchar("email_reply_to", { length: 255 }),
   dashboardNote: text("dashboard_note"),
   onboardingChecklistHiddenAt: bigint("onboarding_checklist_hidden_at", { mode: "number" }),
+  // Lot 5 (NaturoBot N10) — bannière d'intro Discussion vs Studio, vue une fois.
+  naturobotIntroSeenAt: bigint("naturobot_intro_seen_at", { mode: "number" }),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -214,6 +216,10 @@ export const clients = mysqlTable("clients", {
   phone: varchar("phone", { length: 50 }),
   dateOfBirth: varchar("date_of_birth", { length: 20 }),
   address: text("address"),
+  // Lot 5 (QC Facture) — code postal / ville : déjà lus par le pré-remplissage
+  // des factures, mais absents de la table jusqu'ici.
+  postalCode: varchar("postal_code", { length: 20 }),
+  city: varchar("city", { length: 255 }),
   allergies: text("allergies"),
   antecedents: text("antecedents"),
   lifestyleNotes: text("lifestyle_notes"),
@@ -448,6 +454,30 @@ export const contentPosts = mysqlTable("content_posts", {
   idx_content_posts_user: index("idx_content_posts_user").on(t.userId, t.status),
 }));
 
+// Lot 5 (NaturoBot N4) — réponses IA archivées dans la bibliothèque personnelle.
+export const aiSavedReplies = mysqlTable("ai_saved_replies", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: longtext("content").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  idx_ai_saved_replies_user: index("idx_ai_saved_replies_user").on(t.userId),
+}));
+
+// Lot 5 (QC Disponibilité) — dates bloquées (congés, fermetures ponctuelles),
+// distinctes du planning hebdomadaire récurrent. Bornes en "YYYY-MM-DD" inclusives.
+export const blockedDates = mysqlTable("blocked_dates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  startDate: varchar("start_date", { length: 10 }).notNull(),
+  endDate: varchar("end_date", { length: 10 }).notNull(),
+  reason: varchar("reason", { length: 255 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  idx_blocked_dates_user: index("idx_blocked_dates_user").on(t.userId),
+}));
+
 // Assistant IA — quota d'usage quotidien par utilisatrice.
 export const aiChatUsage = mysqlTable("ai_chat_usage", {
   id: int("id").autoincrement().primaryKey(),
@@ -534,6 +564,8 @@ export const insertKbDocumentSchema = createInsertSchema(kbDocuments).omit({ id:
 export const insertKbChunkSchema = createInsertSchema(kbChunks).omit({ id: true, createdAt: true });
 export const insertContentPostSchema = createInsertSchema(contentPosts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({ id: true, createdAt: true });
+export const insertAiSavedReplySchema = createInsertSchema(aiSavedReplies).omit({ id: true, createdAt: true });
+export const insertBlockedDateSchema = createInsertSchema(blockedDates).omit({ id: true, createdAt: true });
 
 // ─── Types (same names as schema.ts so imports are swappable) ─────────────────
 export type User = typeof users.$inferSelect;

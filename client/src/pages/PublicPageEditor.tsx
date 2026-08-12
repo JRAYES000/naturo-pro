@@ -166,6 +166,20 @@ export default function PublicPageEditor() {
           )}
         />
 
+        {/* Lot 5 (QC Page publique) — sans configuration email, les clientes qui
+            réservent ne reçoivent AUCUNE confirmation, sans que rien ne le signale. */}
+        {data?.user && !data.user.hasResendApiKey && (
+          <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm flex items-start gap-2" data-testid="banner-email-not-configured">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>Votre envoi d'emails n'est pas configuré.</strong> Les rappels J-1 à vos clientes sont{" "}
+              <strong>inactifs</strong>, et les confirmations de réservation partent (au mieux) avec l'expéditeur
+              générique Naturo Pro. Configurez votre clé Resend et votre adresse expéditeur dans{" "}
+              <a href="/#/app/settings" className="underline font-semibold">Paramètres → Rappels email</a>.
+            </span>
+          </div>
+        )}
+
         {/* Phase 3 Lot 2 — Lien public sur sous-domaine personnel */}
         <div className="card-naturo space-y-3 mb-5" data-testid="card-public-url">
           <div className="flex items-center gap-3">

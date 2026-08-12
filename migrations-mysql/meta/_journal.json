@@ -29,6 +29,13 @@
       "when": 1786491323431,
       "tag": "0003_fast_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786493728816,
+      "tag": "0004_nostalgic_speed_demon",
+      "breakpoints": true
     }
   ]
 }

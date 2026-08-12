@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calendar as BigCalendar, dateFnsLocalizer, Views } from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -24,6 +26,10 @@ import { Loading } from "@/components/Loading";
 import { GoogleStatusBanner } from "@/components/GoogleStatusBanner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+
+// Lot 5 (QC Agenda) — replanification par glisser-déposer (vues Semaine/Jour),
+// branchée sur le PATCH existant. Les RDV importés de Google restent en lecture seule.
+const DnDCalendar = withDragAndDrop(BigCalendar as any) as any;
 
 const locales = { fr };
 const localizer = dateFnsLocalizer({
@@ -165,6 +171,41 @@ export default function Agenda() {
     },
   });
 
+  // Lot 5 (QC Agenda) — déplacement par glisser-déposer : PATCH du RDV, avec le
+  // même traitement du conflit (409 → confirmation « continuer quand même »).
+  const moveMut = useMutation({
+    mutationFn: async ({ id, startAt, endAt, force }: { id: number; startAt: number; endAt: number; force?: boolean }) =>
+      apiRequest("PATCH", `/api/appointments/${id}`, { startAt, endAt, ...(force ? { force: true } : {}) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({ title: "Rendez-vous déplacé", variant: "success" });
+    },
+    onError: async (e: any, vars) => {
+      if (e?.status === 409) {
+        const proceed = await confirm({
+          title: "Conflit d'horaire",
+          description: `${e.message} Déplacer quand même ?`,
+          confirmLabel: "Déplacer quand même",
+          cancelLabel: "Annuler",
+        });
+        if (proceed) moveMut.mutate({ ...vars, force: true });
+        return;
+      }
+      toast({ title: "Déplacement impossible", description: e?.message, variant: "destructive" });
+    },
+  });
+
+  function onEventDrop({ event, start, end }: any) {
+    const a: Appointment = event.resource;
+    if (!a || (a as any).source === "google") {
+      toast({ title: "RDV Google en lecture seule", description: "Modifiez-le directement dans Google Agenda.", variant: "destructive" });
+      return;
+    }
+    const startAt = new Date(start).getTime();
+    const duration = a.endAt - a.startAt;
+    moveMut.mutate({ id: a.id, startAt, endAt: startAt + duration });
+  }
+
   const sendReminderMut = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("POST", `/api/appointments/${id}/send-reminder`);
@@ -220,7 +261,7 @@ export default function Agenda() {
               <Loading variant="cards" label="Chargement de l'agenda…" />
             </div>
           )}
-          <BigCalendar
+          <DnDCalendar
             // `defaultView` est une prop non contrôlée (appliquée seulement au montage) :
             // la `key` force un remontage propre quand on franchit le seuil mobile/desktop
             // (ex. rotation d'écran), sans quoi le changement de defaultView serait ignoré.
@@ -229,6 +270,9 @@ export default function Agenda() {
             events={events}
             startAccessor="start"
             endAccessor="end"
+            onEventDrop={onEventDrop}
+            resizable={false}
+            draggableAccessor={(event: any) => event?.resource?.source !== "google"}
             culture="fr"
             messages={messages}
             views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}

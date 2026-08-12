@@ -99,6 +99,38 @@ export function buildProgrammePrompt(opts: {
   ].join("\n");
 }
 
+/**
+ * Lot 5 (action P19) — mapping heuristique des réponses d'anamnèse vers les
+ * champs santé de la fiche client. Fonction PURE (testée) : à chaque champ cible,
+ * les blocs « Question / Réponse » dont le libellé matche les mots-clés du champ.
+ * ponytail: heuristique par mots-clés sur le libellé, pas de NLP — suffisant pour
+ * les modèles fournis et transparent pour la praticienne (elle relit avant d'accepter).
+ */
+export function mapAnswersToClientFields(
+  questions: Array<{ id: string; label: string }>,
+  answers: Record<string, string | string[] | number>,
+): { allergies: string | null; antecedents: string | null; lifestyleNotes: string | null } {
+  const RULES: Array<{ field: "allergies" | "antecedents" | "lifestyleNotes"; re: RegExp }> = [
+    { field: "allergies", re: /allergi|intol[ée]ran/i },
+    { field: "antecedents", re: /ant[ée]c[ée]dent|m[ée]dical|traitement|pathologie|maladie|hormon|thyro/i },
+    { field: "lifestyleNotes", re: /alimenta|digest|sommeil|stress|activit[ée]|sport|tabac|alcool|hygi[èe]ne|[ée]nergie|transit|cycle|[ée]monctoire/i },
+  ];
+  const out: Record<string, string[]> = { allergies: [], antecedents: [], lifestyleNotes: [] };
+  for (const q of questions) {
+    const ans = answers[q.id];
+    const val = Array.isArray(ans) ? ans.join(", ") : ans == null ? "" : String(ans);
+    if (!val.trim()) continue;
+    const rule = RULES.find((r) => r.re.test(q.label));
+    if (!rule) continue;
+    out[rule.field].push(`${q.label}\n→ ${val.trim()}`);
+  }
+  return {
+    allergies: out.allergies.length ? out.allergies.join("\n\n") : null,
+    antecedents: out.antecedents.length ? out.antecedents.join("\n\n") : null,
+    lifestyleNotes: out.lifestyleNotes.length ? out.lifestyleNotes.join("\n\n") : null,
+  };
+}
+
 // ── Enregistrement des routes ─────────────────────────────────────────────────
 
 export function registerAnamneseRoutes(app: Express): void {
@@ -147,6 +179,17 @@ export function registerAnamneseRoutes(app: Express): void {
     const id = Number(req.params.id);
     const tpl = await storage.getAnamnesisTemplate(id);
     if (!tpl || tpl.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    // Lot 5 (QC Anamnèse) — supprimer un modèle dont des réponses ont été soumises
+    // rendait ces réponses illisibles (plus de questions à afficher en face).
+    // On propose la désactivation à la place.
+    const responses = await storage.listAnamnesisResponses(req.userId!);
+    const soumises = responses.filter((r) => r.templateId === id && r.submittedAt).length;
+    if (soumises > 0) {
+      return res.status(409).json({
+        message: `${soumises} réponse${soumises > 1 ? "s" : ""} reçue${soumises > 1 ? "s" : ""} utilise${soumises > 1 ? "nt" : ""} ce modèle : `
+          + `supprimez-le et elles deviendraient illisibles. Passez plutôt le modèle en « Inactif » pour l'archiver.`,
+      });
+    }
     await storage.deleteAnamnesisTemplate(id);
     res.json({ ok: true });
   });
@@ -217,6 +260,43 @@ export function registerAnamneseRoutes(app: Express): void {
     const clientId = req.query.clientId ? Number(req.query.clientId) : undefined;
     const list = await storage.listAnamnesisResponses(req.userId!, clientId);
     res.json(list);
+  });
+
+  // ── Lot 5 (action P19) — report des réponses vers la fiche client ─────────
+  // Ajoute (sans écraser) les réponses pertinentes dans Allergies / Antécédents /
+  // Hygiène de vie de la fiche liée. Déclenché par la praticienne après relecture.
+  app.post("/api/anamnesis-responses/:id/apply-to-client", requireAuth, async (req: AuthedRequest, res) => {
+    const resp = await storage.getAnamnesisResponse(Number(req.params.id));
+    if (!resp || resp.userId !== req.userId) return res.status(404).json({ message: "Réponse introuvable" });
+    if (!resp.submittedAt || !resp.answers) return res.status(400).json({ message: "Ce questionnaire n'a pas encore été rempli." });
+    if (!resp.clientId) return res.status(400).json({ message: "Cette réponse n'est rattachée à aucune fiche cliente." });
+    const client = await storage.getClient(resp.clientId);
+    if (!client || client.userId !== req.userId) return res.status(404).json({ message: "Fiche cliente introuvable" });
+
+    const tpl = resp.templateId ? await storage.getAnamnesisTemplate(resp.templateId) : null;
+    let questions: Array<{ id: string; label: string }> = [];
+    try { questions = JSON.parse(tpl?.questions || "[]"); } catch { questions = []; }
+    let answers: Record<string, string | string[] | number> = {};
+    try { answers = JSON.parse(resp.answers); } catch { answers = {}; }
+
+    const mapped = mapAnswersToClientFields(questions, answers);
+    if (!mapped.allergies && !mapped.antecedents && !mapped.lifestyleNotes) {
+      return res.status(400).json({ message: "Aucune réponse ne correspond aux champs Allergies, Antécédents ou Hygiène de vie." });
+    }
+
+    const dateStr = new Date(resp.submittedAt).toLocaleDateString("fr-FR");
+    const entete = `— Importé de l'anamnèse du ${dateStr} —`;
+    const append = (existant: string | null | undefined, ajout: string | null) =>
+      ajout ? [existant?.trim(), `${entete}\n${ajout}`].filter(Boolean).join("\n\n") : existant ?? null;
+
+    const updated = await storage.updateClient(client.id, {
+      allergies: append(client.allergies, mapped.allergies),
+      antecedents: append(client.antecedents, mapped.antecedents),
+      lifestyleNotes: append(client.lifestyleNotes, mapped.lifestyleNotes),
+    } as any);
+    res.json({ ok: true, client: updated, applied: {
+      allergies: !!mapped.allergies, antecedents: !!mapped.antecedents, lifestyleNotes: !!mapped.lifestyleNotes,
+    } });
   });
 
   // ── Génération IA d'un programme depuis une anamnèse soumise (action 15) ──

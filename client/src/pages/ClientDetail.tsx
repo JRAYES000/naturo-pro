@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { FeatureGateInline } from "@/components/FeatureGate";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program } from "@shared/schema";
+import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program, Package } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
 import { computeImc, imcLabel, ageFromDateOfBirth, poidsIdealCreff } from "@/lib/imc";
 
@@ -190,19 +190,28 @@ export default function ClientDetail() {
     queryKey: ["/api/programmes", { clientId: cid }],
     queryFn: async () => (await apiRequest("GET", `/api/programmes?clientId=${cid}`)).json(),
   });
+  // Lot 5 (QC Forfait, vue 360°) — forfaits du client sur sa fiche.
+  const { data: forfaits = [] } = useQuery<Package[]>({
+    queryKey: ["/api/packages", { clientId: cid }],
+    queryFn: async () => (await apiRequest("GET", `/api/packages?clientId=${cid}`)).json(),
+  });
   const anamnesesRecues = anamneses.filter((a) => a.submittedAt).length;
 
   const lastApptAt = useMemo(() => (appts.length ? Math.max(...appts.map(a => a.startAt)) : null), [appts]);
 
   type TimelineItem =
     | { kind: "appt"; id: number; at: number; appt: Appointment }
-    | { kind: "note"; id: number; at: number; note: ConsultationNote };
+    | { kind: "note"; id: number; at: number; note: ConsultationNote }
+    | { kind: "discussion"; id: number; at: number; discussion: AiDiscussion };
 
   const timeline = useMemo<TimelineItem[]>(() => {
     const apptItems: TimelineItem[] = appts.map(a => ({ kind: "appt", id: a.id, at: a.startAt, appt: a }));
     const noteItems: TimelineItem[] = notes.map(n => ({ kind: "note", id: n.id, at: n.createdAt, note: n }));
-    return [...apptItems, ...noteItems].sort((a, b) => b.at - a.at);
-  }, [appts, notes]);
+    // Lot 5 (NaturoBot N5) — les échanges Naturobot liés au client remontent
+    // dans la chronologie, au même titre qu'un RDV ou une note.
+    const discItems: TimelineItem[] = clientDiscussions.map(d => ({ kind: "discussion", id: d.id, at: d.updatedAt, discussion: d }));
+    return [...apptItems, ...noteItems, ...discItems].sort((a, b) => b.at - a.at);
+  }, [appts, notes, clientDiscussions]);
 
   const [, navigate] = useLocation();
   const [draft, setDraft] = useState<Partial<Client>>({});
@@ -226,6 +235,8 @@ export default function ClientDetail() {
         companySiret: (draft as any).clientType === "entreprise" ? ((draft as any).companySiret || null) : null,
         ...(fullAccess ? {
           dateOfBirth: draft.dateOfBirth, address: draft.address,
+          postalCode: (draft as any).postalCode || null,
+          city: (draft as any).city || null,
           allergies: draft.allergies, antecedents: draft.antecedents,
           lifestyleNotes: draft.lifestyleNotes, penseBete: draft.penseBete,
           heightCm: (draft as any).heightCm || null,
@@ -323,7 +334,7 @@ export default function ClientDetail() {
           actions={
             <Button variant="outline" size="sm" className="rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={async () => {
-                if (!(await confirm({ title: "Supprimer cette fiche client ?", description: "Cette action est définitive et supprimera toutes les données associées à ce client.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
+                if (!(await confirm({ title: "Supprimer cette fiche client ?", description: "Notes, documents, anamnèses, programmes et forfaits de ce client seront définitivement supprimés. Ses rendez-vous passés sont conservés anonymisés dans l'agenda ; ses rendez-vous futurs sont annulés.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
                 delMut.mutate();
               }} data-testid="button-delete-client">
               <Trash2 className="h-4 w-4 mr-1" /> Supprimer
@@ -345,6 +356,7 @@ export default function ClientDetail() {
             <TabsTrigger value="appts" data-testid="tab-appts">Rendez-vous ({appts.length})</TabsTrigger>
             <TabsTrigger value="anamneses" data-testid="tab-anamneses">Anamnèses ({anamneses.length})</TabsTrigger>
             <TabsTrigger value="programmes" data-testid="tab-programmes">Programmes ({programmes.length})</TabsTrigger>
+            <TabsTrigger value="forfaits" data-testid="tab-forfaits">Forfaits ({forfaits.length})</TabsTrigger>
             <TabsTrigger value="documents" data-testid="tab-documents">Documents ({documents.length})</TabsTrigger>
           </TabsList>
 
@@ -383,6 +395,23 @@ export default function ClientDetail() {
                           </p>
                         </div>
                       </li>
+                    );
+                  }
+                  if (item.kind === "discussion") {
+                    const d = item.discussion;
+                    return (
+                      <Link
+                        key={`disc-${d.id}`}
+                        href={`/app/chat/${d.id}`}
+                        className="card-naturo flex items-start gap-3 hover:-translate-y-0.5 transition"
+                        data-testid={`timeline-discussion-${d.id}`}
+                      >
+                        <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold">{formatDay(d.updatedAt)}</p>
+                          <p className="text-sm font-semibold text-heading mt-0.5">Échange Naturobot — {d.title}</p>
+                        </div>
+                      </Link>
                     );
                   }
                   const n = item.note;
@@ -442,6 +471,9 @@ export default function ClientDetail() {
                   <>
                     <div><Label>Date de naissance</Label><Input type="date" value={draft.dateOfBirth || ""} onChange={e => setDraft({ ...draft, dateOfBirth: e.target.value })} data-testid="input-dob" /></div>
                     <div><Label>Adresse</Label><Input value={draft.address || ""} onChange={e => setDraft({ ...draft, address: e.target.value })} data-testid="input-address" /></div>
+                    {/* Lot 5 (QC Facture) — repris automatiquement sur les factures */}
+                    <div><Label>Code postal</Label><Input value={(draft as any).postalCode || ""} onChange={e => setDraft({ ...draft, postalCode: e.target.value } as any)} data-testid="input-postal-code" /></div>
+                    <div><Label>Ville</Label><Input value={(draft as any).city || ""} onChange={e => setDraft({ ...draft, city: e.target.value } as any)} data-testid="input-city" /></div>
                   </>
                 )}
               </div>
@@ -625,11 +657,48 @@ export default function ClientDetail() {
             )}
           </TabsContent>
 
+          {/* Lot 5 (QC Forfait, vue 360°) — forfaits en cours du client */}
+          <TabsContent value="forfaits">
+            {forfaits.length === 0 ? (
+              <EmptyState
+                icon={FileText}
+                title="Aucun forfait pour ce client"
+                description="Créez un carnet de séances prépayées depuis le module Forfaits."
+                action={
+                  <Link href="/app/forfaits">
+                    <Button size="sm" className="rounded-lg font-bold" data-testid="button-go-forfaits">
+                      Ouvrir les forfaits
+                    </Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <ul className="space-y-3">
+                {forfaits.map((p) => {
+                  const epuise = p.usedSessions >= p.totalSessions;
+                  return (
+                    <li key={p.id} className="card-naturo" data-testid={`client-forfait-${p.id}`}>
+                      <Link href="/app/forfaits" className="flex items-center justify-between gap-3 hover:text-primary">
+                        <div className="min-w-0">
+                          <p className="font-bold truncate">{p.name}</p>
+                          <p className="text-sm text-muted-foreground">{p.usedSessions} / {p.totalSessions} séances utilisées</p>
+                        </div>
+                        {epuise
+                          ? <Badge className="bg-red-100 text-red-700 border-0 text-xs">Épuisé</Badge>
+                          : <Badge className="bg-accent/30 text-primary border-0 text-xs">En cours</Badge>}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </TabsContent>
+
           <TabsContent value="documents">
             <HelpNote title="Documents client" defaultOpen={false}>
               <p>
                 Stockez ici les <strong>analyses, bilans, ordonnances ou tout fichier</strong> lié à ce client.
-                Les fichiers sont conservés dans votre base de données (chiffrement côté serveur).
+                Les fichiers sont conservés dans votre base de données, accessibles uniquement depuis votre compte.
               </p>
               <ul>
                 <li><strong>Taille maximale :</strong> 5 Mo par fichier.</li>

@@ -27,17 +27,31 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<AppointmentCategory | "new" | null>(null);
 
   const delMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/categories/${id}`),
-    onMutate: async (id: number) => {
+    mutationFn: async ({ id, force }: { id: number; force?: boolean }) =>
+      apiRequest("DELETE", `/api/categories/${id}${force ? "?force=1" : ""}`),
+    onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/categories"] });
       const prev = queryClient.getQueryData<AppointmentCategory[]>(["/api/categories"]);
       queryClient.setQueryData(["/api/categories"], (old: any) => (old ?? []).filter((it: any) => it.id !== id));
       return { prev };
     },
     onSuccess: () => { toast({ title: "Prestation supprimée", variant: "success" }); },
-    onError: (_e, _id, ctx: any) => {
+    onError: async (e: any, vars, ctx: any) => {
       if (ctx?.prev) queryClient.setQueryData(["/api/categories"], ctx.prev);
-      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" });
+      // Lot 5 (QC Prestation) — la prestation est utilisée par des RDV : proposer
+      // la désactivation (l'interrupteur existe dans le formulaire) ou forcer.
+      if (e?.status === 409) {
+        const forcer = await confirm({
+          title: "Prestation utilisée par des rendez-vous",
+          description: `${e.message}`,
+          confirmLabel: "Supprimer quand même",
+          cancelLabel: "Garder (je vais la désactiver)",
+          destructive: true,
+        });
+        if (forcer) delMut.mutate({ id: vars.id, force: true });
+        return;
+      }
+      toast({ title: "Erreur", description: e?.message || "Suppression impossible.", variant: "destructive" });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/categories"] }),
   });
@@ -116,7 +130,7 @@ export default function CategoriesPage() {
                   </div>
                   <div className="flex gap-1">
                     <button aria-label="Modifier la prestation" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={() => setEditing(c)} data-testid={`button-edit-${c.id}`}><Pencil className="h-4 w-4" /></button>
-                    <button aria-label="Supprimer la prestation" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={async () => { if (!(await confirm({ title: "Supprimer cette prestation ?", description: "Cette action est définitive et ne peut pas être annulée.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate(c.id); }} data-testid={`button-delete-${c.id}`}><Trash2 className="h-4 w-4" /></button>
+                    <button aria-label="Supprimer la prestation" className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={async () => { if (!(await confirm({ title: "Supprimer cette prestation ?", description: "Cette action est définitive. Pour la retirer de la réservation en ligne sans perdre l'historique, préférez le réglage « Prestation active » (crayon).", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return; delMut.mutate({ id: c.id }); }} data-testid={`button-delete-${c.id}`}><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
                 {c.description && <p className="text-sm text-muted-foreground mb-3">{c.description}</p>}
