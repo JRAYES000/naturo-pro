@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ExternalLink, Save, Globe, Copy, Check, Link as LinkIcon, AlertCircle, RotateCcw, Upload, Image as ImageIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, PAGE_PUBLIQUE_TABS } from "@/components/SubNav";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,6 +156,7 @@ export default function PublicPageEditor() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
+        <SubNav group="page-publique" tabs={PAGE_PUBLIQUE_TABS} />
         <PageHeader
           title="Page publique"
           subtitle="Personnalisez votre page de réservation en ligne."

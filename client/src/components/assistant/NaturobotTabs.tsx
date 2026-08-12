@@ -1,34 +1,13 @@
-import { Link, useLocation } from "wouter";
 import { MessageCircle, Sparkles, BookMarked } from "lucide-react";
+import { SubNav, type SubNavTab } from "@/components/SubNav";
 
-const TABS = [
-  { href: "/app/chat", match: "/app/chat", label: "Discussion", icon: MessageCircle, id: "discussion" },
-  { href: "/app/studio-contenu", match: "/app/studio-contenu", label: "Studio contenu", icon: Sparkles, id: "studio" },
+const TABS: SubNavTab[] = [
+  { href: "/app/chat", label: "Discussion", icon: MessageCircle, id: "discussion" },
+  { href: "/app/studio-contenu", label: "Studio contenu", icon: Sparkles, id: "studio" },
   // Lot 5 (NaturoBot N4) — réponses IA archivées, consultables hors des fils.
-  { href: "/app/naturobot-bibliotheque", match: "/app/naturobot-bibliotheque", label: "Bibliothèque", icon: BookMarked, id: "bibliotheque" },
+  { href: "/app/naturobot-bibliotheque", label: "Bibliothèque", icon: BookMarked, id: "bibliotheque" },
 ];
 
 export function NaturobotTabs() {
-  const [location] = useLocation();
-  return (
-    <div className="flex gap-2 mb-4">
-      {TABS.map((t) => {
-        const active = location.startsWith(t.match);
-        const Icon = t.icon;
-        return (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[12px] text-sm font-bold transition ${
-              active ? "bg-primary text-primary-foreground" : "bg-secondary text-primary hover:bg-secondary/70"
-            }`}
-            data-testid={`tab-naturobot-${t.id}`}
-          >
-            <Icon className="h-4 w-4" />
-            {t.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
+  return <SubNav group="naturobot" tabs={TABS} />;
 }

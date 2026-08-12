@@ -1,9 +1,9 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard, Calendar, Users, Tag, Clock, Globe, Settings, LogOut,
-  ExternalLink, Receipt, Shield, Bell, MailOpen, ClipboardList, FileText,
-  BarChart2, Leaf, Ticket, Sparkles, BookOpen, Menu, Scale,
+  LayoutDashboard, Calendar, Users, Globe, Settings, LogOut,
+  ExternalLink, Receipt, Shield, ClipboardList,
+  BarChart2, Leaf, Sparkles, BookOpen, Menu,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "./Logo";
@@ -12,45 +12,23 @@ import { useAuth, type AuthUser } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean };
+type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; match?: string[] };
 
-// Navigation regroupée par domaine (auparavant une liste plate de 15 items).
+// Consolidation navigation : 9 entrées plates. Les pages regroupées gardent leur
+// URL et s'atteignent via la sous-nav (SubNav) en tête de page ; `match` liste
+// les routes sœurs pour garder l'entrée active.
 const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
-  { items: [{ href: "/app", label: "Tableau de bord", icon: LayoutDashboard, exact: true }] },
   {
-    label: "Activité",
     items: [
+      { href: "/app", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
       { href: "/app/agenda", label: "Agenda", icon: Calendar },
       { href: "/app/clients", label: "Clients", icon: Users },
       { href: "/app/invoices", label: "Factures", icon: Receipt },
-    ],
-  },
-  {
-    label: "Suivi & contenu",
-    items: [
-      { href: "/app/anamnese", label: "Anamnèses", icon: ClipboardList },
-      { href: "/app/programmes", label: "Programmes", icon: FileText },
-      { href: "/app/forfaits", label: "Forfaits", icon: Ticket },
-      { href: "/app/solutions", label: "Bibliothèque de référence", icon: Leaf },
-      { href: "/app/chat", label: "Naturobot", icon: Sparkles },
-      { href: "/app/cadre-legal", label: "Cadre légal", icon: Scale },
-    ],
-  },
-  {
-    label: "Configuration",
-    items: [
-      { href: "/app/categories", label: "Prestations", icon: Tag },
-      { href: "/app/availability", label: "Disponibilités", icon: Clock },
-      { href: "/app/public-page", label: "Page publique", icon: Globe },
-      { href: "/app/reminders", label: "Rappels", icon: Bell },
-      { href: "/app/email-templates", label: "Templates email", icon: MailOpen },
-    ],
-  },
-  {
-    label: "Pilotage",
-    items: [
-      { href: "/app/stats", label: "Statistiques", icon: BarChart2 },
-      { href: "/app/settings", label: "Paramètres", icon: Settings },
+      { href: "/app/anamnese", label: "Suivi", icon: ClipboardList, match: ["/app/programmes", "/app/forfaits"] },
+      { href: "/app/chat", label: "Naturobot", icon: Sparkles, match: ["/app/studio-contenu", "/app/naturobot-bibliotheque"] },
+      { href: "/app/solutions", label: "Ressources", icon: Leaf, match: ["/app/cadre-legal"] },
+      { href: "/app/public-page", label: "Ma page publique", icon: Globe, match: ["/app/categories", "/app/availability"] },
+      { href: "/app/settings", label: "Paramètres", icon: Settings, match: ["/app/reminders", "/app/email-templates"] },
     ],
   },
 ];
@@ -95,7 +73,9 @@ function NavLinks({
             </p>
           )}
           {group.items.map((item) => {
-            const active = item.exact ? location === item.href : location.startsWith(item.href);
+            const active = item.exact
+              ? location === item.href
+              : [item.href, ...(item.match ?? [])].some((p) => location.startsWith(p));
             const Icon = item.icon;
             return (
               <Link

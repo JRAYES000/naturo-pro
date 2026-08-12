@@ -8,6 +8,7 @@
  */
 import { Scale, Ban, Check, AlertTriangle, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, RESSOURCES_TABS } from "@/components/SubNav";
 import { PageHeader } from "@/components/PageHeader";
 
 const INTERDITS: Array<{ titre: string; detail: string }> = [
@@ -62,6 +63,7 @@ export default function CadreLegal() {
   return (
     <AppLayout>
       <div className="max-w-4xl">
+        <SubNav group="ressources" tabs={RESSOURCES_TABS} />
         <PageHeader
           icon={Scale}
           title="Cadre légal"

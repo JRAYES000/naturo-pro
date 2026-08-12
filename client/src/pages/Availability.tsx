@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Clock, CalendarCheck, CopyPlus } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, PAGE_PUBLIQUE_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -169,6 +170,7 @@ export default function Availability() {
   return (
     <AppLayout>
       <div className="max-w-3xl">
+        <SubNav group="page-publique" tabs={PAGE_PUBLIQUE_TABS} />
         <PageHeader
           title="Disponibilités"
           subtitle="Vos plages horaires d'ouverture, par jour de la semaine."

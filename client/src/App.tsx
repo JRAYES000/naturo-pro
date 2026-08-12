@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Switch, Route, Router } from "wouter";
+import { Switch, Route, Router, Redirect } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -55,7 +55,6 @@ const AnamnesePublic = lazy(() => import("@/pages/AnamnesePublic"));
 const Programmes = lazy(() => import("@/pages/Programmes"));
 const Solutions = lazy(() => import("@/pages/Solutions"));
 const Packages = lazy(() => import("@/pages/Packages"));
-const Stats = lazy(() => import("@/pages/Stats"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const StudioContenu = lazy(() => import("@/pages/StudioContenu"));
 const CadreLegal = lazy(() => import("@/pages/CadreLegal"));
@@ -120,7 +119,8 @@ function AppRouter() {
       <Route path="/app/programmes" component={() => <ProtectedRoute><Programmes /></ProtectedRoute>} />
       <Route path="/app/solutions" component={() => <ProtectedRoute><Solutions /></ProtectedRoute>} />
       <Route path="/app/forfaits" component={() => <ProtectedRoute><Packages /></ProtectedRoute>} />
-      <Route path="/app/stats" component={() => <ProtectedRoute><Stats /></ProtectedRoute>} />
+      {/* Statistiques fusionnées dans le tableau de bord — on préserve les anciens liens. */}
+      <Route path="/app/stats" component={() => <Redirect to="/app" />} />
       <Route path="/app/chat/:discussionId?" component={() => <ProtectedRoute><Chat /></ProtectedRoute>} />
       <Route path="/app/studio-contenu" component={() => <ProtectedRoute><StudioContenu /></ProtectedRoute>} />
       <Route path="/app/cadre-legal" component={() => <ProtectedRoute><CadreLegal /></ProtectedRoute>} />

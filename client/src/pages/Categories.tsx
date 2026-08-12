@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, PAGE_PUBLIQUE_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -59,6 +60,7 @@ export default function CategoriesPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl">
+        <SubNav group="page-publique" tabs={PAGE_PUBLIQUE_TABS} />
         <PageHeader
           title="Prestations"
           icon={Tag}

@@ -11,6 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, PARAMETRES_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -187,6 +188,7 @@ function Reminders() {
 
   return (
     <AppLayout>
+      <SubNav group="parametres" tabs={PARAMETRES_TABS} />
       {/* ── Header ── */}
       <PageHeader
         title="Rappels"

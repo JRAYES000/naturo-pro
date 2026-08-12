@@ -17,6 +17,7 @@ import {
   Eye, Check, GripVertical, Sparkles, Loader2, Copy, Send, UserPlus,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, SUIVI_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -276,6 +277,7 @@ function AnamnesePage() {
   return (
     <AppLayout>
       <div className="max-w-4xl">
+        <SubNav group="suivi" tabs={SUIVI_TABS} />
         <PageHeader
           title="Anamnèses"
           subtitle="Vos questionnaires de bilan à envoyer aux clients."

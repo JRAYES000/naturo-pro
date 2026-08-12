@@ -1,7 +1,9 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, Wallet, CheckCircle2, XCircle, TrendingUp, StickyNote, Megaphone, ListChecks, Circle, X } from "lucide-react";
+import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, Wallet, CheckCircle2, XCircle, TrendingUp, StickyNote, Megaphone, ListChecks, Circle, X, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -20,6 +22,57 @@ interface StatsOverview {
   topPrestations: Array<{ name: string; count: number; caCents: number }>;
 }
 
+// ── Helpers période (ex-page Statistiques, fusionnée ici) ────────────────────
+
+function startOfMonthMs(offset = 0): number {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCMonth(d.getUTCMonth() + offset);
+  return d.getTime();
+}
+
+function endOfMonthMs(offset = 0): number {
+  const d = new Date();
+  d.setUTCMonth(d.getUTCMonth() + offset + 1, 1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.getTime() - 1;
+}
+
+function startOfYearMs(): number {
+  const d = new Date();
+  d.setUTCMonth(0, 1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function endOfYearMs(): number {
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() + 1, 0, 1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.getTime() - 1;
+}
+
+type Periode = "mois_courant" | "mois_dernier" | "annee";
+
+function getPeriodeLabel(p: Periode): string {
+  if (p === "mois_courant") {
+    return new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+  if (p === "mois_dernier") {
+    const d = new Date();
+    d.setUTCMonth(d.getUTCMonth() - 1);
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+  return String(new Date().getFullYear());
+}
+
+function getPeriodeRange(p: Periode): { from: number; to: number } {
+  if (p === "mois_courant") return { from: startOfMonthMs(0), to: endOfMonthMs(0) };
+  if (p === "mois_dernier") return { from: startOfMonthMs(-1), to: endOfMonthMs(-1) };
+  return { from: startOfYearMs(), to: endOfYearMs() };
+}
+
 function Dashboard() {
   const { user } = useAuth();
   const now = useMemo(() => Date.now(), []);
@@ -35,9 +88,14 @@ function Dashboard() {
   });
   const { data: clients } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
   const { data: cats } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
+  // Fusion de l'ancienne page Statistiques : les KPIs financiers suivent la
+  // période choisie (mois courant par défaut = comportement d'origine).
+  const [periode, setPeriode] = useState<Periode>("mois_courant");
+  const [downloading, setDownloading] = useState(false);
+  const { from, to } = useMemo(() => getPeriodeRange(periode), [periode]);
   const { data: stats, isLoading: statsLoading } = useQuery<StatsOverview>({
-    queryKey: ["/api/stats/overview"],
-    queryFn: async () => (await apiRequest("GET", "/api/stats/overview")).json(),
+    queryKey: ["/api/stats/overview", from, to],
+    queryFn: async () => (await apiRequest("GET", `/api/stats/overview?from=${from}&to=${to}`)).json(),
   });
   // Lot 4 (action C2) — CA encaissé mensuel sur 12 mois glissants.
   const { data: revenue = [] } = useQuery<Array<{ month: string; caCents: number }>>({
@@ -59,6 +117,24 @@ function Dashboard() {
     : null;
 
   const remplissageLabel = thisWeekCount >= 16 ? "Semaine complète" : thisWeekCount >= 6 ? "Semaine chargée" : "Semaine calme";
+
+  async function handleExportCsv() {
+    setDownloading(true);
+    try {
+      const res = await apiRequest("GET", `/api/stats/recettes.csv?from=${from}&to=${to}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `recettes-${getPeriodeLabel(periode).replace(/\s+/g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <AppLayout>
@@ -107,6 +183,32 @@ function Dashboard() {
           <StatCard label="Consultations terminées (30j)" value={completed} icon={Tag} testid="stat-completed" />
         </div>
 
+        <div className="flex items-center gap-3 mb-3 flex-wrap" data-testid="row-periode-stats">
+          <span className="text-sm font-semibold text-muted-foreground">Période :</span>
+          <Select value={periode} onValueChange={(v) => setPeriode(v as Periode)}>
+            <SelectTrigger className="w-44" data-testid="select-periode">
+              <SelectValue placeholder="Choisir une période" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mois_courant">Ce mois-ci</SelectItem>
+              <SelectItem value="mois_dernier">Mois dernier</SelectItem>
+              <SelectItem value="annee">Année en cours</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground capitalize">{getPeriodeLabel(periode)}</span>
+          <Button
+            onClick={handleExportCsv}
+            disabled={downloading}
+            variant="outline"
+            size="sm"
+            className="ml-auto rounded-lg font-bold"
+            data-testid="button-export-csv"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            {downloading ? "Téléchargement…" : "Exporter les recettes (CSV)"}
+          </Button>
+        </div>
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {statsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -117,11 +219,11 @@ function Dashboard() {
             ))
           ) : (
             <>
-              <StatCard label="CA encaissé (mois)" value={formatPrice(stats?.caEncaisseCents ?? 0)} icon={Euro} testid="stat-ca-encaisse" />
+              <StatCard label="CA encaissé" value={formatPrice(stats?.caEncaisseCents ?? 0)} icon={Euro} testid="stat-ca-encaisse" />
               <StatCard label="CA prévu" value={formatPrice(stats?.caPrevuCents ?? 0)} icon={Wallet} testid="stat-ca-prevu" />
-              <StatCard label="RDV honorés (mois)" value={stats?.nbRdv ?? 0} icon={CheckCircle2} testid="stat-rdv-honores" />
+              <StatCard label="RDV honorés" value={stats?.nbRdv ?? 0} icon={CheckCircle2} testid="stat-rdv-honores" />
               <StatCard
-                label="RDV annulés (mois)"
+                label="RDV annulés"
                 value={stats?.nbRdvAnnules ?? 0}
                 icon={XCircle}
                 testid="stat-rdv-annules"
@@ -234,7 +336,7 @@ function Dashboard() {
             )}
 
             <div className="card-naturo" data-testid="card-top-prestations">
-              <h3 className="font-extrabold mb-3">Top prestations du mois</h3>
+              <h3 className="font-extrabold mb-3">Top prestations</h3>
               {statsLoading ? (
                 <div className="space-y-3" aria-busy="true">
                   {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -242,7 +344,7 @@ function Dashboard() {
               ) : (stats?.topPrestations || []).length === 0 ? (
                 <EmptyState
                   icon={Tag}
-                  title="Aucune prestation ce mois"
+                  title="Aucune prestation sur la période"
                   description="Vos prestations les plus demandées apparaîtront ici."
                   card={false}
                 />

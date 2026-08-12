@@ -21,6 +21,7 @@ import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, PARAMETRES_TABS } from "@/components/SubNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -241,6 +242,7 @@ function EmailTemplates() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto">
+        <SubNav group="parametres" tabs={PARAMETRES_TABS} />
         <PageHeader
           title="Templates email"
           subtitle="Personnalisez les emails envoyés à vos clients."

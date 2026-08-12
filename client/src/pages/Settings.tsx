@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard, Settings as SettingsIcon, Moon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, PARAMETRES_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,7 @@ export default function Settings() {
   return (
     <AppLayout>
       <div className="max-w-2xl space-y-6">
+        <SubNav group="parametres" tabs={PARAMETRES_TABS} />
         <PageHeader
           icon={SettingsIcon}
           title="Paramètres"

@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, SUIVI_TABS } from "@/components/SubNav";
 import { Loading } from "@/components/Loading";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
@@ -155,6 +156,7 @@ function Packages() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
+        <SubNav group="suivi" tabs={SUIVI_TABS} />
         {/* En-tête */}
         <PageHeader
           title="Forfaits"

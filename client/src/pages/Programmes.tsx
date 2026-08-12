@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, FileText, Download, X, Leaf, Copy as CopyIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, SUIVI_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -464,6 +465,7 @@ function ProgrammesPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl">
+        <SubNav group="suivi" tabs={SUIVI_TABS} />
         <PageHeader
           title="Programmes"
           subtitle="Vos programmes d'hygiène de vie personnalisés."

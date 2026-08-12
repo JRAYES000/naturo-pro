@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Search, Pencil, Trash2, Leaf } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { SubNav, RESSOURCES_TABS } from "@/components/SubNav";
 import { Loading } from "@/components/Loading";
 import { HelpNote } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
@@ -79,6 +80,7 @@ function Solutions() {
   return (
     <AppLayout>
       <div className="max-w-5xl">
+        <SubNav group="ressources" tabs={RESSOURCES_TABS} />
         <PageHeader
           title="Bibliothèque de référence"
           subtitle="Votre catalogue de solutions naturelles."
