@@ -21,6 +21,15 @@ export const users = sqliteTable("users", {
   googleCalendarEmail: text("google_calendar_email"),
   emailRemindersEnabled: integer("email_reminders_enabled", { mode: "boolean" }).default(true),
   publicPageEnabled: integer("public_page_enabled", { mode: "boolean" }).default(true),
+  // SEO (audit 15/08/2026, A7) — comptes de démonstration et de test : exclus du
+  // sitemap et servis en noindex. Soumettre à Google un praticien fictif sur un
+  // site santé est un signal de qualité négatif.
+  isDemo: integer("is_demo", { mode: "boolean" }).default(false),
+  // SEO (A7) — dernière modification réelle de la page publique, en ms. Alimente
+  // <lastmod> ; createdAt ne bougeait jamais après coup et annonçait donc une
+  // fraîcheur fausse. NULL tant que la page n'a pas été rééditée : le sitemap
+  // retombe alors sur createdAt.
+  publicPageUpdatedAt: integer("public_page_updated_at"),
   primaryColor: text("primary_color").default("#186749"),
   accentColor: text("accent_color").default("#17EC9B"),
   // Apparence — préférence de thème de l'interface ("light" par défaut, "dark" sinon).

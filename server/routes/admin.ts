@@ -34,6 +34,12 @@ export function registerAdminRoutes(app: Express): void {
     plan: z.enum(["trial", "active", "free", "suspended"]).optional(),
     trialEndsAt: z.number().int().nullable().optional(),
     emailVerifiedAt: z.number().int().nullable().optional(),
+    // A7 (audit SEO 15/08/2026) — compte de démonstration ou de test : exclu du
+    // sitemap, de l'annuaire et de llms.txt, et servi en noindex. Soumettre à
+    // Google un praticien de santé fictif est un signal de qualité négatif.
+    // Réglable ici plutôt qu'en SQL : un flag qui ne se pose qu'à la main en base
+    // finit toujours par ne plus être posé.
+    isDemo: z.boolean().optional(),
   }).strict();
 
   const extendTrialSchema = z.object({

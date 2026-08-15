@@ -151,5 +151,8 @@ Voir `.env.example`. Les critiques :
 - `docs/DEPLOY.md` — déploiement prod
 - `docs/ROADMAP.md` — features prévues · `docs/HISTORY.md` — phases livrées
 - `docs/AUDIT-2026-07-28.md` — dernier audit du code
+- **`docs/SEO-TRACKING.md` — état du SEO, action par action. À lire AVANT tout nouvel audit SEO :
+  `npm run seo:check` rejoue les tests sur la prod et dit ce qui tient. Ne relancer une analyse
+  complète que sur ce qui échoue.** Audit d'origine : `docs/AUDIT-SEO-2026-08-15.md`.
 - `docs/routes-inventory.txt` — inventaire généré de toutes les routes (`npm run routes:inventory`)
 - `docs/superpowers/{specs,plans}/` — specs et plans d'implémentation

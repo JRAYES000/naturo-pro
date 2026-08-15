@@ -36,14 +36,26 @@ import type {
   AiSavedReply, BlockedDate,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
-import { eq, and, gte, lte, desc, like, or, sql, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, desc, like, or, sql, isNull, inArray } from "drizzle-orm";
 import { db, DB_DRIVER } from "./db";
+import type { SeoProfile } from "./seo-pages";
 import { rankThemes } from "./social-content";
 // Fonction pure (formatage du numéro) — pas de cycle : invoices.ts n'importe pas storage.
 import { buildInvoiceNumber, invoiceNumberPrefix } from "./invoices";
 
 // Re-export db so that routes.ts can import it directly (backwards-compat)
 export { db };
+
+/** Spécialités stockées en JSON texte → tableau. Ne lève jamais. */
+function parseSpecialties(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((s): s is string => typeof s === "string" && s.trim().length > 0) : [];
+  } catch {
+    return [];
+  }
+}
 
 // ── Chantier C — types de projection pour les hot paths de storage.ts ──────────
 // listAppointments alimente GET /api/appointments (Agenda + Dashboard), GET
@@ -273,7 +285,8 @@ export interface IStorage {
   countUsers(): Promise<number>;
   listUsersWithGoogleToken(): Promise<User[]>;
   listUsersWithEmailConfig(): Promise<User[]>;
-  listPublicPagesForSitemap(): Promise<{ slug: string; createdAt: number }[]>;
+  listPublicProfilesForSeo(): Promise<SeoProfile[]>;
+  getSeoProfileBySlug(slug: string): Promise<SeoProfile | undefined>;
   // Phase 3 Lot 4 — admin
   listAllUsers(): Promise<User[]>;
   countAppointmentsForUser(userId: number): Promise<number>;
@@ -524,11 +537,113 @@ export class DatabaseStorage implements IStorage {
     return rows.filter((u: any) => !!u.resendApiKey && !!u.emailFromAddress) as User[];
   }
 
-  async listPublicPagesForSitemap(): Promise<{ slug: string; createdAt: number }[]> {
-    return await db
-      .select({ slug: users.slug, createdAt: users.createdAt })
+  /**
+   * Profils publics enrichis, pour le rendu SEO serveur (audit 15/08/2026).
+   *
+   * Remplace l'ancien listPublicPagesForSitemap() qui ne renvoyait que slug +
+   * createdAt : le sitemap, l'annuaire et le corps pré-rendu des pages praticien
+   * ont besoin de la ville, de la bio, des spécialités et des prestations pour
+   * décider ce qui est indexable (cf. isIndexable dans server/seo-pages.ts).
+   *
+   * Deux requêtes, pas N+1 : les praticiens d'un côté, toutes leurs prestations
+   * actives de l'autre, recollées en mémoire.
+   */
+  async listPublicProfilesForSeo(): Promise<SeoProfile[]> {
+    // Annotation explicite : `users` vient de schema-active, typé `any` pour
+    // absorber la différence SQLite/MySQL — sans elle, les callbacks plus bas
+    // héritent d'un paramètre implicitement `any` (noImplicitAny).
+    const rows: {
+      id: number; slug: string; name: string; city: string | null; address: string | null;
+      bio: string | null; photoUrl: string | null; specialties: string | null;
+      createdAt: number; publicPageUpdatedAt: number | null; isDemo: boolean | null;
+    }[] = await db
+      .select({
+        id: users.id,
+        slug: users.slug,
+        name: users.name,
+        city: users.city,
+        address: users.address,
+        bio: users.bio,
+        photoUrl: users.photoUrl,
+        specialties: users.specialties,
+        createdAt: users.createdAt,
+        publicPageUpdatedAt: users.publicPageUpdatedAt,
+        isDemo: users.isDemo,
+      })
       .from(users)
       .where(eq(users.publicPageEnabled, true));
+
+    if (rows.length === 0) return [];
+
+    const cats = await db
+      .select({
+        userId: appointmentCategories.userId,
+        name: appointmentCategories.name,
+        durationMinutes: appointmentCategories.durationMinutes,
+        priceCents: appointmentCategories.priceCents,
+        description: appointmentCategories.description,
+      })
+      .from(appointmentCategories)
+      .where(
+        inArray(appointmentCategories.userId, rows.map((r) => r.id)),
+      );
+
+    const byUser = new Map<number, SeoProfile["services"]>();
+    for (const c of cats) {
+      const list = byUser.get(c.userId) ?? [];
+      list.push({
+        name: c.name,
+        durationMinutes: c.durationMinutes,
+        priceCents: c.priceCents,
+        description: c.description ?? null,
+      });
+      byUser.set(c.userId, list);
+    }
+
+    return rows.map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      city: r.city ?? null,
+      address: r.address ?? null,
+      bio: r.bio ?? null,
+      photoUrl: r.photoUrl ?? null,
+      specialties: parseSpecialties(r.specialties),
+      createdAt: r.createdAt,
+      publicPageUpdatedAt: r.publicPageUpdatedAt ?? null,
+      isDemo: Boolean(r.isDemo),
+      services: byUser.get(r.id) ?? [],
+    }));
+  }
+
+  /**
+   * Profil SEO d'UN praticien, pour le rendu serveur de /p/:slug.
+   * Renvoie undefined si le slug n'existe pas ou si la page est désactivée —
+   * l'appelant répond alors 404 (A3), au lieu de servir le SPA en 200.
+   */
+  async getSeoProfileBySlug(slug: string): Promise<SeoProfile | undefined> {
+    const u = await this.getUserBySlug(slug);
+    if (!u || !u.publicPageEnabled) return undefined;
+    const services = (await this.listCategories(u.id))
+      .filter((c) => c.isActive)
+      .map((c) => ({
+        name: c.name,
+        durationMinutes: c.durationMinutes,
+        priceCents: c.priceCents,
+        description: c.description ?? null,
+      }));
+    return {
+      slug: u.slug,
+      name: u.name,
+      city: u.city ?? null,
+      address: u.address ?? null,
+      bio: u.bio ?? null,
+      photoUrl: u.photoUrl ?? null,
+      specialties: parseSpecialties(u.specialties),
+      createdAt: u.createdAt,
+      publicPageUpdatedAt: u.publicPageUpdatedAt ?? null,
+      isDemo: Boolean(u.isDemo),
+      services,
+    };
   }
 
   // Phase 3 Lot 4 — admin

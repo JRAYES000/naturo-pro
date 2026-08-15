@@ -16,7 +16,8 @@
     "predev": "npm run db:push",
     "pretest": "npm run db:push",
     "db:generate:mysql": "drizzle-kit generate --config=drizzle.config.mysql.ts",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "seo:check": "node script/seo-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

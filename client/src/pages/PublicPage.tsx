@@ -10,6 +10,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { brandThemeVars } from "@/lib/brand-theme";
 // Phase 3 Lot 2 — fallback sous-domaine
 import { getCurrentTenant, isOnTenantSubdomain } from "@/lib/tenant";
+// A4 — même normalisation de casse que le rendu serveur (shared/display-name.ts).
+import { titleCase } from "@shared/display-name";
 
 interface PublicData {
   naturo: { name: string; slug: string; bio: string; photoUrl: string | null; city: string | null; address: string | null; specialties: string[]; primaryColor: string; accentColor: string; };
@@ -87,15 +89,20 @@ export default function PublicPage() {
     retry: 2,
   });
 
-  // Document title — update when practitioner name is known
+  // Document title — aligné mot pour mot sur celui que le serveur pré-rend
+  // (server/static.ts:buildSeoHead). Avant l'audit du 15/08/2026, le client
+  // écrasait le title serveur par une version sans la ville : Googlebot indexe
+  // le DOM APRÈS exécution du JS, donc c'est cette version dégradée qui comptait,
+  // et le travail fait côté serveur ne servait qu'aux crawlers sans JS.
   useEffect(() => {
-    if (data?.naturo?.name) {
-      document.title = `${data.naturo.name} — Naturo Pro`;
+    const naturo = data?.naturo;
+    if (naturo?.name) {
+      document.title = `${titleCase(naturo.name)} — Naturopathe${naturo.city ? ` à ${titleCase(naturo.city)}` : ""} | Naturo Pro`;
     } else {
       document.title = "Naturo Pro";
     }
     return () => { document.title = "Naturo Pro"; };
-  }, [data?.naturo?.name]);
+  }, [data?.naturo?.name, data?.naturo?.city]);
 
   if (isLoading) return <PublicPageSkeleton />;
 
@@ -163,9 +170,9 @@ export default function PublicPage() {
               <div
                 className="h-44 w-44 sm:h-56 sm:w-56 rounded-full text-white flex items-center justify-center text-5xl sm:text-6xl font-extrabold border-4 border-card shadow-xl"
                 style={{ background: primary }}
-                aria-label={`Initiale de ${naturo.name}`}
+                aria-label={`Initiale de ${titleCase(naturo.name)}`}
               >
-                {naturo.name[0]}
+                {titleCase(naturo.name)[0]}
               </div>
             )}
           </div>
@@ -176,12 +183,12 @@ export default function PublicPage() {
               style={{ color: primary }}
               data-testid="text-practitioner-name"
             >
-              {naturo.name}
+              {titleCase(naturo.name)}
             </h1>
             {(naturo.city || naturo.address) && (
               <p className="text-muted-foreground flex items-center gap-2 mb-4 text-sm" data-testid="text-practitioner-location">
                 <MapPin className="h-4 w-4 shrink-0" />
-                {[naturo.address, naturo.city].filter(Boolean).join(" · ")}
+                {[naturo.address, naturo.city ? titleCase(naturo.city) : null].filter(Boolean).join(" · ")}
               </p>
             )}
             <p className="text-base sm:text-lg leading-relaxed mb-5 max-w-xl">

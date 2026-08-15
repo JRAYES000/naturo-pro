@@ -23,6 +23,9 @@ export const users = mysqlTable("users", {
   googleCalendarEmail: varchar("google_calendar_email", { length: 255 }),
   emailRemindersEnabled: boolean("email_reminders_enabled").notNull().default(true),
   publicPageEnabled: boolean("public_page_enabled").notNull().default(true),
+  // SEO (audit 15/08/2026, A7) — voir shared/schema.ts pour le détail.
+  isDemo: boolean("is_demo").notNull().default(false),
+  publicPageUpdatedAt: bigint("public_page_updated_at", { mode: "number" }),
   primaryColor: varchar("primary_color", { length: 20 }).default("#186749"),
   accentColor: varchar("accent_color", { length: 20 }).default("#17EC9B"),
   // Réseaux sociaux affichés sur la page publique (optionnels).

@@ -165,9 +165,12 @@ export default function Landing() {
             Logiciel pour les naturopathes
             <span className="h-px w-8 bg-primary/25" aria-hidden="true" />
           </div>
+          {/* A8 (audit SEO 15/08/2026) — l'ancien H1 « Gérez tout votre cabinet, au
+              même endroit » ne contenait aucun des deux mots que les praticiens
+              tapent réellement dans Google. Le bénéfice reste, les mots-clés entrent. */}
           <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[1.05] mb-5 text-heading">
-            Gérez tout votre cabinet,<br />
-            <span style={{ color: "#186749" }}>au même endroit.</span>
+            Le logiciel des naturopathes,<br />
+            <span style={{ color: "#186749" }}>tout votre cabinet au même endroit.</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-7 leading-relaxed max-w-xl mx-auto">
             Fini les fichiers éparpillés. Naturo Pro réunit votre agenda, vos dossiers clients, vos anamnèses, vos comptes-rendus, votre facturation et votre réservation en ligne.
@@ -177,9 +180,13 @@ export default function Landing() {
             <a href="/register" className="btn-primary-naturo" data-testid="cta-hero-register">
               Démarrer gratuitement <ArrowRight className="h-4 w-4" />
             </a>
-            <Link href="/p/marie-dupont" className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 px-6 py-3 font-bold text-primary hover:bg-secondary transition" data-testid="cta-hero-demo">
-              Voir une page publique
-            </Link>
+            {/* A2/A7 — l'annuaire remplace le lien direct vers la fiche de
+                démonstration : les pages praticiens n'étaient liées depuis nulle
+                part (orphelines pour Google), et la fiche de démo est un
+                praticien fictif qu'il vaut mieux ne pas mettre en avant. */}
+            <a href="/naturopathes" className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/20 px-6 py-3 font-bold text-primary hover:bg-secondary transition" data-testid="cta-hero-demo">
+              Voir les pages publiques
+            </a>
           </div>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Sans engagement</span>
@@ -338,6 +345,10 @@ export default function Landing() {
             <button onClick={() => scrollToId("fonctionnalites")} className="hover:text-primary transition">Fonctionnalités</button>
             <button onClick={() => scrollToId("pourquoi")} className="hover:text-primary transition">Pourquoi</button>
             <button onClick={() => scrollToId("faq")} className="hover:text-primary transition">FAQ</button>
+            {/* Maillage interne (A2/A8) : ces deux pages sont rendues côté serveur
+                et n'existent pas dans le routeur Wouter — <a> natif obligatoire. */}
+            <a href="/logiciel-naturopathe" className="hover:text-primary transition">Logiciel naturopathe</a>
+            <a href="/naturopathes" className="hover:text-primary transition">Annuaire</a>
             <a href="/login" className="hover:text-primary transition">Connexion</a>
           </nav>
           <p>© 2026 Naturo Pro · Le logiciel des naturopathes en France.</p>

@@ -5,7 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "node:fs";
 import path from "node:path";
 import { nanoid } from "nanoid";
-import { applySeoHead } from "./static";
+import { applySeoHead, applySeoBody, isSpaPath } from "./static";
 
 const viteLogger = createLogger();
 
@@ -56,8 +56,16 @@ export async function setupVite(server: Server, app: Express) {
       if (res.locals.seoHead) {
         template = applySeoHead(template, res.locals.seoHead);
       }
+      // Corps pré-rendu de /p/:slug (A1), même mécanisme que le head.
+      if (res.locals.seoBody) {
+        template = applySeoBody(template, res.locals.seoBody);
+      }
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      // Même règle qu'en prod (A3) : une URL inconnue répond 404, pas 200. Sans ça
+      // le comportement dev et prod divergeraient précisément sur le point que
+      // l'audit a relevé, et le test ne vaudrait rien en local.
+      const status = res.locals.seoHead || isSpaPath(req.originalUrl) ? 200 : 404;
+      res.status(status).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

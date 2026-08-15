@@ -36,6 +36,13 @@
       "when": 1786493728816,
       "tag": "0004_nostalgic_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786827531978,
+      "tag": "0005_previous_hex",
+      "breakpoints": true
     }
   ]
 }

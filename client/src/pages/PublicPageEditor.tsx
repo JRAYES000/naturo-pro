@@ -103,6 +103,10 @@ export default function PublicPageEditor() {
   const { toast } = useToast();
   const { user, refetch } = useAuth();
   const { data } = useQuery<{ user: any }>({ queryKey: ["/api/profile"] });
+  // A11 — état d'indexation calculé côté serveur (mêmes règles que le sitemap).
+  const { data: seo } = useQuery<{ indexable: boolean; missing: string[] }>({
+    queryKey: ["/api/profile/seo"],
+  });
   const [draft, setDraft] = useState<any>({});
   // Phase 3 Lot 2 — feedback "copié"
   const [copied, setCopied] = useState(false);
@@ -146,6 +150,7 @@ export default function PublicPageEditor() {
     mutationFn: async () => apiRequest("PATCH", "/api/profile", draft),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/seo"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       refetch();
       toast({ title: "Page publique enregistrée", variant: "success" });
@@ -261,8 +266,40 @@ export default function PublicPageEditor() {
                   <p className="text-xs text-muted-foreground">Désactivez pour rendre votre page privée.</p>
                 </div>
               </div>
-              <Switch checked={!!draft.publicPageEnabled} onCheckedChange={(v) => setDraft({ ...draft, publicPageEnabled: v })} data-testid="switch-public-enabled" />
+              <Switch
+                checked={!!draft.publicPageEnabled}
+                disabled={!draft.city?.trim()}
+                onCheckedChange={(v) => setDraft({ ...draft, publicPageEnabled: v })}
+                data-testid="switch-public-enabled"
+              />
             </div>
+
+            {/* Référencement (audit SEO du 15/08/2026, A11) — une fiche trop
+                incomplète reste accessible par son lien mais sort du sitemap et
+                de l'annuaire : autant dire lesquels champs la bloquent. */}
+            {seo && (
+              <div
+                className={`p-3 rounded-xl text-sm ${seo.indexable ? "bg-secondary" : "bg-amber-50 border border-amber-200"}`}
+                data-testid="text-seo-status"
+              >
+                {seo.indexable ? (
+                  <p className="font-bold text-primary">
+                    Votre fiche est référençable : elle figure dans l'annuaire et dans le plan du site
+                    transmis à Google.
+                  </p>
+                ) : (
+                  <>
+                    <p className="font-bold text-amber-700">
+                      Votre fiche n'est pas encore proposée à Google.
+                    </p>
+                    <p className="text-muted-foreground mt-1">
+                      Il manque {seo.missing.join(", ")}. Votre page reste accessible par son lien
+                      direct, vous pouvez déjà la partager.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="grid sm:grid-cols-2 gap-3">
               <div><Label>Nom affiché</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-name" /></div>
@@ -377,11 +414,12 @@ export default function PublicPageEditor() {
             <div className="grid sm:grid-cols-2 gap-3">
               <div><Label>Téléphone</Label><Input value={draft.phone || ""} onChange={e => setDraft({ ...draft, phone: e.target.value })} data-testid="input-phone" /></div>
               <div>
-                <Label>Ville {!draft.city?.trim() && <span className="text-amber-600 font-normal">(recommandé)</span>}</Label>
+                <Label>Ville {!draft.city?.trim() && <span className="text-amber-600 font-normal">(obligatoire pour publier)</span>}</Label>
                 <Input value={draft.city || ""} onChange={e => setDraft({ ...draft, city: e.target.value })} data-testid="input-city" />
                 {!draft.city?.trim() && (
                   <p className="text-xs text-amber-600 mt-1" data-testid="text-city-warning">
-                    Sans ville, votre fiche n'apparaît pas dans les recherches locales ("naturopathe [votre ville]").
+                    Sans ville, votre fiche n'apparaît pas dans les recherches locales ("naturopathe [votre ville]"),
+                    qui sont de loin les plus recherchées. La ville est donc requise pour publier la page.
                   </p>
                 )}
               </div>

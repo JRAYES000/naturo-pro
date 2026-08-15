@@ -21,6 +21,7 @@ type AdminUser = {
   slug: string;
   plan?: string;
   trialEndsAt?: number | null;
+  isDemo?: boolean;
   emailVerifiedAt?: number | null;
   onboardingCompletedAt?: number | null;
   createdAt: number;
@@ -64,14 +65,17 @@ export default function AdminUserDetail() {
   const u = data?.user;
   const [plan, setPlanLocal] = useState<string>("trial");
   const [trialEndsAtInput, setTrialEndsAtInput] = useState<string>("");
+  // A7 — compte de démonstration : exclu du sitemap, de l'annuaire et de llms.txt.
+  const [isDemo, setIsDemo] = useState(false);
   const [emailVerified, setEmailVerified] = useState<boolean>(false);
 
   useEffect(() => {
     if (!u) return;
     setPlanLocal(u.plan || "trial");
     setTrialEndsAtInput(toLocalInput(u.trialEndsAt));
+    setIsDemo(!!u.isDemo);
     setEmailVerified(!!u.emailVerifiedAt);
-  }, [u?.id, u?.plan, u?.trialEndsAt, u?.emailVerifiedAt]);
+  }, [u?.id, u?.plan, u?.trialEndsAt, u?.emailVerifiedAt, u?.isDemo]);
 
   const patch = useMutation({
     mutationFn: async (body: any) => {
@@ -137,7 +141,7 @@ export default function AdminUserDetail() {
   }
 
   function save() {
-    const body: any = { plan };
+    const body: any = { plan, isDemo };
     if (trialEndsAtInput) {
       body.trialEndsAt = new Date(trialEndsAtInput).getTime();
     } else {
@@ -222,6 +226,23 @@ export default function AdminUserDetail() {
               data-testid="checkbox-email-verified"
             />
             <Label htmlFor="email-verified" className="cursor-pointer">Email vérifié</Label>
+          </div>
+          <div className="flex items-start gap-2">
+            <input
+              id="is-demo"
+              type="checkbox"
+              className="mt-1"
+              checked={isDemo}
+              onChange={(e) => setIsDemo(e.target.checked)}
+              data-testid="checkbox-is-demo"
+            />
+            <div>
+              <Label htmlFor="is-demo" className="cursor-pointer">Compte de démonstration</Label>
+              <p className="text-xs text-muted-foreground">
+                Exclut la fiche du plan du site, de l'annuaire public et de llms.txt, et la passe
+                en noindex. À cocher pour les comptes fictifs et les comptes de test.
+              </p>
+            </div>
           </div>
           <Button
             onClick={save}
