@@ -39,6 +39,21 @@ supprime le besoin de la contourner.
 - [x] 9. `PageHeader` : sur-titre supprimé (banni), mesure du sous-titre à 65ch ;
       Dashboard : 4 cartes-KPI isolées → une bande unique à filets internes, sans icône décorative
 
+## Seconde passe — page par page
+
+- [x] `components/StatBand.tsx` : la bande de chiffres-clés devient partagée.
+      Trois pages réinventaient la même rangée de 4 cartes (Dashboard, Factures,
+      Rappels), dont une avec `text-[#186749]` en dur au lieu du token.
+- [x] Factures : la tuile « Année en cours » ne portait aucune donnée — le millésime
+      est déjà dans le libellé du CA. Trois chiffres utiles plutôt que quatre dont un
+      remplit la grille.
+- [x] Landing : les **6 sur-titres** supprimés (4 sections + hero + CTA finale).
+      Bannis sans exception par craft-floor ; le hero répétait mot pour mot son propre h1.
+- [x] Landing : les 2 halos menthe posés sur la CTA, et la numérotation 01/02/03/04
+      d'une liste sans ordre. Le dégradé linéaire de la CTA reste — il est au DESIGN.md.
+- [x] Landing : cadre vidéo, ombre de 60 px retirée (dernier « ghost card » du site).
+- [x] Rayons 4 px (`rounded` nu de Tailwind, hors échelle) → `rounded-sm`, 8 occurrences.
+
 ## Verdict des critères
 
 | Critère | Résultat |

@@ -722,7 +722,7 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
             type="button"
             onClick={() => onMove(-1)}
             disabled={index === 0}
-            className="h-9 w-9 inline-flex items-center justify-center rounded hover:bg-secondary disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-sm hover:bg-secondary disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Déplacer la question vers le haut"
             data-testid={`button-move-up-${index}`}
           >
@@ -732,7 +732,7 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
             type="button"
             onClick={() => onMove(1)}
             disabled={index === total - 1}
-            className="h-9 w-9 inline-flex items-center justify-center rounded hover:bg-secondary disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-sm hover:bg-secondary disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Déplacer la question vers le bas"
             data-testid={`button-move-down-${index}`}
           >

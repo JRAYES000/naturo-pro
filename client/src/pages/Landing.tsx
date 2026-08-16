@@ -99,10 +99,12 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   url: "https://app.ecole-naturo.fr/",
 };
 
-function SectionHeading({ eyebrow, title, lead }: { eyebrow: string; title: string; lead?: string }) {
+// Pas de sur-titre au-dessus du h2 : l'étiquette en petites majuscules répète
+// ce que le titre dit déjà, et c'est le marqueur le plus reconnaissable d'une
+// page de gabarit. Le titre porte son propre poids.
+function SectionHeading({ title, lead }: { title: string; lead?: string }) {
   return (
     <div className="max-w-2xl">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary/80 mb-3">{eyebrow}</p>
       <h2 className="font-display text-3xl lg:text-[2.75rem] leading-[1.12] text-heading">{title}</h2>
       {lead && <p className="text-muted-foreground text-lg mt-4 leading-relaxed">{lead}</p>}
     </div>
@@ -160,11 +162,6 @@ export default function Landing() {
       {/* Hero */}
       <section className="leaf-bg">
         <div className="max-w-4xl mx-auto px-6 pt-14 pb-12 lg:pt-20 lg:pb-16 text-center">
-          <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-primary/80 mb-6">
-            <span className="h-px w-8 bg-primary/25" aria-hidden="true" />
-            Logiciel pour les naturopathes
-            <span className="h-px w-8 bg-primary/25" aria-hidden="true" />
-          </div>
           {/* A8 (audit SEO 15/08/2026) — l'ancien H1 « Gérez tout votre cabinet, au
               même endroit » ne contenait aucun des deux mots que les praticiens
               tapent réellement dans Google. Le bénéfice reste, les mots-clés entrent. */}
@@ -196,7 +193,9 @@ export default function Landing() {
 
           {/* Vidéo de présentation, dans un cadre soigné */}
           <div className="mt-12 mx-auto max-w-3xl">
-            <div className="rounded-xl border border-primary/10 bg-card p-2 shadow-[0_24px_60px_-24px_rgba(24,103,73,0.4)]">
+            {/* Cadre vidéo : le filet porte le cadrage, l'ombre de 60 px en plus
+                faisait léviter le seul objet posé de la page. */}
+            <div className="rounded-xl border border-primary/15 bg-card p-2">
               <div className="aspect-video w-full overflow-hidden rounded-xl bg-[#0d2a1f]">
                 <iframe
                   src="https://www.loom.com/embed/4aa64b9616a54cc29c02e4f5a6988055"
@@ -216,7 +215,6 @@ export default function Landing() {
       <section id="fonctionnalites" className="py-14 lg:py-20 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeading
-            eyebrow="Fonctionnalités"
             title="Une plateforme complète, pensée pour votre métier."
             lead="Pas besoin de jongler entre dix outils. Naturo Pro réunit tout ce qu'il faut pour faire tourner votre activité au quotidien."
           />
@@ -251,7 +249,6 @@ export default function Landing() {
       <section id="studio" className="py-14 lg:py-20 bg-primary/[0.04] scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeading
-            eyebrow="Studio contenu"
             title="Votre communication, sans y passer vos soirées."
             lead="Unique parmi les logiciels de naturopathie : un studio qui rédige avec vous vos publications Instagram et Facebook, dans votre ton, à partir de votre vraie pratique."
           />
@@ -275,20 +272,19 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pourquoi Naturo Pro — colonnes numérotées */}
+      {/* Pourquoi Naturo Pro — colonnes à filet haut. Pas de 01/02/03 : ces
+          quatre raisons n'ont pas d'ordre, la numérotation ne portait rien. */}
       <section id="pourquoi" className="py-14 lg:py-20 bg-muted/50 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeading
-            eyebrow="Pourquoi Naturo Pro"
             title="Un outil qui inspire confiance."
             lead="Une solution pensée pour les praticiens, qui vous laisse vous concentrer sur l'essentiel : l'accompagnement de vos clients."
           />
 
           <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-9">
-            {WHY.map((w, i) => (
+            {WHY.map((w) => (
               <div key={w.title} className="border-t border-primary/15 pt-5">
-                <span className="font-display text-3xl text-primary/25">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className="font-display text-xl mt-2 text-heading">{w.title}</h3>
+                <h3 className="font-display text-xl text-heading">{w.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-2">{w.desc}</p>
               </div>
             ))}
@@ -304,7 +300,6 @@ export default function Landing() {
         />
         <div className="max-w-3xl mx-auto px-6">
           <SectionHeading
-            eyebrow="FAQ"
             title="Les questions que vous vous posez."
           />
           <div className="mt-8 border-t border-border">
@@ -319,10 +314,9 @@ export default function Landing() {
       <section className="py-12 lg:py-16">
         <div className="max-w-5xl mx-auto px-6">
           <div className="relative overflow-hidden rounded-xl px-8 py-14 lg:px-16 lg:py-20 text-center" style={{ background: "linear-gradient(150deg, hsl(var(--heading)) 0%, #013F27 100%)" }}>
-            <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(23,236,155,0.22), transparent 70%)" }} />
-            <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-24 h-80 w-80 rounded-full" style={{ background: "radial-gradient(circle, rgba(23,236,155,0.10), transparent 70%)" }} />
+            {/* Le dégradé de la section suffit ; les deux halos menthe posés par-dessus
+                étaient de la décoration, pas de la profondeur. */}
             <div className="relative">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent mb-4">Essai gratuit</p>
               <h2 className="font-display text-3xl lg:text-5xl text-white leading-[1.1] max-w-2xl mx-auto">
                 Donnez à votre cabinet l'outil serein qu'il mérite.
               </h2>

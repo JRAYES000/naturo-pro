@@ -64,7 +64,7 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
             <p>
               Dans le menu de gauche, cliquez sur <strong>Domains</strong>, puis sur le bouton{" "}
               <strong>Add Domain</strong> en haut à droite. Saisissez votre nom de domaine
-              (ex: <code className="bg-secondary px-1 rounded text-xs">moncabinet.fr</code>).
+              (ex: <code className="bg-secondary px-1 rounded-sm text-xs">moncabinet.fr</code>).
             </p>
             <p className="text-xs text-muted-foreground">
               Si vous n'avez pas encore de domaine, vous pouvez en acheter un sur OVH, Gandi
@@ -123,7 +123,7 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
             </ul>
             <p>
               Cliquez sur <strong>Add</strong>. Resend affiche une clé qui commence par{" "}
-              <code className="bg-secondary px-1 rounded text-xs">re_...</code>.
+              <code className="bg-secondary px-1 rounded-sm text-xs">re_...</code>.
             </p>
             <div
               className="rounded-md p-3 text-xs"
@@ -145,7 +145,7 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
               Revenez sur cette page (Paramètres &gt; Rappels email) et collez la clé dans le
               champ <strong>Clé API Resend</strong>. Renseignez aussi votre email
               expéditeur (ex&nbsp;:{" "}
-              <code className="bg-secondary px-1 rounded text-xs">noreply@moncabinet.fr</code>),
+              <code className="bg-secondary px-1 rounded-sm text-xs">noreply@moncabinet.fr</code>),
               activez les toggles, et cliquez sur <strong>Enregistrer</strong>. C'est tout&nbsp;!
             </p>
             <p className="text-xs text-muted-foreground">

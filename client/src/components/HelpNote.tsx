@@ -54,7 +54,7 @@ export function HelpNote({
           className={
             "space-y-4 text-sm text-muted-foreground pt-0 " +
             "[&_strong]:font-semibold [&_strong]:text-foreground " +
-            "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:text-xs [&_code]:text-foreground " +
+            "[&_code]:rounded-sm [&_code]:bg-muted [&_code]:px-1 [&_code]:text-xs [&_code]:text-foreground " +
             // ponytail: les <li> portaient un emoji faute de marqueur de liste ici.
             "[&_ul]:space-y-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_ul_li]:marker:text-primary/50 " +
             "[&_ol]:list-outside [&_ol]:pl-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol_li]:marker:text-primary/50 [&_ol_li]:marker:font-semibold"

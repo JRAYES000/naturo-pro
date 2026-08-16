@@ -336,7 +336,7 @@ export default function Settings() {
           {!googleStatus?.configured && (
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <p>L'intégration Google Calendar n'est pas encore activée côté serveur. L'administrateur doit définir <code className="bg-secondary px-1 py-0.5 rounded text-xs">GOOGLE_CLIENT_ID</code> et <code className="bg-secondary px-1 py-0.5 rounded text-xs">GOOGLE_CLIENT_SECRET</code>.</p>
+              <p>L'intégration Google Calendar n'est pas encore activée côté serveur. L'administrateur doit définir <code className="bg-secondary px-1 py-0.5 rounded-sm text-xs">GOOGLE_CLIENT_ID</code> et <code className="bg-secondary px-1 py-0.5 rounded-sm text-xs">GOOGLE_CLIENT_SECRET</code>.</p>
             </div>
           )}
 
@@ -492,7 +492,7 @@ export default function Settings() {
             />
             {draft.billingLogoBase64 && (
               <div className="flex items-center gap-3 mt-2">
-                <img src={draft.billingLogoBase64} alt="Logo" className="h-16 w-auto rounded border" />
+                <img src={draft.billingLogoBase64} alt="Logo" className="h-16 w-auto rounded-sm border" />
                 <Button
                   variant="ghost"
                   size="sm"

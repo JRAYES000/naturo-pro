@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { Plus, Receipt, Download, FileText, CheckCircle2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote, HelpTip } from "@/components/HelpNote";
+import { StatBand, StatCell } from "@/components/StatBand";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
@@ -192,35 +193,29 @@ function InvoicesPage() {
             renseigner vos coordonnées dans <strong>Paramètres</strong> : elles apparaîtront sur vos factures.</HelpTip>
         </HelpNote>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="card-naturo">
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">CA encaissé ({new Date().getFullYear()})</p>
-            <p className="text-2xl font-bold text-heading" data-testid="text-kpi-paid">
-              {formatPrice(kpis.caEncaisseCents)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{kpis.paidCount} facture{kpis.paidCount > 1 ? "s" : ""} payée{kpis.paidCount > 1 ? "s" : ""}</p>
-          </div>
-          <div className="card-naturo">
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">En attente</p>
-            <p className="text-2xl font-bold text-amber-700" data-testid="text-kpi-pending">
-              {formatPrice(kpis.enAttenteCents)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">brouillons + envoyées</p>
-          </div>
-          <div className="card-naturo">
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">Total factures</p>
-            <p className="text-2xl font-bold text-heading" data-testid="text-kpi-total">
-              {kpis.totalCount}
-            </p>
-          </div>
-          <div className="card-naturo">
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">Année en cours</p>
-            <p className="text-2xl font-bold text-heading">
-              {new Date().getFullYear()}
-            </p>
-          </div>
-        </div>
+        {/* KPIs — « Année en cours » ne portait aucune donnée : le millésime est
+            déjà dans le libellé du CA encaissé. Trois chiffres qui disent quelque
+            chose valent mieux que quatre dont un remplit la grille. */}
+        <StatBand className="mb-6 lg:grid-cols-3">
+          <StatCell
+            label={`CA encaissé (${new Date().getFullYear()})`}
+            value={formatPrice(kpis.caEncaisseCents)}
+            sub={`${kpis.paidCount} facture${kpis.paidCount > 1 ? "s" : ""} payée${kpis.paidCount > 1 ? "s" : ""}`}
+            testid="text-kpi-paid"
+          />
+          <StatCell
+            label="En attente"
+            value={formatPrice(kpis.enAttenteCents)}
+            valueClassName="text-amber-700"
+            sub="brouillons + envoyées"
+            testid="text-kpi-pending"
+          />
+          <StatCell
+            label="Total factures"
+            value={kpis.totalCount}
+            testid="text-kpi-total"
+          />
+        </StatBand>
 
         {/* Filtres */}
         <div className="flex flex-wrap gap-3 mb-4">
@@ -313,7 +308,7 @@ function InvoicesPage() {
                           {inv.number}
                         </Link>
                         {((inv as any).docType || "invoice") === "devis" && (
-                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-[11px] font-semibold align-middle">Devis</span>
+                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded-sm bg-sky-100 text-sky-700 text-[11px] font-semibold align-middle">Devis</span>
                         )}
                       </td>
                       <td className="text-muted-foreground">{formatDateShort(inv.issueDate)}</td>

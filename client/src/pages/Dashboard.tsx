@@ -1,11 +1,12 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Calendar, Users, Tag, Globe, ArrowRight, FlaskConical, CheckCircle2, TrendingUp, StickyNote, Megaphone, ListChecks, Circle, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { StatBand, StatCell, StatCellSkeleton } from "@/components/StatBand";
 import { EmptyState } from "@/components/EmptyState";
 import { formatTime, formatDay, durationLabel, formatPrice } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -176,11 +177,11 @@ function Dashboard() {
         <OnboardingChecklistCard />
 
         <h2 className="text-lg font-bold mb-3">Activité</h2>
-        <StatBand>
-          <StatCard label="RDV aujourd'hui" value={todayCount} testid="stat-today" />
-          <StatCard label="Cette semaine" value={thisWeekCount} testid="stat-week" />
-          <StatCard label="Clients" value={(clients || []).length} testid="stat-clients" />
-          <StatCard label="Consultations terminées (30j)" value={completed} testid="stat-completed" />
+        <StatBand className="mb-4">
+          <StatCell label="RDV aujourd'hui" value={todayCount} testid="stat-today" />
+          <StatCell label="Cette semaine" value={thisWeekCount} testid="stat-week" />
+          <StatCell label="Clients" value={(clients || []).length} testid="stat-clients" />
+          <StatCell label="Consultations terminées (30j)" value={completed} testid="stat-completed" />
         </StatBand>
 
         <div className="flex items-center gap-3 mt-6 mb-3 flex-wrap" data-testid="row-periode-stats">
@@ -209,20 +210,15 @@ function Dashboard() {
           </Button>
         </div>
 
-        <StatBand>
+        <StatBand className="mb-6">
           {statsLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div className="bg-card px-4 py-3.5" key={i}>
-                <Skeleton className="h-3 w-24 mb-2" />
-                <Skeleton className="h-7 w-28" />
-              </div>
-            ))
+            Array.from({ length: 4 }).map((_, i) => <StatCellSkeleton key={i} />)
           ) : (
             <>
-              <StatCard label="CA encaissé" value={formatPrice(stats?.caEncaisseCents ?? 0)} testid="stat-ca-encaisse" />
-              <StatCard label="CA prévu" value={formatPrice(stats?.caPrevuCents ?? 0)} testid="stat-ca-prevu" />
-              <StatCard label="RDV honorés" value={stats?.nbRdv ?? 0} testid="stat-rdv-honores" />
-              <StatCard
+              <StatCell label="CA encaissé" value={formatPrice(stats?.caEncaisseCents ?? 0)} testid="stat-ca-encaisse" />
+              <StatCell label="CA prévu" value={formatPrice(stats?.caPrevuCents ?? 0)} testid="stat-ca-prevu" />
+              <StatCell label="RDV honorés" value={stats?.nbRdv ?? 0} testid="stat-rdv-honores" />
+              <StatCell
                 label="RDV annulés"
                 value={stats?.nbRdvAnnules ?? 0}
                 testid="stat-rdv-annules"
@@ -503,7 +499,7 @@ function OnboardingChecklistCard() {
             <li key={s.key}>
               <Link
                 href={s.href}
-                className={`flex items-center gap-2 text-sm py-1 rounded hover:text-primary ${ok ? "text-muted-foreground line-through" : "font-semibold"}`}
+                className={`flex items-center gap-2 text-sm py-1 rounded-sm hover:text-primary ${ok ? "text-muted-foreground line-through" : "font-semibold"}`}
                 data-testid={`checklist-step-${s.key}`}
               >
                 {ok ? <CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
@@ -517,30 +513,6 @@ function OnboardingChecklistCard() {
   );
 }
 
-/**
- * Cellule de chiffre-clé. Pas de carte individuelle ni d'icône décorative :
- * quatre cartes identiques icône + libellé + gros nombre, c'est le gabarit
- * générique. Les cellules vivent dans une bande unique (StatBand), séparées
- * par un filet — la lecture se fait en ligne, pas objet par objet.
- */
-function StatCard({ label, value, testid, sub }: any) {
-  return (
-    <div className="bg-card px-4 py-3.5" data-testid={testid}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-heading tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
-/** Bande de chiffres-clés : un seul contour, des filets internes en gap-px. */
-function StatBand({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-card-border bg-border mb-4">
-      {children}
-    </div>
-  );
-}
 
 // Lot 1 (action 7) — gating interface : écran payant remplacé par un état bloqué
 // explicite (jamais une erreur technique ni un bouton mort) pour un compte gratuit.

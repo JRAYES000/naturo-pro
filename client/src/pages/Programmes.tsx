@@ -378,7 +378,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{s.name}</span>
-                    <span className="text-[10px] text-muted-foreground border rounded px-1 py-0.5">{s.category}</span>
+                    <span className="text-[10px] text-muted-foreground border rounded-sm px-1 py-0.5">{s.category}</span>
                   </div>
                   {s.properties && <p className="text-xs text-muted-foreground mt-1">{s.properties}</p>}
                 </button>

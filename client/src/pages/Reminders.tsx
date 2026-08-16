@@ -13,13 +13,13 @@ import {
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, PARAMETRES_TABS } from "@/components/SubNav";
 import { HelpNote, HelpTip } from "@/components/HelpNote";
+import { StatBand, StatCell, StatCellSkeleton } from "@/components/StatBand";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -90,48 +90,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-// ── Skeleton loaders ───────────────────────────────────────────────────────────
-
-function StatCardSkeleton() {
-  return (
-    <Card className="card-naturo rounded-lg">
-      <CardHeader className="pb-2">
-        <Skeleton className="h-4 w-28" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-8 w-16" />
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Stat Card ──────────────────────────────────────────────────────────────────
-
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ElementType;
-  iconColor?: string;
-  "data-testid"?: string;
-}
-
-function StatCard({ title, value, icon: Icon, iconColor = "text-[#186749]", ...props }: StatCardProps) {
-  return (
-    <Card className="card-naturo rounded-lg" {...props}>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-semibold text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className={`h-4 w-4 ${iconColor}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-foreground py-6 font-bold">
-          {value}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ── Status Badge ───────────────────────────────────────────────────────────────
 
@@ -245,48 +203,24 @@ function Reminders() {
           <strong> « Configurer les rappels »</strong> (page Paramètres).</HelpTip>
       </HelpNote>
 
-      {/* ── Stats cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" aria-busy={statsLoading}>
+      {/* ── Chiffres-clés ── */}
+      <StatBand className="mb-8">
         {statsLoading ? (
-          <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </>
+          Array.from({ length: 4 }).map((_, i) => <StatCellSkeleton key={i} />)
         ) : (
           <>
-            <StatCard
-              title="Envoyés ce mois"
-              value={stats?.sentThisMonth ?? 0}
-              icon={CheckCircle2}
-              iconColor="text-[#186749]"
-              data-testid="text-stat-sent-month"
-            />
-            <StatCard
-              title="Total envoyés"
-              value={stats?.sentTotal ?? 0}
-              icon={Bell}
-              iconColor="text-[#186749]"
-              data-testid="text-stat-sent-total"
-            />
-            <StatCard
-              title="En attente"
-              value={stats?.pendingCount ?? 0}
-              icon={Clock}
-              iconColor="text-orange-500"
-              data-testid="text-stat-pending"
-            />
-            <StatCard
-              title="Prochain envoi"
+            <StatCell label="Envoyés ce mois" value={stats?.sentThisMonth ?? 0} testid="text-stat-sent-month" />
+            <StatCell label="Total envoyés" value={stats?.sentTotal ?? 0} testid="text-stat-sent-total" />
+            <StatCell label="En attente" value={stats?.pendingCount ?? 0} valueClassName="text-amber-700" testid="text-stat-pending" />
+            <StatCell
+              label="Prochain envoi"
               value={stats?.active === false ? "Inactif" : nextSendLabel}
-              icon={AlertCircle}
-              iconColor={stats?.active === false ? "text-red-500" : "text-[#17EC9B]"}
-              data-testid="text-stat-next-send"
+              valueClassName={stats?.active === false ? "text-destructive" : "text-heading"}
+              testid="text-stat-next-send"
             />
           </>
         )}
-      </div>
+      </StatBand>
 
       {/* ── Tableau ── */}
       <Card className="card-naturo rounded-lg">

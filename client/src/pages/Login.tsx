@@ -97,7 +97,7 @@ export default function Login() {
           Pas encore de compte ? <Link href="/register" className="text-primary font-bold" data-testid="link-to-register">Créer un compte</Link>
         </div>
         <div className="mt-4 text-center text-xs text-muted-foreground">
-          Compte de démo : <code className="bg-secondary px-1.5 py-0.5 rounded">marie@demo.fr</code> / <code className="bg-secondary px-1.5 py-0.5 rounded">demo1234</code>
+          Compte de démo : <code className="bg-secondary px-1.5 py-0.5 rounded-sm">marie@demo.fr</code> / <code className="bg-secondary px-1.5 py-0.5 rounded-sm">demo1234</code>
         </div>
       </div>
     </div>

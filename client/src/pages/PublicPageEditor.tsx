@@ -466,7 +466,7 @@ export default function PublicPageEditor() {
                     type="color"
                     value={draft.primaryColor || DEFAULT_PRIMARY}
                     onChange={e => setDraft({ ...draft, primaryColor: e.target.value })}
-                    className="h-9 w-12 rounded border border-input cursor-pointer bg-transparent"
+                    className="h-9 w-12 rounded-sm border border-input cursor-pointer bg-transparent"
                     data-testid="input-primary-color"
                   />
                   <span>Couleur principale</span>
@@ -476,7 +476,7 @@ export default function PublicPageEditor() {
                     type="color"
                     value={draft.accentColor || DEFAULT_ACCENT}
                     onChange={e => setDraft({ ...draft, accentColor: e.target.value })}
-                    className="h-9 w-12 rounded border border-input cursor-pointer bg-transparent"
+                    className="h-9 w-12 rounded-sm border border-input cursor-pointer bg-transparent"
                     data-testid="input-accent-color"
                   />
                   <span>Couleur d'accent</span>
