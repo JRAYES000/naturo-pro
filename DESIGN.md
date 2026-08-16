@@ -3,7 +3,7 @@
 ## Visual Theme
 Wellness premium éditorial, registre « apothicaire moderne » : crème chaleureux + vert sapin profond, ponctué d'un vert menthe lumineux en accent rare. Ambiance calme, soignée, crédible. Thème clair (la page est consultée de jour, en phase de décision ; le crème évoque le papier, le naturel, la confiance). L'audace vient de la typographie (serif de titre) et de la composition éditoriale, pas de la couleur criarde ni de l'animation. Une section immersive en vert profond crée un contraste de rythme.
 
-## Color Palette
+## Colors
 Neutres teintés vers le vert, jamais de #000 / #fff purs.
 - Surface / fond : crème `#FAF8F4` (hsl 36 38% 97%)
 - Surface alternée (sections) : crème plus sombre `#F3EFE8` (token muted)
