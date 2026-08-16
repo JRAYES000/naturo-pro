@@ -220,11 +220,12 @@ export default function Landing() {
           />
 
           <div className="mt-12 flex flex-col gap-12 lg:gap-14">
-            {FEATURE_GROUPS.map((group, gi) => (
+            {/* Pas de 01/02/03 : ces trois thèmes ne se lisent pas dans l'ordre,
+                le numéro ne portait aucune information. */}
+            {FEATURE_GROUPS.map((group) => (
               <div key={group.label} className="grid lg:grid-cols-[16rem_minmax(0,1fr)] gap-x-12 gap-y-6 border-t border-border pt-8">
                 <div>
-                  <span className="font-display text-2xl text-primary/30">{String(gi + 1).padStart(2, "0")}</span>
-                  <h3 className="font-display text-2xl mt-1 text-heading">{group.label}</h3>
+                  <h3 className="font-display text-2xl text-heading">{group.label}</h3>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-[28ch]">{group.blurb}</p>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-x-10 gap-y-7">
