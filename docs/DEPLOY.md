@@ -92,9 +92,13 @@ ls dist/public/assets/
 Si différent :
 ```bash
 scp dist/public/index.html <user>@<host>:<APP_PATH>/dist/public/
-scp -r dist/public/assets/index-*.js <user>@<host>:<APP_PATH>/dist/public/assets/
-scp -r dist/public/assets/index-*.css <user>@<host>:<APP_PATH>/dist/public/assets/
+scp -q -r dist/public/assets/* <user>@<host>:<APP_PATH>/dist/public/assets/
 ```
+
+⚠️ **Envoyer tout `assets/`, pas seulement `index-*`.** Vite découpe le frontend en ~70 chunks
+(`Dashboard-*.js`, `Agenda-*.js`, `vendor-react-*.js`…). Toucher une seule page en re-hashe
+plusieurs : n'uploader que `index-*.js` livre un `index.html` qui réclame des chunks absents,
+donc des écrans blancs sur les routes concernées.
 
 **Les anciens fichiers `index-XXXX.js` restent en place** (utiles si un client a un onglet ouvert avec une vieille version pendant le déploiement). Tu peux faire un cleanup périodique en supprimant les très anciens.
 
