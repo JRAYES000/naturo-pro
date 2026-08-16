@@ -110,10 +110,10 @@ Le md5 affiché doit matcher celui que tu viens d'uploader. ✅
 
 ```bash
 curl -s -o /dev/null -w "HTTP %{http_code}\n" https://<your-domain>/
-curl -s -o /dev/null -w "HTTP %{http_code}\n" https://<your-domain>/api/me
+curl -s -o /dev/null -w "HTTP %{http_code}\n" https://<your-domain>/api/auth/me
 ```
 
-Attendu : 200 sur `/`, 401 sur `/api/me` (sans cookie).
+Attendu : 200 sur `/`, 401 sur `/api/auth/me` (sans cookie).
 
 ### 6. Test fonctionnel rapide
 
