@@ -52,12 +52,12 @@ function GateCard({ title, description, source }: { title: string; description: 
       <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-secondary text-primary flex items-center justify-center">
         <Lock className="h-6 w-6" />
       </div>
-      <h2 className="text-xl font-extrabold mb-2">{title}</h2>
+      <h2 className="text-xl font-bold mb-2">{title}</h2>
       <p className="text-sm text-muted-foreground mb-6">{description}</p>
       <Button
         onClick={subscribe}
         disabled={pending}
-        className="rounded-[15px] py-6 font-bold px-6"
+        className="rounded-lg py-6 font-bold px-6"
         data-testid="button-subscribe"
       >
         <Sparkles className="h-4 w-4 mr-2" />
@@ -88,7 +88,7 @@ export function FeatureGateInline({ title, description, source }: { title: strin
   const { subscribe, pending } = useSubscribe(source);
   return (
     <div
-      className="rounded-[15px] border border-dashed border-primary/40 bg-secondary/40 px-4 py-5 text-center"
+      className="rounded-lg border border-dashed border-primary/40 bg-secondary/40 px-4 py-5 text-center"
       data-testid={`feature-gate-inline-${source}`}
     >
       <div className="flex items-center justify-center gap-2 mb-1 text-primary">

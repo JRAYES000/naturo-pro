@@ -48,7 +48,7 @@ export function NewDiscussionDialog({
         {mode === "client" ? (
           <div>
             <Label>Cliente</Label>
-            <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full border border-border rounded-[12px] h-10 px-3 mt-1" data-testid="select-client">
+            <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full border border-border rounded-lg h-10 px-3 mt-1" data-testid="select-client">
               <option value="">Choisir…</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
             </select>
@@ -56,7 +56,7 @@ export function NewDiscussionDialog({
         ) : (
           <div className="space-y-2">
             <Label>Thématique</Label>
-            <select value={theme} onChange={(e) => setTheme(e.target.value)} className="w-full border border-border rounded-[12px] h-10 px-3" data-testid="select-theme">
+            <select value={theme} onChange={(e) => setTheme(e.target.value)} className="w-full border border-border rounded-lg h-10 px-3" data-testid="select-theme">
               {ASSISTANT_THEMES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             {theme === THEME_OTHER && (
@@ -65,7 +65,7 @@ export function NewDiscussionDialog({
           </div>
         )}
         <div className="mt-4 flex justify-end">
-          <Button onClick={submit} disabled={createMut.isPending} className="rounded-[12px]" data-testid="button-create-discussion">Créer</Button>
+          <Button onClick={submit} disabled={createMut.isPending} className="rounded-lg" data-testid="button-create-discussion">Créer</Button>
         </div>
       </DialogContent>
     </Dialog>

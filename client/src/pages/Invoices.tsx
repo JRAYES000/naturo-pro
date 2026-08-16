@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Plus, Receipt, Download, FileText, CheckCircle2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
@@ -49,7 +49,7 @@ function MobileInvoiceCard({
       <div className="mt-1 text-sm text-muted-foreground">
         {clientName || "—"} · {formatDateShort(inv.issueDate)}
       </div>
-      <div className="mt-2 font-extrabold text-lg text-heading">
+      <div className="mt-2 font-bold text-lg text-heading">
         {formatPrice(inv.totalCents)}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -181,44 +181,42 @@ function InvoicesPage() {
           <div>
             <p className="font-semibold text-foreground mb-2">Ce que vous pouvez faire ici :</p>
             <ul>
-              <li>📄 <strong>Créer une facture</strong> pour une cliente (bouton « Nouvelle facture »).</li>
-              <li>⬇️ La <strong>télécharger en PDF</strong> ou l'<strong>envoyer par email</strong> à votre cliente.</li>
-              <li>✅ La <strong>marquer comme payée</strong> une fois le règlement reçu.</li>
-              <li>🔎 <strong>Retrouver une facture</strong> grâce aux filtres (statut) et à la recherche par nom.</li>
+              <li><strong>Créer une facture</strong> pour une cliente (bouton « Nouvelle facture »).</li>
+              <li>La <strong>télécharger en PDF</strong> ou l'<strong>envoyer par email</strong> à votre cliente.</li>
+              <li>La <strong>marquer comme payée</strong> une fois le règlement reçu.</li>
+              <li><strong>Retrouver une facture</strong> grâce aux filtres (statut) et à la recherche par nom.</li>
             </ul>
           </div>
-          <p className="text-xs italic">
-            💡 Les couleurs indiquent l'état de chaque facture : <strong>Brouillon</strong> (pas encore
+          <HelpTip>Les couleurs indiquent l'état de chaque facture : <strong>Brouillon</strong> (pas encore
             envoyée), <strong>Envoyée</strong> (en attente de paiement) et <strong>Payée</strong>. Pensez à
-            renseigner vos coordonnées dans <strong>Paramètres</strong> : elles apparaîtront sur vos factures.
-          </p>
+            renseigner vos coordonnées dans <strong>Paramètres</strong> : elles apparaîtront sur vos factures.</HelpTip>
         </HelpNote>
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">CA encaissé ({new Date().getFullYear()})</p>
-            <p className="text-2xl font-extrabold text-heading" data-testid="text-kpi-paid">
+            <p className="text-2xl font-bold text-heading" data-testid="text-kpi-paid">
               {formatPrice(kpis.caEncaisseCents)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">{kpis.paidCount} facture{kpis.paidCount > 1 ? "s" : ""} payée{kpis.paidCount > 1 ? "s" : ""}</p>
           </div>
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">En attente</p>
-            <p className="text-2xl font-extrabold text-amber-700" data-testid="text-kpi-pending">
+            <p className="text-2xl font-bold text-amber-700" data-testid="text-kpi-pending">
               {formatPrice(kpis.enAttenteCents)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">brouillons + envoyées</p>
           </div>
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">Total factures</p>
-            <p className="text-2xl font-extrabold text-heading" data-testid="text-kpi-total">
+            <p className="text-2xl font-bold text-heading" data-testid="text-kpi-total">
               {kpis.totalCount}
             </p>
           </div>
           <div className="card-naturo">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">Année en cours</p>
-            <p className="text-2xl font-extrabold text-heading">
+            <p className="text-2xl font-bold text-heading">
               {new Date().getFullYear()}
             </p>
           </div>

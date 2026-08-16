@@ -69,14 +69,14 @@ function ClientSummaryCard({ client, cid, apptsCount, notesCount, lastApptAt, an
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <span
-            className="flex items-center justify-center rounded-full bg-primary/10 text-primary font-extrabold shrink-0"
+            className="flex items-center justify-center rounded-full bg-primary/10 text-primary font-bold shrink-0"
             style={{ width: 48, height: 48 }}
             aria-hidden="true"
           >
             {initials}
           </span>
           <div className="min-w-0">
-            <p className="font-extrabold text-heading text-xl truncate flex items-center gap-2 flex-wrap" data-testid="text-client-summary-name">
+            <p className="font-bold text-heading text-xl truncate flex items-center gap-2 flex-wrap" data-testid="text-client-summary-name">
               {client.firstName} {client.lastName}
               {/* Lot 4 (action P11) — badges de statut visibles en tête de fiche */}
               {(client as any).clientType === "entreprise" && (
@@ -403,7 +403,7 @@ export default function ClientDetail() {
                       <Link
                         key={`disc-${d.id}`}
                         href={`/app/chat/${d.id}`}
-                        className="card-naturo flex items-start gap-3 hover:-translate-y-0.5 transition"
+                        className="card-naturo flex items-start gap-3 hover:border-primary hover:bg-secondary/30 transition-colors"
                         data-testid={`timeline-discussion-${d.id}`}
                       >
                         <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
@@ -422,7 +422,7 @@ export default function ClientDetail() {
                     <Link
                       key={`note-${n.id}`}
                       href={`/app/notes/${n.appointmentId}`}
-                      className="card-naturo flex items-start gap-3 hover:-translate-y-0.5 transition"
+                      className="card-naturo flex items-start gap-3 hover:border-primary hover:bg-secondary/30 transition-colors"
                       data-testid={`timeline-note-${n.id}`}
                     >
                       <FileText className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
@@ -551,7 +551,7 @@ export default function ClientDetail() {
             ) : (
               <div className="space-y-3">
                 {notes.map(n => (
-                  <Link key={n.id} href={`/app/notes/${n.appointmentId}`} className="card-naturo block hover:-translate-y-0.5 transition" data-testid={`note-${n.id}`}>
+                  <Link key={n.id} href={`/app/notes/${n.appointmentId}`} className="card-naturo block hover:border-primary hover:bg-secondary/30 transition-colors" data-testid={`note-${n.id}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-bold">{formatDay(n.createdAt)}</p>
@@ -772,7 +772,7 @@ export default function ClientDetail() {
                     <a
                       href={`/api/documents/${doc.id}/download`}
                       download={doc.filename}
-                      className="inline-flex items-center justify-center h-10 w-10 rounded-[10px] border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="inline-flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       data-testid={`button-download-document-${doc.id}`}
                       title="Télécharger"
                       aria-label="Télécharger le document"
@@ -782,7 +782,7 @@ export default function ClientDetail() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
+                      className="h-10 w-10 rounded-md text-destructive border-destructive/30 hover:bg-destructive/10"
                       onClick={async () => {
                         if (!(await confirm({ title: "Supprimer ce document ?", description: `Le fichier « ${doc.filename} » sera supprimé définitivement.`, confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
                         delDocMut.mutate(doc.id);

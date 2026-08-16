@@ -105,7 +105,7 @@ function SlotsSkeleton() {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3" aria-busy="true">
       {Array.from({ length: 12 }).map((_, i) => (
-        <Skeleton key={i} className="h-12 rounded-[12px]" />
+        <Skeleton key={i} className="h-12 rounded-lg" />
       ))}
     </div>
   );
@@ -265,7 +265,7 @@ function ManageSlotPicker({
               </p>
               {fuseauDifferentDuCabinet() && (
                 <p className="text-xs text-muted-foreground" data-testid="text-timezone-notice-manage">
-                  🕑 Horaires en <strong>heure française</strong> (fuseau du cabinet).
+                  <Clock className="inline-block h-3.5 w-3.5 align-[-2px] mr-1.5" aria-hidden="true" />Horaires en <strong>heure française</strong> (fuseau du cabinet).
                 </p>
               )}
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">

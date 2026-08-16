@@ -83,7 +83,7 @@ export function TrialBanner() {
     setResending(true);
     try {
       await apiRequest("POST", "/api/auth/resend-verification");
-      toast({ title: "Email envoyé 🌿", description: "Vérifiez votre boîte mail." });
+      toast({ title: "Email envoyé", description: "Vérifiez votre boîte mail." });
     } catch (e: any) {
       toast({
         title: "Erreur",

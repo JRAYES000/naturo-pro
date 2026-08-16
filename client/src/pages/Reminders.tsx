@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, PARAMETRES_TABS } from "@/components/SubNav";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Loading } from "@/components/Loading";
@@ -236,15 +236,13 @@ function Reminders() {
         <div>
           <p className="font-semibold text-foreground mb-2">Comment lire le tableau ?</p>
           <ul>
-            <li>🟢 <strong>Envoyé</strong> — le rappel est bien parti.</li>
-            <li>🟠 <strong>En attente</strong> — le rappel partira la veille du rendez-vous.</li>
-            <li>⚪ <strong>Sans email</strong> — la cliente n'a pas d'adresse email renseignée.</li>
+            <li><span className="inline-block h-2 w-2 rounded-full bg-primary align-middle mr-1.5" aria-hidden="true" /><strong>Envoyé</strong> — le rappel est bien parti.</li>
+            <li><span className="inline-block h-2 w-2 rounded-full bg-amber-500 align-middle mr-1.5" aria-hidden="true" /><strong>En attente</strong> — le rappel partira la veille du rendez-vous.</li>
+            <li><span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40 align-middle mr-1.5" aria-hidden="true" /><strong>Sans email</strong> — la cliente n'a pas d'adresse email renseignée.</li>
           </ul>
         </div>
-        <p className="text-xs italic">
-          💡 Pour activer/désactiver les rappels ou changer l'heure d'envoi, utilisez le bouton
-          <strong> « Configurer les rappels »</strong> (page Paramètres).
-        </p>
+        <HelpTip>Pour activer/désactiver les rappels ou changer l'heure d'envoi, utilisez le bouton
+          <strong> « Configurer les rappels »</strong> (page Paramètres).</HelpTip>
       </HelpNote>
 
       {/* ── Stats cards ── */}
@@ -311,7 +309,7 @@ function Reminders() {
                 }`}
               >
                 <XCircle className="h-3 w-3" />
-                {noEmailCount} sans email {noEmailOnly ? "— filtre actif ✕" : ""}
+                {noEmailCount} sans email {noEmailOnly ? "— filtre actif" : ""}
               </Badge>
             </button>
           )}

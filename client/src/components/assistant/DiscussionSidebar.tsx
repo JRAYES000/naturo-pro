@@ -38,7 +38,7 @@ export function DiscussionSidebar({
     const active = d.id === selectedId;
     return (
       <Link key={d.id} href={`/app/chat/${d.id}`} data-testid={`discussion-${d.id}`}
-        className={`block truncate text-sm rounded-[10px] px-2 py-1.5 ml-5 ${active ? "bg-secondary text-primary font-medium" : "text-muted-foreground hover:bg-secondary/60"}`}>
+        className={`block truncate text-sm rounded-md px-2 py-1.5 ml-5 ${active ? "bg-secondary text-primary font-medium" : "text-muted-foreground hover:bg-secondary/60"}`}>
         {d.title}
       </Link>
     );
@@ -46,11 +46,11 @@ export function DiscussionSidebar({
 
   return (
     <aside className="w-60 shrink-0 border-r border-border flex flex-col gap-4 p-3 overflow-y-auto">
-      <Button onClick={onNew} className="rounded-[12px] w-full justify-center" data-testid="button-new-discussion">
+      <Button onClick={onNew} className="rounded-lg w-full justify-center" data-testid="button-new-discussion">
         <Plus className="h-4 w-4 mr-1" /> Nouvelle discussion
       </Button>
       <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filtrer…"
-        className="h-9 rounded-[10px] border border-border px-3 text-sm" data-testid="input-filter-discussions" />
+        className="h-9 rounded-md border border-border px-3 text-sm" data-testid="input-filter-discussions" />
 
       <div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><User className="h-3.5 w-3.5" /> Par cliente</p>

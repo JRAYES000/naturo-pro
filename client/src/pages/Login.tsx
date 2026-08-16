@@ -35,7 +35,7 @@ export default function Login() {
       // sees the freshly-created session instead of the stale `user=null` value.
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       const res = await refetch();
-      toast({ title: "Bonjour 👋", description: "Connexion réussie." });
+      toast({ title: "Bonjour", description: "Connexion réussie." });
       const me: any = (res as any)?.data;
       const u = me?.user;
       if (u && !u.onboardingCompletedAt) {
@@ -53,7 +53,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2 text-heading">Heureux de vous revoir</h1>
+          <h1 className="text-3xl font-bold mb-2 text-heading">Heureux de vous revoir</h1>
           <p className="text-muted-foreground">Connectez-vous pour accéder à votre cabinet.</p>
         </div>
         <div className="card-naturo">

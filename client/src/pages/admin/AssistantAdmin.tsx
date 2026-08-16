@@ -184,12 +184,12 @@ export default function AssistantAdmin() {
                 variant="ghost"
                 onClick={onResetInstructions}
                 disabled={resetInstr.isPending || saveInstr.isPending}
-                className="rounded-[12px] text-muted-foreground hover:text-destructive"
+                className="rounded-lg text-muted-foreground hover:text-destructive"
                 data-testid="button-reset-instructions"
               >
                 Réinitialiser
               </Button>
-              <Button onClick={() => saveInstr.mutate()} disabled={saveInstr.isPending} className="rounded-[12px]" data-testid="button-save-instructions">
+              <Button onClick={() => saveInstr.mutate()} disabled={saveInstr.isPending} className="rounded-lg" data-testid="button-save-instructions">
                 Enregistrer
               </Button>
             </div>

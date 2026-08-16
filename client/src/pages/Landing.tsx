@@ -196,7 +196,7 @@ export default function Landing() {
 
           {/* Vidéo de présentation, dans un cadre soigné */}
           <div className="mt-12 mx-auto max-w-3xl">
-            <div className="rounded-2xl border border-primary/10 bg-card p-2 shadow-[0_24px_60px_-24px_rgba(24,103,73,0.4)]">
+            <div className="rounded-xl border border-primary/10 bg-card p-2 shadow-[0_24px_60px_-24px_rgba(24,103,73,0.4)]">
               <div className="aspect-video w-full overflow-hidden rounded-xl bg-[#0d2a1f]">
                 <iframe
                   src="https://www.loom.com/embed/4aa64b9616a54cc29c02e4f5a6988055"
@@ -318,7 +318,7 @@ export default function Landing() {
       {/* CTA finale — section immersive vert profond */}
       <section className="py-12 lg:py-16">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="relative overflow-hidden rounded-[28px] px-8 py-14 lg:px-16 lg:py-20 text-center" style={{ background: "linear-gradient(150deg, hsl(var(--heading)) 0%, #013F27 100%)" }}>
+          <div className="relative overflow-hidden rounded-xl px-8 py-14 lg:px-16 lg:py-20 text-center" style={{ background: "linear-gradient(150deg, hsl(var(--heading)) 0%, #013F27 100%)" }}>
             <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(23,236,155,0.22), transparent 70%)" }} />
             <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-24 h-80 w-80 rounded-full" style={{ background: "radial-gradient(circle, rgba(23,236,155,0.10), transparent 70%)" }} />
             <div className="relative">

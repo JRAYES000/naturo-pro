@@ -49,7 +49,7 @@ export default function AdminAnalytics() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
               {EVENT_ORDER.map((ev) => (
                 <div key={ev} className="card-naturo text-center" data-testid={`analytics-card-${ev}`}>
-                  <p className="text-2xl font-extrabold text-primary">{countFor(data?.total, ev)}</p>
+                  <p className="text-2xl font-bold text-primary">{countFor(data?.total, ev)}</p>
                   <p className="text-xs font-semibold text-muted-foreground mt-1">{EVENT_LABELS[ev]}</p>
                   <p className="text-[11px] text-muted-foreground mt-1">{countFor(data?.last30d, ev)} sur 30 j</p>
                 </div>

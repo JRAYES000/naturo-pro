@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Clock, CalendarCheck, CopyPlus } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, PAGE_PUBLIQUE_TABS } from "@/components/SubNav";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -236,9 +236,7 @@ export default function Availability() {
               <li>Cliquez sur <strong>« Enregistrer »</strong> en haut à droite.</li>
             </ol>
           </div>
-          <p className="text-xs italic">
-            💡 Vous pouvez modifier vos disponibilités à tout moment : les changements s'appliquent aussitôt.
-          </p>
+          <HelpTip>Vous pouvez modifier vos disponibilités à tout moment : les changements s'appliquent aussitôt.</HelpTip>
         </HelpNote>
 
         <div className="card-naturo space-y-4">
@@ -247,7 +245,7 @@ export default function Availability() {
             return (
               <div key={d.dow} className="border-b border-border pb-3 last:border-0 last:pb-0">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-extrabold text-primary">{d.label}</h3>
+                  <h3 className="font-bold text-primary">{d.label}</h3>
                   <div className="flex items-center gap-3">
                     {daySlots.length > 0 && (
                       <button
@@ -265,7 +263,7 @@ export default function Availability() {
                 </div>
 
                 {copyMenuFor === d.dow && (
-                  <div className="mb-3 rounded-[10px] border border-border bg-muted/40 p-3" data-testid={`panel-copy-${d.dow}`}>
+                  <div className="mb-3 rounded-md border border-border bg-muted/40 p-3" data-testid={`panel-copy-${d.dow}`}>
                     <p className="text-xs font-semibold text-foreground mb-2">
                       Copier les plages de {d.label} vers :
                     </p>
@@ -312,7 +310,7 @@ export default function Availability() {
                               type="time"
                               value={s.startTime}
                               onChange={e => update(i, { startTime: e.target.value })}
-                              className={`w-32 rounded-[10px] ${hasError ? "border-destructive" : ""}`}
+                              className={`w-32 rounded-md ${hasError ? "border-destructive" : ""}`}
                               data-testid={`input-start-${i}`}
                             />
                             <span className="text-muted-foreground">–</span>
@@ -320,7 +318,7 @@ export default function Availability() {
                               type="time"
                               value={s.endTime}
                               onChange={e => update(i, { endTime: e.target.value })}
-                              className={`w-32 rounded-[10px] ${hasError ? "border-destructive" : ""}`}
+                              className={`w-32 rounded-md ${hasError ? "border-destructive" : ""}`}
                               data-testid={`input-end-${i}`}
                             />
                             <button onClick={() => remove(i)} aria-label="Supprimer la plage horaire" className="h-9 w-9 inline-flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" data-testid={`button-remove-${i}`}>
@@ -388,7 +386,7 @@ function BlockedDatesSection() {
     <div className="card-naturo mt-8" data-testid="section-blocked-dates">
       <div className="flex items-center gap-2 mb-2">
         <CalendarOff className="h-5 w-5 text-primary" />
-        <h2 className="font-extrabold text-heading">Dates bloquées (congés, absences)</h2>
+        <h2 className="font-bold text-heading">Dates bloquées (congés, absences)</h2>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
         Bloquez une période ponctuelle (vacances, formation…) : aucun créneau n'est proposé à la réservation
@@ -433,7 +431,7 @@ function BlockedDatesSection() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-[10px] text-destructive border-destructive/30 hover:bg-destructive/10"
+                className="h-9 w-9 rounded-md text-destructive border-destructive/30 hover:bg-destructive/10"
                 onClick={async () => {
                   if (!(await confirm({ title: "Retirer ce blocage ?", description: "Les créneaux redeviendront réservables sur cette période.", confirmLabel: "Retirer", cancelLabel: "Annuler" }))) return;
                   delMut.mutate(b.id);

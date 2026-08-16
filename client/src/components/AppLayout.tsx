@@ -51,7 +51,7 @@ function initials(name?: string) {
 const navItemClass = (active: boolean) =>
   `group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
     active
-      ? "bg-primary text-primary-foreground shadow-sm"
+      ? "bg-primary text-primary-foreground"
       : "text-foreground/80 hover:bg-secondary hover:text-primary"
   }`;
 
@@ -143,7 +143,7 @@ function SidebarFooter({
     <div className="border-t border-sidebar-border p-3 space-y-1">
       {user && (
         <div className="flex items-center gap-3 px-2 py-2 mb-1">
-          <div className="h-9 w-9 shrink-0 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-extrabold">
+          <div className="h-9 w-9 shrink-0 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">
             {initials(user.name)}
           </div>
           <div className="min-w-0">

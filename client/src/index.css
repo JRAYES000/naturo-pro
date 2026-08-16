@@ -107,14 +107,9 @@
   --font-serif: Georgia, serif;
   --font-mono: ui-monospace, Menlo, monospace;
   --radius: 0.75rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0);
-  --shadow-xs: 0px 2px 4px 0px rgba(61,88,71,0.05);
-  --shadow-sm: 0px 4px 8px 0px rgba(61,88,71,0.08);
-  --shadow: 0px 6px 14px 0px rgba(61,88,71,0.08);
-  --shadow-md: 0px 10px 22px 0px rgba(61,88,71,0.10);
-  --shadow-lg: 0px 14px 32px 0px rgba(61,88,71,0.12);
-  --shadow-xl: 0px 20px 50px 0px rgba(61,88,71,0.14);
-  --shadow-2xl: 0px 30px 60px 0px rgba(61,88,71,0.18);
+  /* Élévation : un seul niveau, réservé aux surfaces qui flottent réellement
+     (menus, dialogues, popovers). Les cartes se posent au filet, pas à l'ombre. */
+  --shadow-overlay: 0 12px 28px -8px rgba(27, 67, 50, 0.18);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -176,14 +171,7 @@
   --chart-3: 47 95% 76%;
   --chart-4: 152 62% 35%;
   --chart-5: 36 38% 95%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0);
-  --shadow-xs: 0px 2px 4px 0px rgba(0,0,0,.3);
-  --shadow-sm: 0px 4px 8px 0px rgba(0,0,0,.4);
-  --shadow: 0px 6px 14px 0px rgba(0,0,0,.4);
-  --shadow-md: 0px 10px 22px 0px rgba(0,0,0,.4);
-  --shadow-lg: 0px 14px 32px 0px rgba(0,0,0,.5);
-  --shadow-xl: 0px 20px 50px 0px rgba(0,0,0,.55);
-  --shadow-2xl: 0px 30px 60px 0px rgba(0,0,0,.6);
+  --shadow-overlay: 0 12px 28px -8px rgba(0, 0, 0, 0.5);
 
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -209,25 +197,34 @@
     @apply font-sans antialiased bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.01em; color: hsl(var(--heading)); text-wrap: balance; }
+  /* La hiérarchie se lit à la taille et à l'espace ; le poids ne fait que l'accompagner.
+     Un 800 uniforme sur h1..h4 aplatit les quatre niveaux en un seul. */
+  h1, h2, h3, h4 { color: hsl(var(--heading)); text-wrap: balance; }
+  h1 { font-weight: 700; letter-spacing: -0.025em; }
+  h2 { font-weight: 700; letter-spacing: -0.02em; }
+  h3 { font-weight: 600; letter-spacing: -0.015em; }
+  h4 { font-weight: 600; letter-spacing: -0.01em; }
   .dark h1, .dark h2, .dark h3, .dark h4 { color: hsl(36 38% 95%); }
+
+  /* Plus d'air au-dessus d'un titre qu'en dessous : le titre appartient à ce qui suit. */
+  h2 + p, h3 + p, h4 + p { margin-top: 0.35rem; }
 }
 
 @layer components {
   .btn-primary-naturo {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-bold px-6 py-3 shadow-md transition;
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground font-semibold px-6 py-3 transition-colors;
   }
-  .btn-primary-naturo:hover { box-shadow: 0 14px 30px rgba(24,103,73,0.25); transform: translateY(-1px); }
+  .btn-primary-naturo:hover { background-color: hsl(152 62% 20%); }
 
+  /* Ghost card corrigée : le filet OU l'ombre porte l'élévation, jamais les deux.
+     Une carte se pose sur la page, elle ne lévite pas au-dessus. */
   .card-naturo {
-    @apply bg-card text-card-foreground rounded-[12px] border border-border p-6;
-    box-shadow: 0 10px 28px rgba(61,88,71,0.08);
+    @apply bg-card text-card-foreground rounded-lg border border-card-border p-6;
   }
 
+  /* Surface alternée du DESIGN.md (crème plus sombre), pas un halo radial vert. */
   .leaf-bg {
-    background-image:
-      radial-gradient(60% 80% at 20% 10%, rgba(23,236,155,0.18), transparent 60%),
-      radial-gradient(60% 70% at 80% 30%, rgba(24,103,73,0.10), transparent 60%);
+    background-color: hsl(var(--muted));
   }
 
   /* Serif de titrage (art direction de la landing marketing) */
@@ -294,28 +291,28 @@
   color: hsl(var(--foreground)) !important;
   padding: .4rem .9rem !important;
   font-weight: 600;
+  box-shadow: none !important; /* rbc ajoute une ombre sur .rbc-active : filet OU ombre */
 }
 .rbc-toolbar button.rbc-active, .rbc-toolbar button:hover {
   background: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   border-color: hsl(var(--primary)) !important;
 }
-.rbc-toolbar-label { font-weight: 800; font-size: 1.1rem; color: hsl(152 80% 16%); }
+.rbc-toolbar-label { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; color: hsl(var(--heading)); }
 .rbc-month-view, .rbc-time-view, .rbc-agenda-view {
   border-radius: 12px; border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
   overflow: hidden;
 }
-.rbc-header { background: hsl(var(--secondary)); color: hsl(var(--primary)); font-weight: 700; padding: .5rem 0; border-color: hsl(var(--border)); }
-.rbc-today { background: hsl(138 56% 95%); }
+.rbc-header { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); font-weight: 600; padding: .5rem 0; border-color: hsl(var(--border)); }
+.rbc-today { background: hsl(var(--secondary) / 0.45); }
 .rbc-event {
   background: hsl(var(--primary)) !important;
   border: none !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   padding: 4px 8px !important;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(24,103,73,0.15);
 }
-.rbc-event.rbc-selected { background: hsl(152 80% 18%) !important; }
+.rbc-event.rbc-selected { background: hsl(var(--heading)) !important; }
 .rbc-time-slot, .rbc-day-bg + .rbc-day-bg, .rbc-month-row { border-color: hsl(var(--border)); }
-.rbc-off-range-bg { background: hsl(36 38% 96%); }
+.rbc-off-range-bg { background: hsl(var(--muted)); }

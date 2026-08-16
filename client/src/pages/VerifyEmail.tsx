@@ -51,7 +51,7 @@ export default function VerifyEmail() {
     setResending(true);
     try {
       await apiRequest("POST", "/api/auth/resend-verification");
-      toast({ title: "Email envoyé 🌿", description: "Un nouveau lien vient de partir." });
+      toast({ title: "Email envoyé", description: "Un nouveau lien vient de partir." });
     } catch (e: any) {
       toast({ title: "Erreur", description: e?.message || "Impossible de renvoyer l'email.", variant: "destructive" });
     } finally {
@@ -69,15 +69,15 @@ export default function VerifyEmail() {
           {status === "loading" && (
             <>
               <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
-              <h1 className="text-2xl font-extrabold mb-2 text-heading">Vérification en cours…</h1>
+              <h1 className="text-2xl font-bold mb-2 text-heading">Vérification en cours…</h1>
               <p className="text-muted-foreground">Nous validons votre lien.</p>
             </>
           )}
           {status === "success" && (
             <>
               <CheckCircle2 className="h-12 w-12 mx-auto mb-4" style={{ color: "#17EC9B" }} />
-              <h1 className="text-2xl font-extrabold mb-2 text-heading">Email vérifié ✅</h1>
-              <p className="text-muted-foreground mb-6">Votre adresse est confirmée. Bienvenue sur Naturo Pro 🌿</p>
+              <h1 className="text-2xl font-bold mb-2 text-heading">Email vérifié</h1>
+              <p className="text-muted-foreground mb-6">Votre adresse est confirmée. Bienvenue sur Naturo Pro</p>
               <Button
                 onClick={() => navigate("/app")}
                 className="w-full rounded-lg py-6 font-bold"
@@ -90,7 +90,7 @@ export default function VerifyEmail() {
           {status === "error" && (
             <>
               <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
-              <h1 className="text-2xl font-extrabold mb-2 text-heading">Lien invalide</h1>
+              <h1 className="text-2xl font-bold mb-2 text-heading">Lien invalide</h1>
               <p className="text-muted-foreground mb-6">
                 {errorMessage || "Ce lien a expiré ou n'est plus valable."}
               </p>

@@ -9,8 +9,6 @@ interface PageHeaderProps {
   title: string;
   /** Sous-titre optionnel, sous le titre. */
   subtitle?: string;
-  /** Sur-titre optionnel, au-dessus du titre (ex. « Bonjour Marie »). */
-  kicker?: string;
   /** Pastille d'icône optionnelle à gauche du titre. */
   icon?: LucideIcon;
   /** Lien de retour optionnel (flèche + libellé) au-dessus du titre. */
@@ -24,7 +22,7 @@ interface PageHeaderProps {
  * Centralise le bloc titre + sous-titre + retour + actions
  * (auparavant réinventé sur chaque page).
  */
-export function PageHeader({ title, subtitle, kicker, icon: Icon, backTo, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, icon: Icon, backTo, actions }: PageHeaderProps) {
   // Teinte de domaine dérivée de la route — colore la pastille d'icône sans
   // qu'aucune page n'ait à passer de prop.
   const [location] = useLocation();
@@ -49,11 +47,11 @@ export function PageHeader({ title, subtitle, kicker, icon: Icon, backTo, action
             </span>
           )}
           <div className="min-w-0">
-            {kicker && <p className="text-sm text-muted-foreground mb-0.5">{kicker}</p>}
-            <h1 className="text-2xl lg:text-3xl font-extrabold leading-tight text-heading">
+            {/* Poids et interlettrage viennent de la règle h1 du thème : un seul endroit. */}
+            <h1 className="text-2xl lg:text-3xl leading-tight text-heading">
               {title}
             </h1>
-            {subtitle && <p className="text-muted-foreground text-sm mt-1 max-w-2xl">{subtitle}</p>}
+            {subtitle && <p className="text-muted-foreground text-sm mt-1.5 max-w-[65ch]">{subtitle}</p>}
           </div>
         </div>
         {actions && <div className="flex items-center gap-2 flex-wrap shrink-0">{actions}</div>}

@@ -76,7 +76,16 @@ Aucune route inline : chaque domaine vit dans son module.
 - **Formulaires** : `useForm` + `zodResolver` + insert schema de `@shared/schema.ts`.
 - **Test IDs** : `data-testid="button-{action}-{target}"` (interactif),
   `data-testid="text-{content}-{id}"` (affichage dynamique).
-- **Tailwind** : utility classes du thème (`leaf-bg`, `card-naturo`, `rounded-[15px] py-6 font-bold`).
+- **Tailwind** : utility classes du thème (`leaf-bg`, `card-naturo`, `btn-primary-naturo`, `table-naturo`).
+- **Rayons : jamais de valeur arbitraire.** L'échelle du thème est `rounded-sm` 6px (puces),
+  `rounded-md` 10px (boutons, champs), `rounded-lg` 12px (cartes), `rounded-xl` 16px (dialogues).
+  Un `rounded-[Npx]` signale que l'échelle est mal réglée — corriger `tailwind.config.ts`, pas la page.
+- **Élévation : filet OU ombre, jamais les deux.** Une carte se pose au filet 1px (`card-naturo`).
+  L'ombre est réservée aux surfaces qui flottent vraiment : menus, dialogues, popovers, toasts.
+- **Icônes : lucide uniquement.** Pas d'emoji ni de glyphe unicode en guise d'icône. Pour un conseil
+  ou un avertissement dans un `HelpNote`, utiliser `<HelpTip>` / `<HelpWarn>`.
+- **Titres : pas de classe de poids.** La hiérarchie h1→h4 (poids + interlettrage) vient de
+  `index.css`. Ajouter `font-bold` sur un titre ré-aplatit les quatre niveaux.
 - **Couleurs** : primary `#186749`, accent `#17EC9B`, dark `#1b4332`.
 - **Toast** : `useToast` depuis `@/hooks/use-toast`.
 - **❌ Jamais `localStorage` / `sessionStorage` / cookies client** pour de la donnée persistante.

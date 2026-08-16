@@ -8,11 +8,11 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Pencil, Trash2, Leaf } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Leaf, AlertTriangle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, RESSOURCES_TABS } from "@/components/SubNav";
 import { Loading } from "@/components/Loading";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpWarn } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -101,15 +101,13 @@ function Solutions() {
           <div>
             <p className="font-semibold text-foreground mb-2">Comment ça marche ?</p>
             <ul>
-              <li>🔎 <strong>Cherchez</strong> une solution par nom ou propriété, ou filtrez par catégorie.</li>
-              <li>➕ <strong>Ajoutez vos propres fiches</strong> : elles s'ajoutent à la base (les fiches de base ne sont pas modifiables).</li>
-              <li>📄 Depuis un <strong>programme</strong>, bouton « Piocher dans la base » pour insérer une solution dans une section.</li>
+              <li><strong>Cherchez</strong> une solution par nom ou propriété, ou filtrez par catégorie.</li>
+              <li><strong>Ajoutez vos propres fiches</strong> : elles s'ajoutent à la base (les fiches de base ne sont pas modifiables).</li>
+              <li>Depuis un <strong>programme</strong>, bouton « Piocher dans la base » pour insérer une solution dans une section.</li>
             </ul>
           </div>
-          <p className="text-xs italic">
-            ⚠️ Information d'hygiène de vie à visée naturopathique : ne remplace pas un avis médical.
-            Vérifiez toujours les précautions (grossesse, traitements, terrain) avant tout conseil.
-          </p>
+          <HelpWarn>Information d'hygiène de vie à visée naturopathique : ne remplace pas un avis médical.
+            Vérifiez toujours les précautions (grossesse, traitements, terrain) avant tout conseil.</HelpWarn>
         </HelpNote>
 
         {/* Filtres */}
@@ -165,7 +163,7 @@ function Solutions() {
               <li key={s.id} className="card-naturo" data-testid={`solution-${s.id}`}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <h3 className="font-extrabold">{s.name}</h3>
+                    <h3 className="font-bold">{s.name}</h3>
                     <Badge variant="outline" className={`mt-1 text-[11px] ${CATEGORY_COLORS[s.category] || ""}`}>{s.category}</Badge>
                   </div>
                   {s.userId !== null && (
@@ -177,7 +175,7 @@ function Solutions() {
                 </div>
                 {s.properties && <p className="text-sm mb-2"><span className="font-semibold text-primary">Propriétés :</span> {s.properties}</p>}
                 {s.usageNotes && <p className="text-sm mb-2 text-muted-foreground"><span className="font-semibold text-foreground">Usage :</span> {s.usageNotes}</p>}
-                {s.contraindications && <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1"><span className="font-semibold">⚠️ Précautions :</span> {s.contraindications}</p>}
+                {s.contraindications && <p className="flex gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1"><AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" aria-hidden="true" /><span><span className="font-semibold">Précautions :</span> {s.contraindications}</span></p>}
               </li>
             ))}
           </ul>
@@ -229,7 +227,7 @@ function SolutionEditor({ editing, onClose }: { editing: NaturalSolution | "new"
           <div><Label>Précautions / contre-indications</Label><Textarea rows={2} value={contraindications} onChange={(e) => setContraindications(e.target.value)} /></div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose} className="rounded-[12px]">Annuler</Button>
+          <Button variant="outline" onClick={onClose} className="rounded-lg">Annuler</Button>
           <Button onClick={() => mut.mutate()} disabled={!name.trim() || mut.isPending} className="rounded-lg font-bold" data-testid="button-save-solution">
             {mut.isPending ? "Enregistrement…" : "Enregistrer"}
           </Button>

@@ -79,7 +79,7 @@ export default function CadreLegal() {
         </div>
 
         <div className="card-naturo mb-6">
-          <h2 className="text-xl font-extrabold mb-2 text-heading">Le principe</h2>
+          <h2 className="text-xl font-bold mb-2 text-heading">Le principe</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             En France, la naturopathie n'est pas une profession de santé réglementée : elle s'exerce dans le champ du{" "}
             <strong className="text-foreground">bien-être et de l'éducation à la santé</strong>. Vous accompagnez la vitalité
@@ -89,7 +89,7 @@ export default function CadreLegal() {
           </p>
         </div>
 
-        <h2 className="text-xl font-extrabold mb-3 text-heading">Les grands interdits</h2>
+        <h2 className="text-xl font-bold mb-3 text-heading">Les grands interdits</h2>
         <ul className="space-y-3 mb-8">
           {INTERDITS.map((it, i) => (
             <li key={i} className="card-naturo flex items-start gap-3" data-testid={`interdit-${i}`}>
@@ -102,13 +102,13 @@ export default function CadreLegal() {
           ))}
         </ul>
 
-        <h2 className="text-xl font-extrabold mb-3 text-heading">Reformuler pour rester dans le cadre</h2>
+        <h2 className="text-xl font-bold mb-3 text-heading">Reformuler pour rester dans le cadre</h2>
         <div className="card-naturo overflow-x-auto p-0 mb-8">
           <table className="table-naturo">
             <thead>
               <tr>
-                <th>❌ À éviter</th>
-                <th>✅ À préférer</th>
+                <th><span className="inline-flex items-center gap-1.5"><Ban className="h-3.5 w-3.5" aria-hidden="true" />À éviter</span></th>
+                <th><span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5" aria-hidden="true" />À préférer</span></th>
               </tr>
             </thead>
             <tbody>
@@ -125,7 +125,7 @@ export default function CadreLegal() {
         <div className="card-naturo mb-6">
           <div className="flex items-center gap-2 mb-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
-            <h2 className="font-extrabold text-heading">Les bons réflexes au quotidien</h2>
+            <h2 className="font-bold text-heading">Les bons réflexes au quotidien</h2>
           </div>
           <ul className="space-y-2 text-sm text-muted-foreground">
             {[

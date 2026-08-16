@@ -51,9 +51,9 @@ export function BookingStepIndicator({ currentStep }: BookingStepIndicatorProps)
                 <div
                   className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold motion-safe:transition-all motion-safe:duration-300 ${
                     done
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                      ? "bg-primary text-primary-foreground"
                       : active
-                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20 shadow-md"
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
                       : "bg-secondary text-muted-foreground"
                   }`}
                   data-testid={`step-circle-${idx}`}

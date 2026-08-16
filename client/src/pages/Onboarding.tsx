@@ -89,7 +89,7 @@ export default function Onboarding() {
             city: data.city || undefined,
             address: data.address || undefined,
             bio: data.bio || undefined,
-            // ⚠️ Ces noms doivent correspondre EXACTEMENT à onboardingSchema
+            // ATTENTION : ces noms doivent correspondre EXACTEMENT à onboardingSchema
             // (server/routes/auth.ts), qui est `.strict()`. Le client envoyait
             // `specialties` en chaîne et une clé `firstService` inconnue : le
             // formulaire rempli était rejeté en 400 et RIEN n'était enregistré.
@@ -104,7 +104,7 @@ export default function Onboarding() {
       await apiRequest("POST", "/api/auth/onboarding", payload);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       await refetch();
-      toast({ title: "C'est prêt 🌿", description: "Votre cabinet est configuré." });
+      toast({ title: "C'est prêt", description: "Votre cabinet est configuré." });
       navigate("/app");
     } catch (e: any) {
       toast({
@@ -126,7 +126,7 @@ export default function Onboarding() {
         >
           <Sparkles className="h-5 w-5 flex-shrink-0" style={{ color: "#186749" }} />
           <p className="text-sm font-semibold text-heading">
-            Configurez votre compte pour commencer 🌿
+            Configurez votre compte pour commencer
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export default function Onboarding() {
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-extrabold mb-1 text-heading">Votre profil pro</h2>
+                <h2 className="text-2xl font-bold mb-1 text-heading">Votre profil pro</h2>
                 <p className="text-sm text-muted-foreground">Ces informations apparaîtront sur votre page publique.</p>
               </div>
               <div>
@@ -195,7 +195,7 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-extrabold mb-1 text-heading">Vos spécialités</h2>
+                <h2 className="text-2xl font-bold mb-1 text-heading">Vos spécialités</h2>
                 <p className="text-sm text-muted-foreground">Choisissez celles qui vous correspondent.</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -268,7 +268,7 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-extrabold mb-1 text-heading">Votre première prestation</h2>
+                <h2 className="text-2xl font-bold mb-1 text-heading">Votre première prestation</h2>
                 <p className="text-sm text-muted-foreground">Vous pourrez en ajouter d'autres ensuite.</p>
               </div>
               <div>
@@ -358,7 +358,7 @@ export default function Onboarding() {
                 className="rounded-lg py-6 font-bold"
                 data-testid="button-finish"
               >
-                {submitting ? "Enregistrement…" : "Terminer 🌿"}
+                {submitting ? "Enregistrement…" : "Terminer"}
               </Button>
             )}
           </div>

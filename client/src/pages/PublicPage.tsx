@@ -113,7 +113,7 @@ export default function PublicPage() {
           <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-2xl font-extrabold mb-2 text-heading">Page introuvable</h1>
+          <h1 className="text-2xl font-bold mb-2 text-heading">Page introuvable</h1>
           <p className="text-muted-foreground mb-6 text-sm">
             Ce naturopathe n'existe pas ou sa page est désactivée.
           </p>
@@ -164,11 +164,11 @@ export default function PublicPage() {
               <img
                 src={naturo.photoUrl}
                 alt={naturo.name}
-                className="h-44 w-44 sm:h-56 sm:w-56 rounded-full object-cover border-4 border-card shadow-xl"
+                className="h-44 w-44 sm:h-56 sm:w-56 rounded-full object-cover border-4 border-card"
               />
             ) : (
               <div
-                className="h-44 w-44 sm:h-56 sm:w-56 rounded-full text-white flex items-center justify-center text-5xl sm:text-6xl font-extrabold border-4 border-card shadow-xl"
+                className="h-44 w-44 sm:h-56 sm:w-56 rounded-full text-white flex items-center justify-center text-5xl sm:text-6xl font-bold border-4 border-card"
                 style={{ background: primary }}
                 aria-label={`Initiale de ${titleCase(naturo.name)}`}
               >
@@ -179,7 +179,7 @@ export default function PublicPage() {
           <div>
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Naturopathe certifié(e)</p>
             <h1
-              className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4 leading-tight"
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight"
               style={{ color: primary }}
               data-testid="text-practitioner-name"
             >
@@ -215,7 +215,7 @@ export default function PublicPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8 sm:mb-10">
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Mes prestations</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-heading">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-heading">
               Nos consultations
             </h2>
           </div>
@@ -232,7 +232,7 @@ export default function PublicPage() {
                   <div className="flex items-start gap-3 mb-3">
                     <span className="h-3 w-3 rounded-full mt-2 shrink-0" style={{ background: c.color }} />
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg sm:text-xl font-extrabold mb-1 leading-snug">{c.name}</h3>
+                      <h3 className="text-lg sm:text-xl font-bold mb-1 leading-snug">{c.name}</h3>
                       {c.description && (
                         <p className="text-sm text-muted-foreground leading-relaxed">{c.description}</p>
                       )}
@@ -242,7 +242,7 @@ export default function PublicPage() {
                     <span className="bg-secondary text-primary font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1 whitespace-nowrap">
                       <Clock className="h-3.5 w-3.5 shrink-0" /> {durationLabel(c.durationMinutes)}
                     </span>
-                    <span className="font-extrabold text-primary text-base whitespace-nowrap">
+                    <span className="font-bold text-primary text-base whitespace-nowrap">
                       {formatPrice(c.priceCents)}
                     </span>
                     <span className="text-muted-foreground capitalize whitespace-nowrap">· {c.location}</span>
@@ -268,17 +268,17 @@ export default function PublicPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 grid sm:grid-cols-3 gap-6 sm:gap-8 text-center">
           <div>
             <Leaf className="h-10 w-10 mx-auto mb-3 text-primary" />
-            <h3 className="font-extrabold mb-1">Approche naturelle</h3>
+            <h3 className="font-bold mb-1">Approche naturelle</h3>
             <p className="text-sm text-muted-foreground">Solutions douces et personnalisées, à votre rythme.</p>
           </div>
           <div>
             <Heart className="h-10 w-10 mx-auto mb-3 text-primary" />
-            <h3 className="font-extrabold mb-1">À votre écoute</h3>
+            <h3 className="font-bold mb-1">À votre écoute</h3>
             <p className="text-sm text-muted-foreground">Un accompagnement bienveillant et sans jugement.</p>
           </div>
           <div>
             <ShieldCheck className="h-10 w-10 mx-auto mb-3 text-primary" />
-            <h3 className="font-extrabold mb-1">Confidentialité</h3>
+            <h3 className="font-bold mb-1">Confidentialité</h3>
             <p className="text-sm text-muted-foreground">Vos données sont protégées et restent confidentielles.</p>
           </div>
         </div>
@@ -288,7 +288,7 @@ export default function PublicPage() {
       <section className="py-12 lg:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <Sparkles className="h-10 w-10 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-heading">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3 text-heading">
             Prêt(e) à commencer&nbsp;?
           </h2>
           <p className="text-muted-foreground mb-6 text-sm sm:text-base">

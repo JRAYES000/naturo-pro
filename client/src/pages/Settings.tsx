@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Save, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, LogOut, RefreshCw, Mail, Shield, Download, Trash2, Star, CreditCard, Settings as SettingsIcon, Moon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, PARAMETRES_TABS } from "@/components/SubNav";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,11 +164,11 @@ export default function Settings() {
           <div>
             <p className="font-semibold text-foreground mb-2">Ce que vous réglez ici :</p>
             <ul>
-              <li>👤 <strong>Vos informations</strong> : votre nom et votre adresse email.</li>
-              <li>✉️ <strong>L'envoi des emails</strong> : la connexion qui permet d'envoyer confirmations et rappels à vos clientes.</li>
-              <li>🧾 <strong>La facturation</strong> : vos coordonnées (adresse, SIRET, IBAN…) qui apparaîtront sur vos factures.</li>
-              <li>📅 <strong>Google Agenda</strong> : pour synchroniser vos rendez-vous avec votre agenda Google (optionnel).</li>
-              <li>🔔 <strong>Les rappels automatiques</strong> : les activer et choisir l'heure d'envoi.</li>
+              <li><strong>Vos informations</strong> : votre nom et votre adresse email.</li>
+              <li><strong>L'envoi des emails</strong> : la connexion qui permet d'envoyer confirmations et rappels à vos clientes.</li>
+              <li><strong>La facturation</strong> : vos coordonnées (adresse, SIRET, IBAN…) qui apparaîtront sur vos factures.</li>
+              <li><strong>Google Agenda</strong> : pour synchroniser vos rendez-vous avec votre agenda Google (optionnel).</li>
+              <li><strong>Les rappels automatiques</strong> : les activer et choisir l'heure d'envoi.</li>
             </ul>
           </div>
           <div>
@@ -178,15 +178,13 @@ export default function Settings() {
               <li>Cliquez sur le bouton <strong>« Enregistrer »</strong> de cette section. C'est tout.</li>
             </ol>
           </div>
-          <p className="text-xs italic">
-            💡 Pas besoin de tout remplir d'un coup. Prenez surtout le temps de compléter la partie
+          <HelpTip>Pas besoin de tout remplir d'un coup. Prenez surtout le temps de compléter la partie
             <strong> facturation</strong> si vous éditez des factures, et l'<strong>envoi des emails</strong>
-            pour que vos clientes reçoivent bien leurs confirmations.
-          </p>
+            pour que vos clientes reçoivent bien leurs confirmations.</HelpTip>
         </HelpNote>
 
         <div className="card-naturo space-y-4">
-          <h2 className="font-extrabold">Compte</h2>
+          <h2 className="font-bold">Compte</h2>
           <div><Label>Nom</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-name" /></div>
           <div><Label>Email</Label><Input value={draft.email || ""} disabled data-testid="input-email" /></div>
         </div>
@@ -194,7 +192,7 @@ export default function Settings() {
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
             <Moon className="h-5 w-5 text-heading" />
-            <h2 className="font-extrabold">Apparence</h2>
+            <h2 className="font-bold">Apparence</h2>
           </div>
           <div className="flex items-center justify-between">
             <div>
@@ -213,7 +211,7 @@ export default function Settings() {
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-heading" />
-            <h2 className="font-extrabold">Rappels email (Resend)</h2>
+            <h2 className="font-bold">Rappels email (Resend)</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             Configurez votre clé Resend pour envoyer automatiquement un rappel J-1 à vos clientes
@@ -332,7 +330,7 @@ export default function Settings() {
         <div className="card-naturo space-y-3">
           <div className="flex items-center gap-2">
             <CalendarIcon className="h-5 w-5 text-heading" />
-            <h2 className="font-extrabold">Google Calendar</h2>
+            <h2 className="font-bold">Google Calendar</h2>
           </div>
 
           {!googleStatus?.configured && (
@@ -399,7 +397,7 @@ export default function Settings() {
         {/* Phase 1 — Facturation */}
         <div className="card-naturo space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-extrabold">Facturation</h2>
+            <h2 className="font-bold">Facturation</h2>
           </div>
           <p className="text-sm text-muted-foreground">Vos coordonnées professionnelles apparaîtront sur les factures émises.</p>
 
@@ -569,7 +567,7 @@ export default function Settings() {
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
             <Star className="h-5 w-5 text-heading" />
-            <h2 className="font-extrabold">Avis Google</h2>
+            <h2 className="font-bold">Avis Google</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             Envoyez automatiquement une demande d'avis Google à vos clientes 2 jours après leur rendez-vous.
@@ -607,7 +605,7 @@ export default function Settings() {
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-heading" />
-            <h2 className="font-extrabold">Paiements en ligne (Stripe)</h2>
+            <h2 className="font-bold">Paiements en ligne (Stripe)</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             Demandez un <strong>acompte au moment de la réservation en ligne</strong> pour limiter les
@@ -624,7 +622,7 @@ export default function Settings() {
               data-testid="input-stripe-key"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              {draft.hasStripeSecretKey ? "✓ Une clé est enregistrée. " : ""}
+              {draft.hasStripeSecretKey ? "Une clé est enregistrée. " : ""}
               Disponible dans votre tableau de bord Stripe → Développeurs → Clés API. Commencez par une clé de <strong>test</strong> (sk_test_…).
             </p>
           </div>
@@ -727,7 +725,7 @@ function PrivacySection({ userEmail }: { userEmail?: string }) {
     <div className="card-naturo space-y-4">
       <div className="flex items-center gap-2">
         <Shield className="h-5 w-5 text-heading" />
-        <h2 className="font-extrabold">Confidentialité (RGPD)</h2>
+        <h2 className="font-bold">Confidentialité (RGPD)</h2>
       </div>
       <p className="text-sm text-muted-foreground">
         Conformément au RGPD, vous pouvez à tout moment télécharger l'intégralité de vos données ou supprimer définitivement votre compte.

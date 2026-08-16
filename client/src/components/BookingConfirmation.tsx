@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Check, Calendar, Clock, MapPin, User, Euro, ArrowLeft, Mail } from "lucide-react";
+import { Check, Calendar, Clock, MapPin, User, Euro, ArrowLeft, Mail, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice, durationLabel, formatJourCabinet, formatHeureCabinet } from "@/lib/format";
@@ -45,13 +45,13 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref, emailC
       {/* Success badge */}
       <div className="relative inline-flex mb-6">
         <div className="h-24 w-24 mx-auto rounded-full bg-primary/10 border-4 border-primary/20 flex items-center justify-center">
-          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center shadow-lg">
+          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center">
             <Check className="h-9 w-9 text-primary-foreground" strokeWidth={3} />
           </div>
         </div>
       </div>
 
-      <h1 className="text-3xl sm:text-4xl font-extrabold mb-3 text-heading" data-testid="text-confirmation-title">
+      <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-heading" data-testid="text-confirmation-title">
         C'est confirmé&nbsp;!
       </h1>
       <p className="text-muted-foreground mb-2 max-w-sm mx-auto">
@@ -59,7 +59,7 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref, emailC
       </p>
       {emailConfigured === false ? (
         <p className="text-sm text-amber-700 mb-8 max-w-sm mx-auto" data-testid="text-confirmation-no-email">
-          ⚠️ Notez bien la date et l'heure : votre praticienne n'a pas activé l'envoi d'emails,
+          <AlertTriangle className="inline-block h-4 w-4 align-[-3px] mr-1.5" aria-hidden="true" />Notez bien la date et l'heure : votre praticienne n'a pas activé l'envoi d'emails,
           vous ne recevrez <strong>pas</strong> d'email de confirmation.
         </p>
       ) : (
@@ -77,7 +77,7 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref, emailC
       <div className="card-naturo max-w-sm mx-auto text-left mb-6 space-y-3" data-testid="card-booking-recap">
         {/* Service name + badge */}
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-extrabold text-lg leading-tight" data-testid="text-recap-service">{cat.name}</h2>
+          <h2 className="font-bold text-lg leading-tight" data-testid="text-recap-service">{cat.name}</h2>
           <Badge
             variant="secondary"
             className="shrink-0 bg-primary/10 text-primary border-0 font-bold text-xs"
@@ -136,7 +136,7 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref, emailC
             <hr className="border-border" />
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total</span>
-              <span className="font-extrabold text-primary text-lg" data-testid="text-recap-price">
+              <span className="font-bold text-primary text-lg" data-testid="text-recap-price">
                 {formatPrice(cat.priceCents)}
               </span>
             </div>

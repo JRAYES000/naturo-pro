@@ -14,7 +14,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, ChevronDown, ChevronUp, Lightbulb, AlertTriangle } from "lucide-react";
 
 interface HelpNoteProps {
   /** Titre affiché dans l'en-tête cliquable. */
@@ -55,12 +55,36 @@ export function HelpNote({
             "space-y-4 text-sm text-muted-foreground pt-0 " +
             "[&_strong]:font-semibold [&_strong]:text-foreground " +
             "[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:text-xs [&_code]:text-foreground " +
-            "[&_ul]:space-y-1.5 [&_ol]:list-inside [&_ol]:list-decimal [&_ol]:space-y-1"
+            // ponytail: les <li> portaient un emoji faute de marqueur de liste ici.
+            "[&_ul]:space-y-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_ul_li]:marker:text-primary/50 " +
+            "[&_ol]:list-outside [&_ol]:pl-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol_li]:marker:text-primary/50 [&_ol_li]:marker:font-semibold"
           }
         >
           {children}
         </CardContent>
       )}
     </Card>
+  );
+}
+
+/**
+ * Conseil et avertissement — un seul système d'icônes (lucide) pour toute l'app.
+ * Ces deux encarts remplacent les emoji qui servaient d'icônes dans le texte.
+ */
+export function HelpTip({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex gap-2 text-xs">
+      <Lightbulb className="h-4 w-4 shrink-0 mt-px text-primary" aria-hidden="true" />
+      <span className="italic">{children}</span>
+    </p>
+  );
+}
+
+export function HelpWarn({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex gap-2 text-xs">
+      <AlertTriangle className="h-4 w-4 shrink-0 mt-px text-destructive" aria-hidden="true" />
+      <span>{children}</span>
+    </p>
   );
 }

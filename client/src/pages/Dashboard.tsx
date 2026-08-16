@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
-import { Calendar, Users, Tag, Globe, ArrowRight, Sparkles, FlaskConical, Euro, Wallet, CheckCircle2, XCircle, TrendingUp, StickyNote, Megaphone, ListChecks, Circle, X, Download } from "lucide-react";
+import { Calendar, Users, Tag, Globe, ArrowRight, FlaskConical, CheckCircle2, TrendingUp, StickyNote, Megaphone, ListChecks, Circle, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/AppLayout";
@@ -140,8 +140,7 @@ function Dashboard() {
     <AppLayout>
       <div className="max-w-6xl">
         <PageHeader
-          kicker={`${salutation} ${user?.name?.split(" ")[0] ?? ""}`.trim()}
-          title="Votre cabinet, en un coup d'œil"
+          title={`${salutation} ${user?.name?.split(" ")[0] ?? ""}`.trim()}
           subtitle={dateDuJour}
         />
 
@@ -155,7 +154,7 @@ function Dashboard() {
                 <FlaskConical className="h-5 w-5" />
               </div>
               <div className="text-sm leading-relaxed">
-                <p className="font-extrabold text-heading mb-1">Naturo Pro est en version bêta 🧪</p>
+                <p className="font-bold text-heading mb-1">Naturo Pro est en version bêta</p>
                 <p className="text-muted-foreground">
                   Vous utilisez actuellement une version de test. L'ouverture officielle est prévue le{" "}
                   <strong className="text-foreground font-bold">1ᵉʳ septembre 2026</strong>. Si vous rencontrez
@@ -176,16 +175,16 @@ function Dashboard() {
 
         <OnboardingChecklistCard />
 
-        <h2 className="text-lg font-extrabold mb-3">Activité</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <StatCard label="RDV aujourd'hui" value={todayCount} icon={Calendar} testid="stat-today" />
-          <StatCard label="Cette semaine" value={thisWeekCount} icon={Sparkles} testid="stat-week" />
-          <StatCard label="Clients" value={(clients || []).length} icon={Users} testid="stat-clients" />
-          <StatCard label="Consultations terminées (30j)" value={completed} icon={Tag} testid="stat-completed" />
-        </div>
+        <h2 className="text-lg font-bold mb-3">Activité</h2>
+        <StatBand>
+          <StatCard label="RDV aujourd'hui" value={todayCount} testid="stat-today" />
+          <StatCard label="Cette semaine" value={thisWeekCount} testid="stat-week" />
+          <StatCard label="Clients" value={(clients || []).length} testid="stat-clients" />
+          <StatCard label="Consultations terminées (30j)" value={completed} testid="stat-completed" />
+        </StatBand>
 
         <div className="flex items-center gap-3 mt-6 mb-3 flex-wrap" data-testid="row-periode-stats">
-          <h2 className="text-lg font-extrabold">Finances</h2>
+          <h2 className="text-lg font-bold">Finances</h2>
           <Select value={periode} onValueChange={(v) => setPeriode(v as Periode)}>
             <SelectTrigger className="w-44" data-testid="select-periode">
               <SelectValue placeholder="Choisir une période" />
@@ -210,29 +209,28 @@ function Dashboard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatBand>
           {statsLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <div className="card-naturo" key={i}>
-                <Skeleton className="h-4 w-24 mb-3" />
-                <Skeleton className="h-8 w-32" />
+              <div className="bg-card px-4 py-3.5" key={i}>
+                <Skeleton className="h-3 w-24 mb-2" />
+                <Skeleton className="h-7 w-28" />
               </div>
             ))
           ) : (
             <>
-              <StatCard label="CA encaissé" value={formatPrice(stats?.caEncaisseCents ?? 0)} icon={Euro} testid="stat-ca-encaisse" />
-              <StatCard label="CA prévu" value={formatPrice(stats?.caPrevuCents ?? 0)} icon={Wallet} testid="stat-ca-prevu" />
-              <StatCard label="RDV honorés" value={stats?.nbRdv ?? 0} icon={CheckCircle2} testid="stat-rdv-honores" />
+              <StatCard label="CA encaissé" value={formatPrice(stats?.caEncaisseCents ?? 0)} testid="stat-ca-encaisse" />
+              <StatCard label="CA prévu" value={formatPrice(stats?.caPrevuCents ?? 0)} testid="stat-ca-prevu" />
+              <StatCard label="RDV honorés" value={stats?.nbRdv ?? 0} testid="stat-rdv-honores" />
               <StatCard
                 label="RDV annulés"
                 value={stats?.nbRdvAnnules ?? 0}
-                icon={XCircle}
                 testid="stat-rdv-annules"
                 sub={tauxAnnulation !== null ? `${tauxAnnulation}% d'annulation` : undefined}
               />
             </>
           )}
-        </div>
+        </StatBand>
 
         {/* Lot 4 (action C2) — note libre + tendance de revenus sans ouvrir Factures */}
         <div className="grid lg:grid-cols-2 gap-4 mb-6">
@@ -246,7 +244,7 @@ function Dashboard() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Remplissage des 7 prochains jours</p>
-            <p className="font-extrabold text-heading">
+            <p className="font-bold text-heading">
               {thisWeekCount} RDV — <span className="text-primary">{remplissageLabel}</span>
             </p>
           </div>
@@ -255,7 +253,7 @@ function Dashboard() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 card-naturo">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-extrabold">Prochains rendez-vous</h2>
+              <h2 className="text-xl font-bold">Prochains rendez-vous</h2>
               <Link href="/app/agenda" className="text-sm font-bold text-primary inline-flex items-center gap-1" data-testid="link-agenda">
                 Voir l'agenda <ArrowRight className="h-4 w-4" />
               </Link>
@@ -277,7 +275,7 @@ function Dashboard() {
                     <li key={a.id} className="flex items-center gap-4 p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary transition" data-testid={`appt-row-${a.id}`}>
                       <div className="text-center min-w-[72px]">
                         <p className="text-xs uppercase font-bold text-primary">{new Date(a.startAt).toLocaleDateString("fr-FR", { weekday: "short" })}</p>
-                        <p className="text-2xl font-extrabold leading-none text-heading">{new Date(a.startAt).getDate()}</p>
+                        <p className="text-2xl font-bold leading-none text-heading">{new Date(a.startAt).getDate()}</p>
                         <p className="text-xs text-muted-foreground">{new Date(a.startAt).toLocaleDateString("fr-FR", { month: "short" })}</p>
                       </div>
                       <div className="flex-1">
@@ -296,40 +294,40 @@ function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            <Link href="/app/clients" className="card-naturo block hover:-translate-y-0.5 transition" data-testid="quick-clients">
+            <Link href="/app/clients" className="card-naturo block hover:border-primary hover:bg-secondary/30 transition-colors" data-testid="quick-clients">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center text-primary"><Users className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-extrabold">Clients</h3>
+                  <h3 className="font-bold">Clients</h3>
                   <p className="text-xs text-muted-foreground">Gérer les fiches</p>
                 </div>
               </div>
             </Link>
-            <Link href="/app/availability" className="card-naturo block hover:-translate-y-0.5 transition" data-testid="quick-availability">
+            <Link href="/app/availability" className="card-naturo block hover:border-primary hover:bg-secondary/30 transition-colors" data-testid="quick-availability">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center text-primary"><Calendar className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-extrabold">Disponibilités</h3>
+                  <h3 className="font-bold">Disponibilités</h3>
                   <p className="text-xs text-muted-foreground">Vos plages horaires</p>
                 </div>
               </div>
             </Link>
             {/* Lot 4 (action P5) — mise en avant du Studio contenu */}
-            <Link href="/app/studio-contenu" className="card-naturo block hover:-translate-y-0.5 transition border-primary/30 bg-secondary/40" data-testid="quick-studio">
+            <Link href="/app/studio-contenu" className="card-naturo block hover:border-primary hover:bg-secondary/30 transition-colors border-primary/30 bg-secondary/40" data-testid="quick-studio">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-accent/30 flex items-center justify-center text-primary"><Megaphone className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-extrabold">Studio contenu ✨</h3>
+                  <h3 className="font-bold">Studio contenu</h3>
                   <p className="text-xs text-muted-foreground">Générez vos posts Instagram et Facebook en quelques clics.</p>
                 </div>
               </div>
             </Link>
             {user && (
-              <a href={`/p/${user.slug}`} target="_blank" rel="noreferrer" className="card-naturo block hover:-translate-y-0.5 transition" data-testid="quick-public">
+              <a href={`/p/${user.slug}`} target="_blank" rel="noreferrer" className="card-naturo block hover:border-primary hover:bg-secondary/30 transition-colors" data-testid="quick-public">
                 <div className="flex items-start gap-3">
                   <div className="h-10 w-10 rounded-lg bg-accent/30 flex items-center justify-center text-primary"><Globe className="h-5 w-5" /></div>
                   <div>
-                    <h3 className="font-extrabold">Page publique</h3>
+                    <h3 className="font-bold">Page publique</h3>
                     <p className="text-xs text-muted-foreground">naturo.pro/p/{user.slug}</p>
                   </div>
                 </div>
@@ -337,7 +335,7 @@ function Dashboard() {
             )}
 
             <div className="card-naturo" data-testid="card-top-prestations">
-              <h3 className="font-extrabold mb-3">Top prestations</h3>
+              <h3 className="font-bold mb-3">Top prestations</h3>
               {statsLoading ? (
                 <div className="space-y-3" aria-busy="true">
                   {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -357,7 +355,7 @@ function Dashboard() {
                         <p className="font-bold truncate">{p.name}</p>
                         <p className="text-xs text-muted-foreground">{p.count} RDV</p>
                       </div>
-                      <p className="font-extrabold text-primary shrink-0">{formatPrice(p.caCents)}</p>
+                      <p className="font-bold text-primary shrink-0">{formatPrice(p.caCents)}</p>
                     </li>
                   ))}
                 </ul>
@@ -400,14 +398,14 @@ function NoteToSelfCard({ initial }: { initial: string }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <StickyNote className="h-4 w-4 text-primary" />
-          <h3 className="font-extrabold">Note à moi-même</h3>
+          <h3 className="font-bold">Note à moi-même</h3>
         </div>
         <span className="text-xs text-muted-foreground" aria-live="polite">
-          {saved === "saving" ? "Enregistrement…" : saved === "saved" ? "Enregistré ✓" : ""}
+          {saved === "saving" ? "Enregistrement…" : saved === "saved" ? "Enregistré" : ""}
         </span>
       </div>
       <textarea
-        className="w-full min-h-[120px] rounded-[12px] border border-input bg-background p-3 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="w-full min-h-[120px] rounded-lg border border-input bg-background p-3 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         placeholder="Un pense-bête personnel, visible de vous seule : idées, choses à faire, rappels…"
         value={note}
         onChange={(e) => onChange(e.target.value)}
@@ -428,7 +426,7 @@ function RevenueChartCard({ data }: { data: Array<{ month: string; caCents: numb
   return (
     <div className="card-naturo" data-testid="card-revenue-chart">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-extrabold">CA encaissé — 12 derniers mois</h3>
+        <h3 className="font-bold">CA encaissé — 12 derniers mois</h3>
         <span className="text-sm font-bold text-primary">{formatPrice(total)}</span>
       </div>
       {total === 0 ? (
@@ -483,7 +481,7 @@ function OnboardingChecklistCard() {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
           <ListChecks className="h-5 w-5 text-primary" />
-          <p className="font-extrabold text-heading">Bien démarrer avec Naturo Pro — {done}/{CHECKLIST_STEPS.length}</p>
+          <p className="font-bold text-heading">Bien démarrer avec Naturo Pro — {done}/{CHECKLIST_STEPS.length}</p>
         </div>
         <button
           onClick={() => hideMut.mutate()}
@@ -519,15 +517,27 @@ function OnboardingChecklistCard() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, testid, sub }: any) {
+/**
+ * Cellule de chiffre-clé. Pas de carte individuelle ni d'icône décorative :
+ * quatre cartes identiques icône + libellé + gros nombre, c'est le gabarit
+ * générique. Les cellules vivent dans une bande unique (StatBand), séparées
+ * par un filet — la lecture se fait en ligne, pas objet par objet.
+ */
+function StatCard({ label, value, testid, sub }: any) {
   return (
-    <div className="card-naturo" data-testid={testid}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-        <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <p className="text-3xl font-extrabold text-heading tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    <div className="bg-card px-4 py-3.5" data-testid={testid}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-heading tabular-nums">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+/** Bande de chiffres-clés : un seul contour, des filets internes en gap-px. */
+function StatBand({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-lg border border-card-border bg-border mb-4">
+      {children}
     </div>
   );
 }

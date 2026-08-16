@@ -118,7 +118,7 @@ export default function AdminUsers() {
       <AppLayout>
         <div className="max-w-xl mx-auto card-naturo text-center py-10">
           <Shield className="h-10 w-10 mx-auto mb-3 text-destructive" />
-          <h1 className="text-xl font-extrabold mb-2 text-heading">
+          <h1 className="text-xl font-bold mb-2 text-heading">
             {denied ? "Accès refusé" : "Erreur"}
           </h1>
           <p className="text-muted-foreground">
@@ -209,14 +209,14 @@ export default function AdminUsers() {
                   <td>
                     <div className="flex flex-wrap gap-1">
                       <Link href={`/admin/users/${u.id}`}>
-                        <Button size="sm" variant="outline" className="rounded-[10px] h-7 px-2 text-xs" data-testid={`button-view-${u.id}`}>
+                        <Button size="sm" variant="outline" className="rounded-md h-7 px-2 text-xs" data-testid={`button-view-${u.id}`}>
                           Voir
                         </Button>
                       </Link>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-[10px] h-7 px-2 text-xs"
+                        className="rounded-md h-7 px-2 text-xs"
                         disabled={extendTrial.isPending}
                         onClick={() => extendTrial.mutate({ id: u.id, days: 30 })}
                         data-testid={`button-extend-trial-${u.id}`}
@@ -226,7 +226,7 @@ export default function AdminUsers() {
                       {u.plan !== "active" && (
                         <Button
                           size="sm"
-                          className="rounded-[10px] h-7 px-2 text-xs"
+                          className="rounded-md h-7 px-2 text-xs"
                           style={{ background: "#186749", color: "#fff" }}
                           disabled={setPlan.isPending}
                           onClick={() => setPlan.mutate({ id: u.id, plan: "active" })}
@@ -239,7 +239,7 @@ export default function AdminUsers() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-[10px] h-7 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
+                          className="rounded-md h-7 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
                           disabled={setPlan.isPending}
                           onClick={async () => {
                             if (
@@ -263,7 +263,7 @@ export default function AdminUsers() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-[10px] h-7 px-2 text-xs"
+                          className="rounded-md h-7 px-2 text-xs"
                           disabled={impersonate.isPending}
                           onClick={async () => {
                             if (

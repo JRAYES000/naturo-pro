@@ -335,7 +335,7 @@ function AnamnesePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-extrabold truncate">{tpl.name}</h3>
+                        <h3 className="font-bold truncate">{tpl.name}</h3>
                         <button
                           onClick={() => toggleActiveMut.mutate(tpl)}
                           title={tpl.isActive ? "Cliquer pour désactiver (archive le modèle sans le supprimer)" : "Cliquer pour réactiver"}
@@ -408,7 +408,7 @@ function AnamnesePage() {
 
         {/* Réponses reçues */}
         <div className="mt-8">
-          <h2 className="text-xl font-extrabold mb-4 text-heading">Réponses reçues</h2>
+          <h2 className="text-xl font-bold mb-4 text-heading">Réponses reçues</h2>
           {responsesLoading ? (
             <Loading variant="list" label="Chargement des réponses…" />
           ) : responses.length === 0 ? (
@@ -648,7 +648,7 @@ function TemplateDialog({ open, editing, onClose }: {
                 size="sm"
                 variant="outline"
                 onClick={addQuestion}
-                className="rounded-[12px] font-semibold"
+                className="rounded-lg font-semibold"
                 data-testid="button-add-question"
               >
                 <Plus className="h-4 w-4 mr-1" /> Ajouter une question
@@ -656,7 +656,7 @@ function TemplateDialog({ open, editing, onClose }: {
             </div>
 
             {questions.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-[12px]">
+              <p className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-lg">
                 Aucune question pour l'instant. Cliquez sur « Ajouter une question » pour commencer.
               </p>
             )}
@@ -715,7 +715,7 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
   }
 
   return (
-    <div className={`border rounded-[12px] p-4 space-y-3 ${PASTELS[index % PASTELS.length]}`} data-testid={`question-${index}`}>
+    <div className={`border rounded-lg p-4 space-y-3 ${PASTELS[index % PASTELS.length]}`} data-testid={`question-${index}`}>
       <div className="flex items-start gap-2">
         <div className="flex flex-col gap-1 mt-1">
           <button

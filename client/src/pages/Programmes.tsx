@@ -237,7 +237,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
             size="sm"
             onClick={addSection}
             data-testid="button-add-section"
-            className="rounded-[12px]"
+            className="rounded-lg"
           >
             <Plus className="h-3.5 w-3.5 mr-1" /> Ajouter une section
           </Button>
@@ -250,7 +250,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
         )}
 
         {sections.map((sec, sIdx) => (
-          <div key={sIdx} className={`border rounded-[12px] p-4 space-y-3 ${PASTELS[sIdx % PASTELS.length]}`}>
+          <div key={sIdx} className={`border rounded-lg p-4 space-y-3 ${PASTELS[sIdx % PASTELS.length]}`}>
             <div className="flex items-center gap-2">
               <Input
                 placeholder="Nom de la section (ex. Alimentation, Phytothérapie…)"
@@ -334,7 +334,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
 
       {/* Actions — pied de page collant, toujours visible */}
       <div className="shrink-0 flex justify-end gap-2 border-t px-6 py-3 bg-background">
-        <Button type="button" variant="outline" onClick={onClose} className="rounded-[12px]">
+        <Button type="button" variant="outline" onClick={onClose} className="rounded-lg">
           Annuler
         </Button>
         <Button
@@ -373,7 +373,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                   key={s.id}
                   type="button"
                   onClick={() => pickerSection !== null && insertSolution(pickerSection, s)}
-                  className="w-full text-left border rounded-[10px] p-3 hover:border-primary hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full text-left border rounded-md p-3 hover:border-primary hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   data-testid={`picker-solution-${s.id}`}
                 >
                   <div className="flex items-center gap-2">
@@ -559,7 +559,7 @@ function ProgrammesPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => downloadPdf(prog)}
-                      className="rounded-[12px] gap-1"
+                      className="rounded-lg gap-1"
                       data-testid={`button-pdf-${prog.id}`}
                       title="Télécharger le PDF"
                     >
@@ -571,7 +571,7 @@ function ProgrammesPage() {
                       size="sm"
                       onClick={() => dupMut.mutate(prog)}
                       disabled={dupMut.isPending}
-                      className="rounded-[12px]"
+                      className="rounded-lg"
                       data-testid={`button-duplicate-${prog.id}`}
                       title="Dupliquer ce programme"
                       aria-label="Dupliquer ce programme"
@@ -582,7 +582,7 @@ function ProgrammesPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setEditing(prog)}
-                      className="rounded-[12px]"
+                      className="rounded-lg"
                       data-testid={`button-edit-${prog.id}`}
                       title="Modifier"
                       aria-label="Modifier"
@@ -602,7 +602,7 @@ function ProgrammesPage() {
                         }))) return;
                         deleteMut.mutate(prog.id);
                       }}
-                      className="rounded-[12px] text-destructive hover:text-destructive"
+                      className="rounded-lg text-destructive hover:text-destructive"
                       data-testid={`button-delete-${prog.id}`}
                       title="Supprimer"
                       aria-label="Supprimer"

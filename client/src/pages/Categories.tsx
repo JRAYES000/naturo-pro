@@ -1,9 +1,9 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Tag } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, Video, AlertTriangle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, PAGE_PUBLIQUE_TABS } from "@/components/SubNav";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -95,21 +95,20 @@ export default function CategoriesPage() {
             </ol>
           </div>
           <div>
-            <p className="font-semibold text-foreground mb-2">📹 Vous proposez des séances en visio ?</p>
+            <p className="flex items-center gap-2 font-semibold text-foreground mb-2"><Video className="h-4 w-4 text-primary" aria-hidden="true" />Vous proposez des séances en visio ?</p>
             <p>
               Choisissez le lieu <strong>« Visio »</strong> pour la prestation. Naturo Pro crée alors
               <strong> automatiquement un lien Google Meet</strong> pour chaque rendez-vous et l'envoie
               à votre cliente dans son email de confirmation — vous n'avez aucun lien à copier.
             </p>
-            <p>
-              ⚠️ <strong>Indispensable :</strong> pour que cela fonctionne, vous devez d'abord
+            <p className="flex gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" aria-hidden="true" />
+              <span><strong>Indispensable :</strong> pour que cela fonctionne, vous devez d'abord
               <strong> connecter votre Google Agenda</strong> dans la page <strong>Paramètres</strong>.
-              Sans cette connexion, aucun lien visio ne pourra être généré.
+              Sans cette connexion, aucun lien visio ne pourra être généré.</span>
             </p>
           </div>
-          <p className="text-xs italic">
-            💡 La petite pastille de couleur vous aide à repérer la prestation d'un coup d'œil dans votre agenda.
-          </p>
+          <HelpTip>La petite pastille de couleur vous aide à repérer la prestation d'un coup d'œil dans votre agenda.</HelpTip>
         </HelpNote>
 
         {cats.length === 0 ? (
@@ -125,7 +124,7 @@ export default function CategoriesPage() {
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full" style={{ background: c.color || "#186749" }} />
-                    <h3 className="font-extrabold">{c.name}</h3>
+                    <h3 className="font-bold">{c.name}</h3>
                     {c.isActive
                       ? <Badge className="bg-accent/30 text-primary border-0 text-xs">Actif</Badge>
                       : <Badge variant="secondary" className="text-xs">Inactif</Badge>}
@@ -207,10 +206,11 @@ function CategoryDialog({ open, editing, onClose }: any) {
               <div><Label>Couleur</Label><Input type="color" value={data.color} onChange={e => setData({ ...data, color: e.target.value })} className="h-10 p-1" data-testid="input-color" /></div>
             </div>
             {data.location === "visio" && googleStatus?.configured && !googleStatus?.connected && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs" data-testid="warning-visio-google">
-                ⚠️ <strong>Google Agenda n'est pas connecté :</strong> aucun lien Google Meet ne sera généré pour cette
+              <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 text-xs flex gap-2" data-testid="warning-visio-google">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+                <span><strong>Google Agenda n'est pas connecté :</strong> aucun lien Google Meet ne sera généré pour cette
                 prestation Visio. Connectez Google dans{" "}
-                <a href="/api/auth/google" className="underline font-semibold">Paramètres → Google Calendar</a>.
+                <a href="/api/auth/google" className="underline font-semibold">Paramètres → Google Calendar</a>.</span>
               </div>
             )}
             <div><Label>Description</Label><Textarea rows={2} value={data.description || ""} onChange={e => setData({ ...data, description: e.target.value })} data-testid="input-description" /></div>

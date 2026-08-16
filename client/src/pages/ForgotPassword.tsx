@@ -43,7 +43,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2 text-heading">Mot de passe oublié</h1>
+          <h1 className="text-3xl font-bold mb-2 text-heading">Mot de passe oublié</h1>
           <p className="text-muted-foreground">Entrez votre email, nous vous enverrons un lien.</p>
         </div>
         <div className="card-naturo">

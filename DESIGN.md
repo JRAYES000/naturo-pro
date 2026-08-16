@@ -21,10 +21,12 @@ Stratégie : Restrained sur le crème (neutres teintés + accent menthe rare), a
 - Échelle modulaire fluide, contraste de taille marqué (h1 ~ clamp 2.5 → 4rem). Longueur de ligne du corps ≤ 70ch.
 
 ## Components
-- Boutons : `btn-primary-naturo` (vert plein, coins 15px) pour l'action primaire ; bouton fantôme bordé vert pour le secondaire.
+- Boutons : `btn-primary-naturo` (vert plein, coins 10px, assombrissement au survol — pas de lévitation) pour l'action primaire ; bouton fantôme bordé vert pour le secondaire.
 - Pas de grille de cartes pour les fonctionnalités : présentation éditoriale en groupes thématiques (colonne label + liste), icônes en ligne discrètes (pas de tuiles arrondies icône-au-dessus-du-titre).
 - FAQ : liste à filets (border-b), pas de cartes individuelles.
-- Vidéo : cadre premium (filet fin + ombre douce verte), ratio 16:9.
+- Vidéo : cadre premium (filet fin), ratio 16:9.
+- Élévation : filet 1px OU ombre, jamais les deux. Les cartes se posent au filet ; l'ombre (`--shadow-overlay`) est réservée aux menus, dialogues, popovers et toasts.
+- Icônes : lucide exclusivement. Aucun emoji ni glyphe unicode en guise d'icône.
 
 ## Layout
 - Rythme vertical compact mais respirant (sections ~ py-16/20), avec variation des espacements (pas d'uniformité mécanique).

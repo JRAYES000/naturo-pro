@@ -22,7 +22,9 @@ async function seConnecter(page: import("@playwright/test").Page) {
 test.describe("Connexion", () => {
   test("un mot de passe correct mène au tableau de bord", async ({ page }) => {
     await seConnecter(page);
-    await expect(page.getByText(/Votre cabinet, en un coup d'œil/i)).toBeVisible();
+    // La salutation est devenue le titre h1 de la page (le sur-titre a été supprimé).
+    await expect(page.getByRole("heading", { level: 1, name: /(Bonjour|Bon après-midi|Bonsoir) Marie/i })).toBeVisible();
+    await expect(page.getByText(/Prochains rendez-vous/i)).toBeVisible();
   });
 
   test("un mot de passe erroné affiche une erreur lisible, pas un écran cassé", async ({ page }) => {

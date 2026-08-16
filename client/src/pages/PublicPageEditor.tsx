@@ -235,7 +235,7 @@ export default function PublicPageEditor() {
         <div className="card-naturo mb-5" data-testid="card-completeness">
           <div className="flex items-center justify-between mb-2">
             <p className="font-bold text-sm">Complétude de votre page</p>
-            <span className="text-sm font-extrabold" style={{ color: pct === 100 ? DEFAULT_PRIMARY : "#b45309" }}>
+            <span className="text-sm font-bold" style={{ color: pct === 100 ? DEFAULT_PRIMARY : "#b45309" }}>
               {pct}%
             </span>
           </div>
@@ -251,7 +251,7 @@ export default function PublicPageEditor() {
               À compléter pour une page plus attractive : <span className="font-medium">{missing.join(", ")}</span>.
             </p>
           ) : (
-            <p className="text-xs text-primary font-medium mt-2">Votre page est complète. 🎉</p>
+            <p className="text-xs text-primary font-medium mt-2">Votre page est complète.</p>
           )}
         </div>
 

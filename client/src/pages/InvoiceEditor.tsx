@@ -414,7 +414,7 @@ function InvoiceEditor() {
           {/* Colonne gauche : client + lignes + dates */}
           <div className="lg:col-span-2 space-y-4">
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3 text-heading">Client</h3>
+              <h3 className="font-bold mb-3 text-heading">Client</h3>
               {isNew && clients.length > 0 && (
                 <div className="mb-3">
                   <Label>Sélectionner un client existant</Label>
@@ -462,7 +462,7 @@ function InvoiceEditor() {
             </div>
 
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3 text-heading">Lignes</h3>
+              <h3 className="font-bold mb-3 text-heading">Lignes</h3>
               <div className="space-y-2">
                 <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-bold text-muted-foreground uppercase">
                   <div className="col-span-6">Description</div>
@@ -548,13 +548,13 @@ function InvoiceEditor() {
                   {totals.vatEnabled && (
                     <div className="flex justify-between text-muted-foreground"><span>TVA ({(totals.vatRate / 100).toFixed(0)}%)</span><span>{formatPrice(totals.vat)}</span></div>
                   )}
-                  <div className="flex justify-between text-base pt-1 border-t mt-1"><span className="font-bold">Total</span><span className="font-extrabold text-heading">{formatPrice(totals.total)}</span></div>
+                  <div className="flex justify-between text-base pt-1 border-t mt-1"><span className="font-bold">Total</span><span className="font-bold text-heading">{formatPrice(totals.total)}</span></div>
                 </div>
               </div>
             </div>
 
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3 text-heading">Notes</h3>
+              <h3 className="font-bold mb-3 text-heading">Notes</h3>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Mentions, message au client…" data-testid="input-notes" />
             </div>
           </div>
@@ -562,7 +562,7 @@ function InvoiceEditor() {
           {/* Colonne droite : statut + paiement + dates */}
           <div className="space-y-4">
             <div className="card-naturo">
-              <h3 className="font-extrabold mb-3 text-heading">Dates</h3>
+              <h3 className="font-bold mb-3 text-heading">Dates</h3>
               <div className="space-y-3">
                 <div>
                   <Label>Date d'émission</Label>
@@ -578,7 +578,7 @@ function InvoiceEditor() {
             {!isNew && (
               <>
                 <div className="card-naturo">
-                  <h3 className="font-extrabold mb-3 text-heading">Statut</h3>
+                  <h3 className="font-bold mb-3 text-heading">Statut</h3>
                   <div className="space-y-2">
                     {(["draft", "sent", "paid", "cancelled"] as const).map((s) => (
                       <button
@@ -596,7 +596,7 @@ function InvoiceEditor() {
                 </div>
 
                 <div className="card-naturo">
-                  <h3 className="font-extrabold mb-3 text-heading">Paiement</h3>
+                  <h3 className="font-bold mb-3 text-heading">Paiement</h3>
                   <div className="space-y-3">
                     <div>
                       <Label>Mode de paiement</Label>
@@ -651,7 +651,7 @@ function InvoiceEditor() {
         <div className="lg:hidden sticky bottom-0 -mx-4 px-4 py-3 border-t bg-background/95 backdrop-blur flex items-center justify-between gap-3 mt-4">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
-            <p className="text-xl font-extrabold text-heading">{formatPrice(totals.total)}</p>
+            <p className="text-xl font-bold text-heading">{formatPrice(totals.total)}</p>
           </div>
           <Button
             onClick={saveAll}

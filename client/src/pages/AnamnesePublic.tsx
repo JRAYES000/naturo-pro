@@ -161,7 +161,7 @@ export default function AnamnesePublicPage() {
           {alreadySubmitted ? (
             <>
               <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-primary" />
-              <h2 className="text-xl font-extrabold mb-2 text-heading">
+              <h2 className="text-xl font-bold mb-2 text-heading">
                 Questionnaire déjà soumis
               </h2>
               <p className="text-muted-foreground text-sm">
@@ -171,7 +171,7 @@ export default function AnamnesePublicPage() {
           ) : (
             <>
               <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
-              <h2 className="text-xl font-extrabold mb-2">Lien invalide</h2>
+              <h2 className="text-xl font-bold mb-2">Lien invalide</h2>
               <p className="text-muted-foreground text-sm">{msg}</p>
             </>
           )}
@@ -185,7 +185,7 @@ export default function AnamnesePublicPage() {
       <PublicShell>
         <div className="text-center py-16 px-4">
           <CheckCircle2 className="h-14 w-14 mx-auto mb-5 text-primary" />
-          <h2 className="text-2xl font-extrabold mb-3 text-heading">
+          <h2 className="text-2xl font-bold mb-3 text-heading">
             Merci !
           </h2>
           <p className="text-muted-foreground">
@@ -223,7 +223,7 @@ export default function AnamnesePublicPage() {
     >
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold mb-2 text-heading">{data.name}</h1>
+          <h1 className="text-2xl font-bold mb-2 text-heading">{data.name}</h1>
           {data.description && (
             <p className="text-muted-foreground text-sm">{data.description}</p>
           )}
@@ -238,7 +238,7 @@ export default function AnamnesePublicPage() {
             <div
               key={q.id}
               data-question-id={q.id}
-              className={`border rounded-[12px] p-4 ${errors[q.id] ? "border-destructive" : PASTELS[idx % PASTELS.length]}`}
+              className={`border rounded-lg p-4 ${errors[q.id] ? "border-destructive" : PASTELS[idx % PASTELS.length]}`}
             >
               <QuestionField
                 question={q}
@@ -263,7 +263,7 @@ export default function AnamnesePublicPage() {
             </p>
           ) : (
             <p className="text-sm text-primary font-semibold" data-testid="text-required-missing">
-              Toutes les questions obligatoires sont remplies ✓
+              <CheckCircle2 className="inline-block h-4 w-4 align-[-3px] mr-1.5" aria-hidden="true" />Toutes les questions obligatoires sont remplies
             </p>
           )}
 
@@ -291,9 +291,9 @@ function PublicShell({ children, progressBar }: { children: React.ReactNode; pro
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card px-6 py-4 flex items-center gap-3">
         <div className="h-8 w-8 rounded-full flex items-center justify-center" style={{ background: "#186749" }}>
-          <span className="text-white font-extrabold text-sm">N</span>
+          <span className="text-white font-bold text-sm">N</span>
         </div>
-        <span className="font-extrabold text-sm text-heading">Naturo Pro</span>
+        <span className="font-bold text-sm text-heading">Naturo Pro</span>
       </header>
       {/* Le header ci-dessus n'est PAS sticky (comportement d'origine conservé) :
           il scrolle normalement avec la page. La barre de progression, elle,
@@ -450,7 +450,7 @@ function QuestionField({ question, index, value, onChange, onToggleMulti, error 
               aria-describedby={error ? errorId : undefined}
             />
             <span className="text-xs text-muted-foreground w-6 text-center">10</span>
-            <span className="font-extrabold text-primary w-8 text-center text-sm">
+            <span className="font-bold text-primary w-8 text-center text-sm">
               {(value as number) ?? 5}
             </span>
           </div>

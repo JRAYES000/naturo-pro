@@ -34,7 +34,7 @@ export default function Register() {
       await apiRequest("POST", "/api/auth/register", values);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       await refetch();
-      toast({ title: "Bienvenue 🌿", description: "Un email de confirmation vous a été envoyé." });
+      toast({ title: "Bienvenue", description: "Un email de confirmation vous a été envoyé." });
       navigate("/app/onboarding");
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -46,7 +46,7 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2 text-heading">Créer mon compte</h1>
+          <h1 className="text-3xl font-bold mb-2 text-heading">Créer mon compte</h1>
           <p className="text-muted-foreground">C'est gratuit, et ça ne prend qu'une minute.</p>
         </div>
         <div className="card-naturo">

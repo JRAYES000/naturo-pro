@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw, Pencil, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, Send, CalendarArrowDown, Calendar, RefreshCw, Pencil, Check, ChevronsUpDown, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { Appointment, AppointmentCategory, Client } from "@shared/schema";
 import { formatPrice, durationLabel } from "@/lib/format";
@@ -81,8 +81,8 @@ function AgendaColorLegend({ showGoogle }: { showGoogle: boolean }) {
           RDV normal — la couleur reprend celle de la catégorie de prestation.
         </li>
         <li className="flex items-center gap-2">
-          <span className="inline-block h-3 w-3 shrink-0 border-l-4" style={{ borderColor: "#15803d" }} />
-          Bordure gauche verte plus marquée — rendez-vous confirmé par la cliente.
+          <span className="shrink-0 font-semibold text-foreground">Confirmé ·</span>
+          Le rendez-vous a été confirmé par la cliente.
         </li>
         <li className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 rounded-full shrink-0 line-through" style={{ backgroundColor: "#dc2626" }} />
@@ -151,8 +151,8 @@ export default function Agenda() {
     .map(a => {
       const aAny = a as any;
       let prefix = "";
-      if (aAny.clientCancelledAt) prefix = "✕ ";
-      else if (aAny.clientConfirmedAt) prefix = "✓ ";
+      if (aAny.clientCancelledAt) prefix = "Annulé · ";
+      else if (aAny.clientConfirmedAt) prefix = "Confirmé · ";
       return {
         id: a.id,
         title: `${prefix}${a.clientFirstName || "—"} ${a.clientLastName || ""} · ${cats.find(c => c.id === a.categoryId)?.name || ""}`,
@@ -288,8 +288,9 @@ export default function Agenda() {
             eventPropGetter={(event: any) => {
               const r = event.resource;
               // Imported Google events (no category) → gray
+              // Le gris suffit à les distinguer ; le préfixe du titre porte le reste.
               if (r.source === "google") {
-                return { style: { backgroundColor: r.status === "blocked" ? "#9ca3af" : "#6b7280", borderLeft: "3px solid #1f2937" } };
+                return { style: { backgroundColor: r.status === "blocked" ? "#9ca3af" : "#6b7280" } };
               }
               // Annulation client : barré + opacité réduite
               if (r.clientCancelledAt) {
@@ -297,11 +298,8 @@ export default function Agenda() {
               }
               const cat = cats.find(c => c.id === r.categoryId);
               const baseStyle: any = { backgroundColor: cat?.color || "#186749" };
-              // Confirmation client : bordure verte plus marquée
-              if (r.clientConfirmedAt) {
-                baseStyle.borderLeft = "4px solid #15803d";
-                baseStyle.fontWeight = 600;
-              }
+              // Confirmation client : le titre porte déjà le préfixe « Confirmé · ».
+              if (r.clientConfirmedAt) baseStyle.fontWeight = 600;
               return { style: baseStyle };
             }}
             data-testid="calendar-agenda"
@@ -344,13 +342,13 @@ export default function Agenda() {
                       </a>
                     </p>
                   )}
-                  <p className="flex items-center gap-2"><strong>Statut :</strong> <StatusBadge domain="appointment" status={selected.status} />{(selected as any).clientConfirmedAt ? <span>— ✓ confirmé par la cliente</span> : null}{(selected as any).clientCancelledAt ? <span>— ✕ annulé par la cliente</span> : null}</p>
+                  <p className="flex items-center gap-2"><strong>Statut :</strong> <StatusBadge domain="appointment" status={selected.status} />{(selected as any).clientConfirmedAt ? <span>— confirmé par la cliente</span> : null}{(selected as any).clientCancelledAt ? <span>— annulé par la cliente</span> : null}</p>
                   {(selected as any).reminderSentAt && (
-                    <p className="text-xs text-muted-foreground">✉ Rappel envoyé le {new Date((selected as any).reminderSentAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Mail className="h-3.5 w-3.5" aria-hidden="true" />Rappel envoyé le {new Date((selected as any).reminderSentAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
                   )}
                   <p><strong>Paiement :</strong> {selected.paymentStatus === "paid" ? "Payé" : selected.paymentStatus === "partial" ? "Partiel" : "Non payé"}{selected.paymentAmountCents ? ` — ${formatPrice(selected.paymentAmountCents)}` : ""}</p>
                   {selected.source === "google" && (
-                    <p className="text-xs text-muted-foreground italic">⚡ Importé depuis Google Calendar (lecture seule)</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground italic"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />Importé depuis Google Calendar (lecture seule)</p>
                   )}
                   {selected.notesBefore && <p><strong>Notes :</strong> {selected.notesBefore}</p>}
                 </div>
@@ -359,7 +357,7 @@ export default function Agenda() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="rounded-[12px]"
+                      className="rounded-lg"
                       data-testid="button-edit-appointment"
                       onClick={() => {
                         setDialogState({ mode: "edit", appt: selected });
@@ -371,13 +369,13 @@ export default function Agenda() {
                   )}
                   {selected.clientId && (
                     <Link href={`/app/notes/${selected.id}`}>
-                      <Button size="sm" className="rounded-[12px]" data-testid="button-open-note"><FileText className="h-4 w-4 mr-1" /> Note de consultation</Button>
+                      <Button size="sm" className="rounded-lg" data-testid="button-open-note"><FileText className="h-4 w-4 mr-1" /> Note de consultation</Button>
                     </Link>
                   )}
                   <Button
                     size="sm"
                     variant="outline"
-                    className="rounded-[12px]"
+                    className="rounded-lg"
                     data-testid="button-create-invoice"
                     onClick={() => {
                       navigate(`/app/invoices/new?fromAppointment=${selected.id}`);
@@ -390,7 +388,7 @@ export default function Agenda() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-[12px]"
+                        className="rounded-lg"
                         data-testid={`button-send-reminder-${selected.id}`}
                         disabled={sendReminderMut.isPending}
                         onClick={() => {
@@ -414,7 +412,7 @@ export default function Agenda() {
                     download={`rdv-${selected.id}.ics`}
                     data-testid="button-ics"
                   >
-                    <Button size="sm" variant="outline" className="rounded-[12px]">
+                    <Button size="sm" variant="outline" className="rounded-lg">
                       <CalendarArrowDown className="h-4 w-4 mr-1" /> Ajouter à mon agenda (.ics)
                     </Button>
                   </a>
@@ -426,7 +424,7 @@ export default function Agenda() {
                       destructive: true,
                     });
                     if (ok) deleteMut.mutate(selected.id);
-                  }} className="rounded-[12px]" data-testid="button-delete-appointment">
+                  }} className="rounded-lg" data-testid="button-delete-appointment">
                     <Trash2 className="h-4 w-4 mr-1" /> Supprimer
                   </Button>
                 </div>

@@ -29,7 +29,7 @@ export function StudioIntroBanner() {
       <div className="flex items-start gap-3">
         <Sparkles className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: "#186749" }} />
         <div className="min-w-0 flex-1">
-          <p className="font-extrabold text-heading mb-1">Bienvenue dans ton Studio contenu ✨</p>
+          <p className="font-bold text-heading mb-1">Bienvenue dans ton Studio contenu</p>
           <p className="text-sm text-muted-foreground">
             Crée des posts Instagram &amp; Facebook prêts à publier pour attirer des clientes, en 3 étapes :{" "}
             <strong className="text-foreground">1)</strong> choisis un sujet (un thème, ou «&nbsp;Inspiré de tes clientes&nbsp;») ·{" "}
@@ -44,7 +44,7 @@ export function StudioIntroBanner() {
             onClick={() => { setDismissed(true); seenMut.mutate(); }}
             data-testid="button-studio-intro-dismiss"
           >
-            J'ai compris ✓
+            J'ai compris
           </Button>
         </div>
       </div>

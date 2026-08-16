@@ -125,7 +125,7 @@ export function SubNav({ group, tabs }: { group: string; tabs: SubNavTab[] }) {
           <Link
             key={t.href}
             href={t.href}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[12px] text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               active ? tone.active : `${tone.chip} hover:opacity-75`
             }`}
             data-testid={`tab-${group}-${t.id}`}

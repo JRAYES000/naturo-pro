@@ -5,10 +5,13 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      /* Échelle unique : les 80 `rounded-[Npx]` du code venaient d'un `lg` plafonné
+         à 9px, trop petit pour une carte. On remonte l'échelle plutôt que la contourner. */
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        sm: ".375rem",  /* 6px  — badges, puces */
+        md: ".625rem",  /* 10px — boutons, champs, contrôles */
+        lg: ".75rem",   /* 12px — cartes, panneaux */
+        xl: "1rem",     /* 16px — conteneurs larges, dialogues */
       },
       colors: {
         // Flat / base colors (regular buttons)

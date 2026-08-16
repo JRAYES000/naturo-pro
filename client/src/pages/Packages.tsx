@@ -263,7 +263,7 @@ function Packages() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1 rounded-[10px] text-xs font-semibold"
+                      className="flex-1 rounded-md text-xs font-semibold"
                       disabled={isFull || useMut.isPending}
                       onClick={() => useMut.mutate(pkg)}
                       data-testid={`button-use-package-${pkg.id}`}
@@ -455,13 +455,13 @@ function PackageDialog({ pkg, clients, onClose, onSave, isPending }: PackageDial
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="rounded-[10px]">
+            <Button type="button" variant="outline" onClick={onClose} className="rounded-md">
               Annuler
             </Button>
             <Button
               type="submit"
               disabled={isPending}
-              className="rounded-[10px] font-bold"
+              className="rounded-md font-bold"
               data-testid="button-save-package"
             >
               {pkg ? "Enregistrer" : "Créer"}

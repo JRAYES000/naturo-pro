@@ -35,7 +35,7 @@ function SavedReplyCard({ reply, onDelete }: { reply: AiSavedReply; onDelete: ()
     <li className="card-naturo" data-testid={`saved-reply-${reply.id}`}>
       <div className="flex items-start justify-between gap-3">
         <button className="flex-1 min-w-0 text-left" onClick={() => setOpen((o) => !o)} data-testid={`button-toggle-reply-${reply.id}`}>
-          <p className="font-extrabold truncate">{reply.title}</p>
+          <p className="font-bold truncate">{reply.title}</p>
           <p className="text-xs text-muted-foreground">
             Enregistrée le {new Date(reply.createdAt).toLocaleDateString("fr-FR")}
           </p>

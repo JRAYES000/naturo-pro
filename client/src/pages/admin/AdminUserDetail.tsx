@@ -121,7 +121,7 @@ export default function AdminUserDetail() {
       <AppLayout>
         <div className="max-w-xl mx-auto card-naturo text-center py-10">
           <Shield className="h-10 w-10 mx-auto mb-3 text-destructive" />
-          <h1 className="text-xl font-extrabold mb-2 text-heading">
+          <h1 className="text-xl font-bold mb-2 text-heading">
             {denied ? "Accès refusé" : "Erreur"}
           </h1>
           <p className="text-muted-foreground">
@@ -177,15 +177,15 @@ export default function AdminUserDetail() {
           <h2 className="font-bold text-lg text-heading">Statistiques</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="p-3 rounded-lg bg-secondary/50">
-              <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.appointments}</div>
+              <div className="text-2xl font-bold" style={{ color: "#186749" }}>{u._stats.appointments}</div>
               <div className="text-xs text-muted-foreground">Rendez-vous</div>
             </div>
             <div className="p-3 rounded-lg bg-secondary/50">
-              <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.clients}</div>
+              <div className="text-2xl font-bold" style={{ color: "#186749" }}>{u._stats.clients}</div>
               <div className="text-xs text-muted-foreground">Clients</div>
             </div>
             <div className="p-3 rounded-lg bg-secondary/50">
-              <div className="text-2xl font-extrabold" style={{ color: "#186749" }}>{u._stats.invoices}</div>
+              <div className="text-2xl font-bold" style={{ color: "#186749" }}>{u._stats.invoices}</div>
               <div className="text-xs text-muted-foreground">Factures</div>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function AdminUserDetail() {
               id="plan"
               value={plan}
               onChange={(e) => setPlanLocal(e.target.value)}
-              className="w-full rounded-[10px] border border-input px-3 py-2 bg-background"
+              className="w-full rounded-md border border-input px-3 py-2 bg-background"
               data-testid="select-plan"
             >
               <option value="trial">Essai (trial)</option>

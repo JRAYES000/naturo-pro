@@ -24,7 +24,7 @@ export function Loading({ variant = "inline", count = 3, label = "Chargement…"
   if (variant === "cards") {
     return (
       <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-4 ${className}`} aria-busy="true" aria-label={label}>
-        {Array.from({ length: count }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+        {Array.from({ length: count }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
       </div>
     );
   }

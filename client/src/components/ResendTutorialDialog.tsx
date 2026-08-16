@@ -7,7 +7,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ExternalLink, CheckCircle2, KeyRound, Mail, Globe } from "lucide-react";
+import { ExternalLink, CheckCircle2, KeyRound, Mail, Globe, AlertTriangle } from "lucide-react";
 
 /**
  * Pop-up tutoriel Resend pour les praticiennes peu à l'aise avec l'informatique.
@@ -129,7 +129,7 @@ export function ResendTutorialDialog({ trigger }: { trigger: ReactNode }) {
               className="rounded-md p-3 text-xs"
               style={{ background: "#fef3c7", border: "1px solid #f59e0b" }}
             >
-              ⚠️ <strong>Important</strong> : copiez cette clé immédiatement et collez-la
+              <AlertTriangle className="inline-block h-4 w-4 align-[-3px] mr-1.5" aria-hidden="true" /><strong>Important</strong> : copiez cette clé immédiatement et collez-la
               dans Naturo Pro. Resend ne vous la remontrera jamais. Si vous la perdez,
               il faudra en créer une nouvelle.
             </div>

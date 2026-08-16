@@ -63,7 +63,7 @@ function SlotsSkeleton() {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3" aria-busy="true">
       {Array.from({ length: 12 }).map((_, i) => (
-        <Skeleton key={i} className="h-12 rounded-[12px]" />
+        <Skeleton key={i} className="h-12 rounded-lg" />
       ))}
     </div>
   );
@@ -255,7 +255,7 @@ export default function BookingFlow() {
             <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
               <WifiOff className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold mb-2 text-heading">Vous êtes hors connexion</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-heading">Vous êtes hors connexion</h1>
             <p className="text-muted-foreground text-sm mb-6">
               Vérifiez votre connexion internet ou vos données mobiles, puis réessayez.
             </p>
@@ -280,7 +280,7 @@ export default function BookingFlow() {
             <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
               <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold mb-2 text-heading">Page introuvable</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-heading">Page introuvable</h1>
             <p className="text-muted-foreground text-sm mb-6">
               Cette page de réservation n'existe pas ou n'est plus disponible. Le lien est peut-être
               incorrect, ou la praticienne a désactivé sa prise de rendez-vous en ligne.
@@ -304,7 +304,7 @@ export default function BookingFlow() {
           <div className="h-16 w-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold mb-2 text-heading">Impossible de charger</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2 text-heading">Impossible de charger</h1>
           <p className="text-muted-foreground text-sm mb-6">
             Une erreur est survenue. Vérifiez votre connexion et réessayez.
           </p>
@@ -357,7 +357,7 @@ export default function BookingFlow() {
         {step === 1 && (
           <div>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
+              className="text-2xl sm:text-3xl font-bold mb-2 text-heading"
               data-testid="text-step1-title"
             >
               Choisissez une prestation
@@ -385,12 +385,12 @@ export default function BookingFlow() {
                   <button
                     key={c.id}
                     onClick={() => { setCategoryId(c.id); setStep(2); }}
-                    className="card-naturo text-left motion-safe:hover:-translate-y-0.5 hover:shadow-md motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:motion-safe:scale-[0.98] min-h-[44px]"
+                    className="card-naturo text-left hover:border-primary hover:bg-secondary/30 motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:motion-safe:scale-[0.98] min-h-[44px]"
                     data-testid={`button-cat-${c.id}`}
                   >
                     <div className="flex items-start gap-2.5 mb-2">
                       <span className="h-2.5 w-2.5 rounded-full mt-1.5 shrink-0" style={{ background: c.color }} />
-                      <h3 className="font-extrabold leading-snug">{c.name}</h3>
+                      <h3 className="font-bold leading-snug">{c.name}</h3>
                     </div>
                     {c.description && (
                       <p className="text-sm text-muted-foreground mb-3 pl-5">{c.description}</p>
@@ -399,7 +399,7 @@ export default function BookingFlow() {
                       <span className="bg-secondary text-primary font-bold px-2 py-1 rounded-md whitespace-nowrap">
                         {durationLabel(c.durationMinutes)}
                       </span>
-                      <span className="font-extrabold text-primary whitespace-nowrap">{formatPrice(c.priceCents)}</span>
+                      <span className="font-bold text-primary whitespace-nowrap">{formatPrice(c.priceCents)}</span>
                     </div>
                   </button>
                 ))}
@@ -421,7 +421,7 @@ export default function BookingFlow() {
               <ArrowLeft className="h-4 w-4" /> Étape précédente
             </button>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
+              className="text-2xl sm:text-3xl font-bold mb-2 text-heading"
               data-testid="text-step2-title"
             >
               Choisissez une date
@@ -478,14 +478,14 @@ export default function BookingFlow() {
                     <button
                       key={d}
                       onClick={() => { setSelectedDay(d); setStep(3); }}
-                      className="card-naturo text-center motion-safe:hover:-translate-y-0.5 hover:bg-secondary/50 hover:border-primary/40 motion-safe:transition py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:motion-safe:scale-[0.98] min-h-[44px]"
+                      className="card-naturo text-center hover:bg-secondary/50 hover:border-primary/40 motion-safe:transition-colors py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:motion-safe:scale-[0.98] min-h-[44px]"
                       data-testid={`button-day-${d}`}
                     >
                       <p className="text-xs uppercase font-bold text-primary">
                         {date.toLocaleDateString("fr-FR", { weekday: "short" })}
                       </p>
                       <p
-                        className="text-2xl font-extrabold leading-none my-1 text-heading"
+                        className="text-2xl font-bold leading-none my-1 text-heading"
                       >
                         {date.getDate()}
                       </p>
@@ -516,7 +516,7 @@ export default function BookingFlow() {
               <ArrowLeft className="h-4 w-4" /> Étape précédente
             </button>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
+              className="text-2xl sm:text-3xl font-bold mb-2 text-heading"
               data-testid="text-step3-title"
             >
               Choisissez un créneau
@@ -531,7 +531,7 @@ export default function BookingFlow() {
                 pour elles, l'heure lue ici ne correspond pas à l'heure de leur téléphone. */}
             {fuseauDifferentDuCabinet() && (
               <p className="text-xs text-muted-foreground mb-6" data-testid="text-timezone-notice">
-                🕑 Horaires affichés en <strong>heure française</strong> (fuseau du cabinet).
+                <Clock className="inline-block h-3.5 w-3.5 align-[-2px] mr-1.5" aria-hidden="true" />Horaires affichés en <strong>heure française</strong> (fuseau du cabinet).
               </p>
             )}
             <div className="mb-4" />
@@ -572,7 +572,7 @@ export default function BookingFlow() {
                   <button
                     key={iso}
                     onClick={() => { setSelectedSlot(iso); setStep(4); }}
-                    className="rounded-[12px] border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary py-3 font-bold motion-safe:transition text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px] min-w-[44px] active:motion-safe:scale-[0.98]"
+                    className="rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary py-3 font-bold motion-safe:transition text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px] min-w-[44px] active:motion-safe:scale-[0.98]"
                     data-testid={`button-slot-${iso}`}
                   >
                     {formatHeureCabinet(iso)}
@@ -596,7 +596,7 @@ export default function BookingFlow() {
               <ArrowLeft className="h-4 w-4" /> Étape précédente
             </button>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold mb-2 text-heading"
+              className="text-2xl sm:text-3xl font-bold mb-2 text-heading"
               data-testid="text-step4-title"
             >
               Vos coordonnées
@@ -610,7 +610,7 @@ export default function BookingFlow() {
               <div className="flex items-start gap-3">
                 <CalIcon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-extrabold">{cat.name}</p>
+                  <p className="font-bold">{cat.name}</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {formatDateHeureCabinet(selectedSlot)}
                     {" "}• {durationLabel(cat.durationMinutes)}

@@ -124,7 +124,7 @@ function ConsultationNotePage() {
                 rows={3}
                 value={(draft[key] || "") as string}
                 onChange={e => onChange(key, e.target.value)}
-                className="rounded-[10px]"
+                className="rounded-md"
                 data-testid={`input-${key as string}`}
               />
             </div>
@@ -132,7 +132,7 @@ function ConsultationNotePage() {
           <div>
             <Label className="font-bold">Notes libres</Label>
             <p className="text-xs text-muted-foreground mb-1">Ce que vous voulez ajouter d'autre. (Jamais transmis au client.)</p>
-            <Textarea rows={5} value={draft.notesLibres || ""} onChange={e => onChange("notesLibres", e.target.value)} className="rounded-[10px]" data-testid="input-notesLibres" />
+            <Textarea rows={5} value={draft.notesLibres || ""} onChange={e => onChange("notesLibres", e.target.value)} className="rounded-md" data-testid="input-notesLibres" />
           </div>
 
           {existing?.id && (

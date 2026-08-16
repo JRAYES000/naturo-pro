@@ -151,7 +151,7 @@ function StudioContenu() {
       <NaturobotTabs />
       <PageHeader title="Naturobot" subtitle="Crée des contenus prêts à publier pour attirer des clientes." icon={Sparkles} />
       <Tabs defaultValue="creer">
-        <TabsList className="rounded-[12px]">
+        <TabsList className="rounded-lg">
           <TabsTrigger value="creer" data-testid="tab-studio-creer">Créer</TabsTrigger>
           <TabsTrigger value="bibliotheque" data-testid="tab-studio-bibliotheque">Mes contenus</TabsTrigger>
         </TabsList>
@@ -178,7 +178,7 @@ function StudioContenu() {
                         </button>
                       ))}
                     </div>
-                    <Button variant="outline" size="sm" className="rounded-[12px]" disabled={suggestMut.isPending}
+                    <Button variant="outline" size="sm" className="rounded-lg" disabled={suggestMut.isPending}
                       onClick={() => suggestMut.mutate(sources.clientThemes.map((t) => t.theme))}
                       data-testid="button-suggest-angles">
                       {suggestMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Propose-moi 5 idées"}
@@ -193,7 +193,7 @@ function StudioContenu() {
                   <div className="mt-3 space-y-2">
                     {suggestMut.data.map((a, i) => (
                       <button key={i} onClick={() => pickAngle(a)}
-                        className="block w-full text-left p-2 rounded-[10px] border border-border hover:border-primary transition"
+                        className="block w-full text-left p-2 rounded-md border border-border hover:border-primary transition"
                         data-testid={`angle-${i}`}>
                         <span className="text-sm font-semibold">{a.title}</span>
                         <span className="block text-xs text-muted-foreground">{a.hook}</span>
@@ -248,7 +248,7 @@ function StudioContenu() {
                   Sujet sélectionné : <span className="font-semibold text-foreground">{topic}</span> · {FORMAT_LABELS[format]}
                 </p>
               ) : null}
-              <Button className="w-full rounded-[12px] py-6 font-bold" disabled={!topic.trim() || genMut.isPending}
+              <Button className="w-full rounded-lg py-6 font-bold" disabled={!topic.trim() || genMut.isPending}
                 onClick={() => genMut.mutate()} data-testid="button-generate-content">
                 {genMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                 Générer
@@ -259,7 +259,7 @@ function StudioContenu() {
                 <div className="space-y-2 mt-2">
                   <Input value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Ton (ex. chaleureux & complice)" data-testid="input-tone" />
                   <Input value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Audience (ex. femmes 30-50, fatigue & stress)" data-testid="input-audience" />
-                  <Button variant="outline" size="sm" className="rounded-[12px]" disabled={voiceMut.isPending} onClick={() => voiceMut.mutate()} data-testid="button-save-voice">
+                  <Button variant="outline" size="sm" className="rounded-lg" disabled={voiceMut.isPending} onClick={() => voiceMut.mutate()} data-testid="button-save-voice">
                     Enregistrer ma voix
                   </Button>
                 </div>
@@ -271,10 +271,10 @@ function StudioContenu() {
               {streamText ? (
                 <>
                   <div className="flex justify-end gap-2 mb-2">
-                    <Button variant="outline" size="sm" className="rounded-[12px]" aria-label="Copier le contenu" onClick={copyOut} data-testid="button-copy-content">
+                    <Button variant="outline" size="sm" className="rounded-lg" aria-label="Copier le contenu" onClick={copyOut} data-testid="button-copy-content">
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
-                    <Button size="sm" className="rounded-[12px]" disabled={saveMut.isPending || genMut.isPending} onClick={() => saveMut.mutate()} data-testid="button-save-content">
+                    <Button size="sm" className="rounded-lg" disabled={saveMut.isPending || genMut.isPending} onClick={() => saveMut.mutate()} data-testid="button-save-content">
                       <Save className="h-4 w-4 mr-1" /> Enregistrer
                     </Button>
                   </div>
@@ -287,13 +287,13 @@ function StudioContenu() {
                       <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
                         <p className="text-sm font-bold">Visuels du carrousel</p>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="rounded-[12px]" disabled={slidesMut.isPending}
+                          <Button size="sm" variant="outline" className="rounded-lg" disabled={slidesMut.isPending}
                             onClick={() => slidesMut.mutate()} data-testid="button-generate-visuals">
                             {slidesMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ImageIcon className="h-4 w-4 mr-1" />}
                             {rendered.length ? "Regénérer les visuels" : "Générer les visuels"}
                           </Button>
                           {rendered.length ? (
-                            <Button size="sm" className="rounded-[12px]" onClick={downloadAllZip} data-testid="button-download-zip">
+                            <Button size="sm" className="rounded-lg" onClick={downloadAllZip} data-testid="button-download-zip">
                               <Download className="h-4 w-4 mr-1" /> Tout télécharger (.zip)
                             </Button>
                           ) : null}
@@ -303,8 +303,8 @@ function StudioContenu() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {rendered.map((r) => (
                             <div key={r.index} className="space-y-1">
-                              <img src={r.url} alt={`Slide ${r.index + 1}`} className="rounded-[12px] border border-border w-full" data-testid={`img-slide-${r.index}`} />
-                              <Button variant="outline" size="sm" className="rounded-[10px] w-full" aria-label={`Télécharger la slide ${r.index + 1}`}
+                              <img src={r.url} alt={`Slide ${r.index + 1}`} className="rounded-lg border border-border w-full" data-testid={`img-slide-${r.index}`} />
+                              <Button variant="outline" size="sm" className="rounded-md w-full" aria-label={`Télécharger la slide ${r.index + 1}`}
                                 onClick={() => triggerDownload(r.blob, `slide-${r.index + 1}.png`)} data-testid={`button-download-slide-${r.index}`}>
                                 <Download className="h-4 w-4 mr-1" /> Slide {r.index + 1}
                               </Button>
@@ -390,7 +390,7 @@ function ContentLibrary() {
               ) : null}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" className="rounded-[12px]" aria-label="Copier le contenu"
+              <Button variant="outline" size="sm" className="rounded-lg" aria-label="Copier le contenu"
                 onClick={() => navigator.clipboard.writeText(p.body)
                   .then(() => toast({ title: "Copié" }))
                   .catch(() => toast({ title: "Erreur", description: "Copie impossible.", variant: "destructive" }))}
@@ -398,14 +398,14 @@ function ContentLibrary() {
                 <Copy className="h-4 w-4" />
               </Button>
               {p.status !== "publie" && (
-                <Button size="sm" className="rounded-[12px]" onClick={() => patchMut.mutate({ id: p.id, status: "publie" })} data-testid={`button-publish-${p.id}`}>
+                <Button size="sm" className="rounded-lg" onClick={() => patchMut.mutate({ id: p.id, status: "publie" })} data-testid={`button-publish-${p.id}`}>
                   <Check className="h-4 w-4 mr-1" /> Publié
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="rounded-[12px]" onClick={() => { setEditingId(p.id); setEditBody(p.body); }} data-testid={`button-edit-${p.id}`}>
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={() => { setEditingId(p.id); setEditBody(p.body); }} data-testid={`button-edit-${p.id}`}>
                 Éditer
               </Button>
-              <Button variant="destructive" size="sm" className="rounded-[12px]" aria-label="Supprimer le contenu" onClick={() => remove(p.id)} data-testid={`button-delete-${p.id}`}>
+              <Button variant="destructive" size="sm" className="rounded-lg" aria-label="Supprimer le contenu" onClick={() => remove(p.id)} data-testid={`button-delete-${p.id}`}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -414,8 +414,8 @@ function ContentLibrary() {
             <div className="space-y-2">
               <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={8} data-testid={`textarea-edit-${p.id}`} />
               <div className="flex gap-2">
-                <Button size="sm" className="rounded-[12px]" onClick={() => { patchMut.mutate({ id: p.id, body: editBody }); setEditingId(null); }} data-testid={`button-save-edit-${p.id}`}>Enregistrer</Button>
-                <Button size="sm" variant="outline" className="rounded-[12px]" onClick={() => setEditingId(null)}>Annuler</Button>
+                <Button size="sm" className="rounded-lg" onClick={() => { patchMut.mutate({ id: p.id, body: editBody }); setEditingId(null); }} data-testid={`button-save-edit-${p.id}`}>Enregistrer</Button>
+                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setEditingId(null)}>Annuler</Button>
               </div>
             </div>
           ) : (
@@ -482,17 +482,17 @@ function PostVisuals({ post, practitionerName }: { post: ContentPost; practition
   return (
     <div className="mt-2">
       <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" className="rounded-[12px]" disabled={busy} onClick={toggle} data-testid={`button-visuals-toggle-${post.id}`}>
+        <Button variant="outline" size="sm" className="rounded-lg" disabled={busy} onClick={toggle} data-testid={`button-visuals-toggle-${post.id}`}>
           <ImageIcon className="h-4 w-4 mr-1" /> {slides ? "Masquer les visuels" : "Aperçu des visuels"}
         </Button>
-        <Button size="sm" className="rounded-[12px]" disabled={busy} onClick={zip} data-testid={`button-visuals-zip-${post.id}`}>
+        <Button size="sm" className="rounded-lg" disabled={busy} onClick={zip} data-testid={`button-visuals-zip-${post.id}`}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />} Télécharger (.zip)
         </Button>
       </div>
       {slides ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2">
           {slides.map((s) => (
-            <img key={s.index} src={s.url} alt={`Slide ${s.index + 1}`} className="rounded-[10px] border border-border w-full" />
+            <img key={s.index} src={s.url} alt={`Slide ${s.index + 1}`} className="rounded-md border border-border w-full" />
           ))}
         </div>
       ) : null}

@@ -129,8 +129,8 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName, onSave,
     <div className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
       {!isUser && avatar}
       <div
-        className={`group relative max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-          isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-card text-foreground border border-border shadow-sm"
+        className={`group relative max-w-[82%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
+          isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-card text-foreground border border-border"
         } ${typing ? "animate-pulse" : ""}`}
       >
         {isUser ? (
@@ -145,7 +145,7 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName, onSave,
           <>
             <button
               onClick={copy}
-              className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card border border-border rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
+              className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
               aria-label="Copier la réponse"
               data-testid="button-copy-message"
             >
@@ -155,7 +155,7 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName, onSave,
             {onSave && (
               <button
                 onClick={onSave}
-                className="absolute -bottom-3 right-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card border border-border rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
+                className="absolute -bottom-3 right-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
                 aria-label="Enregistrer dans la bibliothèque"
                 title="Enregistrer dans la bibliothèque"
                 data-testid="button-save-reply"
@@ -210,7 +210,7 @@ function Chat() {
     onSuccess: (_r, m) => {
       setSavedIds((s) => new Set(s).add(m.id));
       queryClient.invalidateQueries({ queryKey: ["/api/saved-replies"] });
-      toast({ title: "Réponse enregistrée 📚", description: "Retrouvez-la dans l'onglet Bibliothèque.", variant: "success" });
+      toast({ title: "Réponse enregistrée", description: "Retrouvez-la dans l'onglet Bibliothèque.", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
@@ -274,7 +274,7 @@ function Chat() {
     mutationFn: async () => (await apiRequest("POST", `/api/discussions/${selectedId}/create-programme`)).json(),
     onSuccess: async (prog: { id: number; title: string }) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/programmes"] });
-      toast({ title: "Programme créé 🌿", description: `« ${prog.title} » est prêt dans vos Programmes (brouillon, modifiable, exportable en PDF).`, variant: "success" });
+      toast({ title: "Programme créé", description: `« ${prog.title} » est prêt dans vos Programmes (brouillon, modifiable, exportable en PDF).`, variant: "success" });
       navigate("/app/programmes");
     },
     onError: (e: any) => toast({ title: "Impossible de créer le programme", description: e?.message, variant: "destructive" }),
@@ -366,7 +366,7 @@ function Chat() {
       <div className="flex justify-end sm:hidden">
         <Button
           onClick={() => setDialogOpen(true)}
-          className="sm:hidden rounded-[12px] shrink-0 mb-4 h-11 w-11"
+          className="sm:hidden rounded-lg shrink-0 mb-4 h-11 w-11"
           size="icon"
           aria-label="Nouvelle discussion"
           data-testid="button-new-discussion-mobile"
@@ -483,7 +483,7 @@ function Chat() {
                   title="Prêt à discuter avec Naturobot"
                   description="Naturobot est votre formateur virtuel en naturopathie. Posez vos questions sur les protocoles, plantes, cas cliniques…"
                   card={false}
-                  action={<Button onClick={() => setDialogOpen(true)} className="rounded-[12px]" data-testid="button-new-discussion-empty"><Plus className="h-4 w-4 mr-1" /> Nouvelle discussion</Button>}
+                  action={<Button onClick={() => setDialogOpen(true)} className="rounded-lg" data-testid="button-new-discussion-empty"><Plus className="h-4 w-4 mr-1" /> Nouvelle discussion</Button>}
                   testid="empty-state-no-discussion"
                 />
               </div>
@@ -536,11 +536,13 @@ function Chat() {
                     {streamText === "" ? (
                       <div className="flex items-end gap-2 justify-start" data-testid="message-assistant-thinking">
                         <Avatar src={NATUROBOT_AVATAR} fallback={<Sparkles className="h-4 w-4" />} title="Naturobot" />
-                        <div className="bg-card border border-border shadow-sm rounded-2xl px-4 py-3">
+                        <div className="bg-card border border-border rounded-xl px-4 py-3">
                           <div className="flex gap-1 items-center" aria-label="Naturobot réfléchit" role="status">
-                            <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <span className="h-2 w-2 rounded-full bg-primary motion-safe:animate-bounce" style={{ animationDelay: "300ms" }} />
+                            {/* Pulsation douce plutôt qu'un rebond élastique : l'attente
+                                se signale, elle ne s'agite pas. */}
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" style={{ animationDelay: "0ms" }} />
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" style={{ animationDelay: "200ms" }} />
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse" style={{ animationDelay: "400ms" }} />
                           </div>
                         </div>
                       </div>
@@ -558,7 +560,7 @@ function Chat() {
             <div className="border-t border-border p-3 bg-card">
               <div className="flex items-end gap-2">
                 <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder="Écris ta question…" className="resize-none overflow-y-auto min-h-[44px] max-h-[200px]" rows={1} data-testid="input-chat-message" />
-                <Button onClick={() => submit()} disabled={!input.trim() || sendMut.isPending} className="rounded-[12px] shrink-0" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
+                <Button onClick={() => submit()} disabled={!input.trim() || sendMut.isPending} className="rounded-lg shrink-0" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
               </div>
               {/* Lot 5 (N9) — coût affiché sur l'action, au moment de décider */}
               <p className="hidden sm:block text-xs text-muted-foreground mt-1">

@@ -36,7 +36,7 @@ export function PublicPagePreview({
         className="flex items-center justify-between px-4 py-2.5"
         style={{ background: `${primary}10` }}
       >
-        <span className="font-extrabold text-sm" style={{ color: primary }}>
+        <span className="font-bold text-sm" style={{ color: primary }}>
           {displayName}
         </span>
         <span
@@ -59,7 +59,7 @@ export function PublicPagePreview({
           />
         ) : (
           <div
-            className="h-16 w-16 rounded-full flex items-center justify-center text-2xl font-extrabold text-white shrink-0"
+            className="h-16 w-16 rounded-full flex items-center justify-center text-2xl font-bold text-white shrink-0"
             style={{ background: primary }}
           >
             {displayName[0]}
@@ -69,7 +69,7 @@ export function PublicPagePreview({
           <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: primary }}>
             Naturopathe certifié(e)
           </p>
-          <p className="font-extrabold text-base leading-tight truncate" style={{ color: primary }}>
+          <p className="font-bold text-base leading-tight truncate" style={{ color: primary }}>
             {displayName}
           </p>
           {location && (

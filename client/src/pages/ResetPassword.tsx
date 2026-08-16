@@ -39,7 +39,7 @@ export default function ResetPassword() {
         token,
         password: values.password,
       });
-      toast({ title: "Mot de passe réinitialisé 🌿", description: "Vous pouvez vous connecter." });
+      toast({ title: "Mot de passe réinitialisé", description: "Vous pouvez vous connecter." });
       navigate("/login");
     } catch (e: any) {
       setError(e?.message || "Le lien a expiré ou est invalide.");
@@ -53,7 +53,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
-          <h1 className="text-3xl font-extrabold mb-2 text-heading">Nouveau mot de passe</h1>
+          <h1 className="text-3xl font-bold mb-2 text-heading">Nouveau mot de passe</h1>
           <p className="text-muted-foreground">Choisissez un nouveau mot de passe sécurisé.</p>
         </div>
         <div className="card-naturo">

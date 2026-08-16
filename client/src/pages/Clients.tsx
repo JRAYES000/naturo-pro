@@ -102,7 +102,7 @@ export default function Clients() {
               placeholder="Rechercher par nom, prénom, email…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-10 rounded-[12px]"
+              className="pl-10 rounded-lg"
               data-testid="input-search-clients"
             />
           </div>
@@ -140,13 +140,13 @@ export default function Clients() {
               const actif = lastAppt != null && lastAppt > Date.now() - 90 * 86400000;
               return (
                 <li key={c.id}>
-                  <Link href={`/app/clients/${c.id}`} className="card-naturo block hover:-translate-y-0.5 transition" data-testid={`card-client-${c.id}`}>
+                  <Link href={`/app/clients/${c.id}`} className="card-naturo block hover:border-primary hover:bg-secondary/30 transition-colors" data-testid={`card-client-${c.id}`}>
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="h-12 w-12 rounded-full bg-secondary text-primary flex items-center justify-center text-lg font-extrabold">
+                      <div className="h-12 w-12 rounded-full bg-secondary text-primary flex items-center justify-center text-lg font-bold">
                         {c.firstName[0]}{c.lastName[0]}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-extrabold truncate">{c.firstName} {c.lastName}</p>
+                        <p className="font-bold truncate">{c.firstName} {c.lastName}</p>
                         {c.dateOfBirth && <p className="text-xs text-muted-foreground">Né(e) le {new Date(c.dateOfBirth).toLocaleDateString("fr-FR")}</p>}
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />

@@ -31,7 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { MailOpen, Edit3, Eye, RotateCcw, Loader2, Code2, Type } from "lucide-react";
-import { HelpNote } from "@/components/HelpNote";
+import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { Loading } from "@/components/Loading";
 import { PageHeader } from "@/components/PageHeader";
 import { TEMPLATE_VARS } from "@/lib/template-vars";
@@ -267,15 +267,15 @@ function EmailTemplates() {
             <p className="font-semibold text-foreground mb-2">Les 3 emails que vous pouvez personnaliser :</p>
             <ul>
               <li>
-                ✅ <strong>Confirmation</strong> — envoyé au client juste après sa réservation
+                <strong>Confirmation</strong> — envoyé au client juste après sa réservation
                 (« C'est noté ! », avec la date, l'heure et le lieu).
               </li>
               <li>
-                ⏰ <strong>Rappel J-1</strong> — envoyé automatiquement au client la veille du
+                <strong>Rappel J-1</strong> — envoyé automatiquement au client la veille du
                 rendez-vous, pour limiter les oublis (donc moins de « lapins »).
               </li>
               <li>
-                🔔 <strong>Annulation</strong> — si un client annule lui-même via son lien, il
+                <strong>Annulation</strong> — si un client annule lui-même via son lien, il
                 reçoit une confirmation d'annulation et vous êtes notifié que le créneau s'est libéré.
               </li>
             </ul>
@@ -293,10 +293,8 @@ function EmailTemplates() {
               <li>Cliquez sur « Enregistrer ». C'est tout.</li>
             </ol>
           </div>
-          <p className="text-xs italic">
-            💡 Une erreur ? Le bouton « Réinitialiser au modèle par défaut » remet le texte d'origine,
-            propre et professionnel. Vous ne pouvez rien casser.
-          </p>
+          <HelpTip>Une erreur ? Le bouton « Réinitialiser au modèle par défaut » remet le texte d'origine,
+            propre et professionnel. Vous ne pouvez rien casser.</HelpTip>
         </HelpNote>
 
         {/* Kind selector */}
