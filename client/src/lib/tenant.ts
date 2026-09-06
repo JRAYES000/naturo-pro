@@ -45,15 +45,6 @@ export function getBaseDomain(): string {
 }
 
 /**
- * Construit l'URL publique d'un tenant en mode SOUS-DOMAINE :
- * `https://{slug}.{base}/`.
- * Cette URL nécessite un wildcard DNS + SSL wildcard configurés.
- */
-export function tenantPublicUrl(slug: string): string {
-  return `https://${slug}.${baseDomain()}/`;
-}
-
-/**
  * URL publique en mode PATH-BASED (fonctionne sans wildcard DNS/SSL).
  * Format : `https://{base}/p/{slug}` — chemin propre, servi par le serveur
  * (voir server/static.ts) et redirigé vers la route hash côté client pour
