@@ -30,34 +30,10 @@ de chercher.
   colonne `users.plan` (défaut `trial`) + `trialEndsAt`, **trial-guard** qui bloque les mutations
   après expiration. Traiter la prod comme un service payant : régression = client bloqué.
 
-## Stack technique
-
-- Frontend : **React 18 + Vite + TypeScript + Tailwind + shadcn/ui + Wouter** (hash routing)
-- State : **TanStack Query v5** + react-hook-form + Zod
-- Backend : **Node.js 24 + Express + TypeScript** (bundle unique via esbuild)
-- ORM : **Drizzle** — DB dev **SQLite** (better-sqlite3), DB prod **MySQL 8** (Hostinger Cloud Pro)
-- Auth : **sessions Express + bcrypt** (cookie httpOnly)
-- Email : **Mailjet SMTP** · IA : Mistral + OpenRouter (`server/mistral.ts`, `server/rag.ts`)
-
 ## Carte du code — où trouver quoi
 
 **Backend** — `server/routes/index.ts` est l'orchestrateur (middlewares globaux + `register*`).
 Aucune route inline : chaque domaine vit dans son module.
-
-| Domaine | Fichier |
-|---|---|
-| Auth, inscription, reset password | `server/routes/auth.ts` |
-| RDV, agenda | `server/routes/appointments.ts` |
-| Clients, anamnèse, notes | `server/routes/clients.ts`, `server/routes/anamnese.ts` |
-| Booking public, page publique, Stripe checkout | `server/routes/public.ts` |
-| Dispos, catégories, forfaits | `server/routes/availability.ts`, `categories.ts`, `packages.ts` |
-| Factures | `server/routes/invoices.ts` + `server/routes/helpers/invoices.ts` + `server/pdf.ts` |
-| Rappels J-1, crons | `server/routes/reminders.ts`, `cron.ts` + `helpers/reminders.ts` |
-| Templates email | `server/routes/email-templates.ts` (voir le skill projet, plus bas) |
-| Google Calendar | `server/routes/google.ts` + `helpers/google-sync.ts` + `server/google.ts` |
-| Admin, assistant IA, contenu | `server/routes/admin.ts`, `assistant-admin.ts`, `content.ts` |
-| Stats, solutions, programmes, docs, discussions | `server/routes/<domaine>.ts` (fichiers homonymes) |
-| Rate-limiters, contexte partagé | `server/routes/limiters.ts`, `server/routes/_context.ts` |
 
 **Data** : tout passe par `server/storage.ts` (~1500 lignes). Schémas dans `shared/`.
 
@@ -107,17 +83,7 @@ Aucune route inline : chaque domaine vit dans son module.
 
 ## Variables d'environnement
 
-Voir `.env.example`. Les critiques :
-
-| Variable | Rôle |
-|---|---|
-| `DB_DRIVER` | `sqlite` (dev) ou `mysql` (prod) |
-| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Config MySQL |
-| `SESSION_SECRET` | 32+ chars (`openssl rand -hex 32`) |
-| `COOKIE_NAME` | `naturo_sid` en prod |
-| `MAILJET_API_KEY` / `MAILJET_API_SECRET` / `MAIL_FROM` / `MAIL_FROM_NAME` | Email |
-| `PUBLIC_URL` | URL publique (liens dans les emails) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | OAuth Calendar (optionnel) |
+Toutes les variables sont documentées dans `.env.example`.
 
 ## Workflow
 
@@ -152,9 +118,8 @@ Voir `.env.example`. Les critiques :
 
 ## Ressources
 
-- `.claude/skills/email-templates/` — **skill projet** : kinds, `renderUserTemplate`, variables
-  disponibles. Le charger dès qu'on touche `server/email-templates/`, la page `/app/email-templates`
-  ou l'envoi d'emails aux clients.
+- Emails clients : `server/email-templates/` (`defaults.ts`, `render.ts`, `render-user.ts`),
+  route `server/routes/email-templates.ts`, page `client/src/pages/EmailTemplates.tsx`.
 - `.claude/launch.json` — configs de dev (`naturo-dev`, port 3000).
 - `docs/ARCHITECTURE.md` — vue d'ensemble
 - `docs/DEPLOY.md` — déploiement prod. **Le WordPress `ecole-naturo.fr` vit sur le MÊME compte
