@@ -161,6 +161,11 @@ Voir `.env.example`. Les critiques :
   SSH que l'app** (alias `naturo-prod`) : `domains/ecole-naturo.fr/public_html`, avec `wp-cli`
   en `/usr/local/bin/wp`. Pas besoin d'une seconde clé — celle du déploiement suffit. Utile dès
   qu'une action SEO demande de toucher au site principal (maillage interne, redirections).
+- **Action admin en prod sans session navigateur** (créer un compte, activer un plan) : mes
+  identifiants admin Naturo Pro ne sont ni dans `secrets.md` ni dans le Chrome piloté. Passer par
+  SSH `naturo-prod` + `mysql -h 127.0.0.1` avec les variables `DB_*` du `.env` distant
+  (`domains/app.ecole-naturo.fr/nodejs/`). Le hash bcrypt se génère en local avec `bcryptjs`.
+  Fait le 2026-09-06 pour le compte 37.
 - `docs/ROADMAP.md` — features prévues · `docs/HISTORY.md` — phases livrées
 - `docs/AUDIT-2026-07-28.md` — dernier audit du code
 - **`docs/SEO-TRACKING.md` — état du SEO, action par action. À lire AVANT tout nouvel audit SEO :
