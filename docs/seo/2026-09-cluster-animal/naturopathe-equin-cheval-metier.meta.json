@@ -1,0 +1,236 @@
+{
+  "type": "post",
+  "action": "create",
+  "id": null,
+  "slug": "naturopathe-equin-cheval-metier",
+  "title": "Naturopathe équin : accompagner le cheval au naturel, métier et formation",
+  "yoast_title": "Naturopathe équin : métier, visite, formation | École Naturo",
+  "yoast_desc": "Naturopathe équin : clientèle, déroulé d'une visite, rôle face au vétérinaire, maréchal-ferrant et ostéopathe, contenu d'une formation. Par l'École Naturo.",
+  "focus_kw": "naturopathe équin",
+  "secondary_keywords": [
+    "naturopathie cheval (40/mois, Ubersuggest FR 14/09/2026)",
+    "naturopathe pour chevaux (volume non relevé)",
+    "naturopathe équin (50/mois)",
+    "naturopathie équine (0/mois)",
+    "mots-clés de la page n°1 : non relevés (aucune donnée Ubersuggest pour leshowroomdelacavaliere.com en France)"
+  ],
+  "author": 2,
+  "categories": [
+    20,
+    78
+  ],
+  "status": "draft",
+  "publish_date_suggested": "2026-10-19",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://ecole-naturo.fr/blog/naturopathe-equin-cheval-metier/#article",
+        "headline": "Naturopathe équin : accompagner le cheval au naturel, métier et formation",
+        "description": "Naturopathe équin : clientèle, déroulé d'une visite, rôle face au vétérinaire, maréchal-ferrant et ostéopathe, contenu d'une formation. Par l'École Naturo.",
+        "image": "[À COMPLÉTER : URL de l'image à la une]",
+        "datePublished": "2026-10-12",
+        "dateModified": "2026-10-12",
+        "inLanguage": "fr-FR",
+        "author": {
+          "@id": "https://ecole-naturo.fr/eva-mischler/#person"
+        },
+        "publisher": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        },
+        "mainEntityOfPage": {
+          "@id": "https://ecole-naturo.fr/blog/naturopathe-equin-cheval-metier/#webpage"
+        },
+        "isPartOf": {
+          "@id": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/eva-mischler/#person",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "url": "https://ecole-naturo.fr/eva-mischler/",
+        "worksFor": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        }
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://ecole-naturo.fr/#organization",
+        "name": "École Naturo",
+        "url": "https://ecole-naturo.fr",
+        "logo": "[À COMPLÉTER : URL du logo dans la médiathèque]"
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/blog/naturopathe-equin-cheval-metier/#webpage",
+        "url": "https://ecole-naturo.fr/blog/naturopathe-equin-cheval-metier/",
+        "name": "Naturopathe équin : accompagner le cheval au naturel, métier et formation",
+        "inLanguage": "fr-FR"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Accueil",
+            "item": "https://ecole-naturo.fr/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Blog",
+            "item": "https://ecole-naturo.fr/blog/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Naturopathe équin : accompagner le cheval au naturel, métier et formation"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://ecole-naturo.fr/blog/naturopathe-equin-cheval-metier/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Un naturopathe équin peut-il remplacer le vétérinaire ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. La médecine et la chirurgie des animaux sont réservées aux vétérinaires par l'article L243-1 du Code rural et de la pêche maritime. Le naturopathe équin intervient uniquement sur l'hygiène de vie du cheval, en complément du suivi vétérinaire."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Faut-il un diplôme pour devenir naturopathe équin ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. Il n'existe pas de diplôme d'État en naturopathie animale ou équine en France, et la profession n'est pas réglementée. Une formation sérieuse reste indispensable : physiologie du cheval, plantes à risque, sécurité, cadre légal."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Combien coûte une séance de naturopathie équine ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Une séance de naturopathie animale se facture en moyenne entre 40 et 100 euros selon la durée, la nature de l'accompagnement et la zone géographique. Pour un cheval, le déplacement à l'écurie s'ajoute souvent au temps de séance."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelle est la différence entre un naturopathe équin et un ostéopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "L'ostéopathe animalier réalise des actes d'ostéopathie, autorisés par l'article L243-3 du Code rural à condition d'être inscrit sur la liste tenue par l'Ordre des vétérinaires. Le naturopathe équin ne réalise aucun acte sur le corps du cheval."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Un naturopathe équin peut-il conseiller des plantes à un cheval malade ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. Prévenir ou traiter une maladie et prescrire des médicaments sont des actes de médecine des animaux réservés aux vétérinaires. Le naturopathe équin conseille l'hygiène de vie d'un cheval en bonne santé et renvoie au vétérinaire en cas de doute."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelles plantes sont dangereuses pour le cheval au pré ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Parmi les végétaux documentés par l'IFCE : l'if à baies, l'érable sycomore (myopathie atypique), le séneçon de Jacob, y compris séché dans le foin, et les glands verts de chêne. Savoir les reconnaître fait partie du bilan d'hygiène de vie."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "internal_links_out": [
+    "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/",
+    "https://ecole-naturo.fr/formation-naturopathie-animale/",
+    "https://ecole-naturo.fr/guide-naturopathie-animale/",
+    "https://ecole-naturo.fr/blog/bien-etre-naturel-cheval-besoins-fondamentaux/",
+    "https://ecole-naturo.fr/blog/phytotherapie-chien-chat-plantes-toxiques/",
+    "https://ecole-naturo.fr/eva-mischler/"
+  ],
+  "notes_julien": [
+    "Qualification animale d'Eva Mischler : le bloc auteur la présente comme « référente du cursus en naturopathie animale » (formulation lue sur la page de vente 40874). À confirmer/compléter (expérience cheval ?) avant publication ; la vérification dure n°1 en dépend.",
+    "Relecteur : [À COMPLÉTER]. Idéalement un vétérinaire équin ou un praticien cheval identifié, vu le sujet.",
+    "Cas terrain marqué [CAS TERRAIN À VALIDER PAR EVA] : proposé, non fourni. À réécrire avec un cas réel ou à supprimer.",
+    "Chiffres IFCE (1 005 200 équidés fin 2023, 26 300 entreprises, 54 300 emplois) : lus dans les résultats de recherche citant l'Annuaire ÉCUS 2025 ; le PDF n'a pas pu être lu en clair. À contrôler sur equipedia.ifce.fr avant publication.",
+    "Chiffres digestion (estomac ~12 L, tube ~200 L, 60-70 % des besoins énergétiques) : Équipédia IFCE « La digestion chez le cheval », lus via extrait de recherche ; page non lisible directement. À contrôler.",
+    "Tarif « 40 à 100 euros » : repris de la page de vente 40874 (séance de naturopathie animale, toutes espèces). Aucun tarif spécifique cheval n'a été inventé.",
+    "Un marqueur [LIEN À CRÉER : naturopathe animalier et vétérinaire, cadre légal] est dans le corps : remplacer par l'URL réelle de l'article 2 une fois publié (prévu 2026-10-19), ou supprimer la phrase.",
+    "Article sans H1 (WordPress l'ajoute). Style CSS en tête comme sur les 5 satellites existants ; à retirer si le thème gère déjà ces classes.",
+    "Deux images à insérer aux emplacements <!-- IMAGE --> (alt proposés). Image à la une et logo à renseigner dans le JSON-LD.",
+    "Yoast : le JSON-LD Article ci-dessous doublonne celui de Yoast si Yoast génère déjà Article ; ne coller que le bloc FAQPage dans ce cas, ou désactiver le schema Yoast pour cet article."
+  ],
+  "verifications_dures": [
+    {
+      "n": 1,
+      "verification": "Auteur réel, nommé, qualifié pour CE sujet",
+      "verdict": "À CONFIRMER",
+      "detail": "Eva Mischler, naturopathe depuis 2017, référente du cursus animal (page de vente). Sa qualification propre au cheval n'est pas documentée sur sa page auteur : à confirmer par Julien, relecteur cheval/vétérinaire recommandé."
+    },
+    {
+      "n": 2,
+      "verification": "Aucune affirmation santé non sourcée",
+      "verdict": "OK",
+      "detail": "Physiologie digestive et plantes à risque : IFCE Équipédia (URLs en sources). Aucune allégation d'effet d'une plante ou d'un complément."
+    },
+    {
+      "n": 3,
+      "verification": "Aucune promesse thérapeutique",
+      "verdict": "OK",
+      "detail": "Les verbes « traiter / soigner » n'apparaissent que pour dire ce que le naturopathe ne fait pas ou en citation de la loi. Formulations « accompagne », « conseille », « oriente »."
+    },
+    {
+      "n": 4,
+      "verification": "Aucun chiffre, étude ou source inventé",
+      "verdict": "OK avec réserve",
+      "detail": "Chiffres IFCE (population, entreprises, emplois ; capacités digestives) issus de recherches web citant l'IFCE, pages non lisibles directement : contrôle demandé dans notes_julien. Aucun autre chiffre externe. Tarif 40-100 € = page de vente."
+    },
+    {
+      "n": 5,
+      "verification": "Aucune URL interne devinée",
+      "verdict": "OK",
+      "detail": "6 liens internes, tous dans wp/urls.txt ou la liste du brief. Lien vers l'article cadre légal (non publié) laissé en [LIEN À CRÉER]."
+    },
+    {
+      "n": 6,
+      "verification": "Information gain démontrable",
+      "verdict": "OK",
+      "detail": "Tableau clientèle (4 profils, attente, apport, vigilance), déroulé de visite en 6 étapes, tableau des rôles et limites légaux (5 professionnels avec articles), tableau plantes à risque IFCE, cas terrain à valider."
+    },
+    {
+      "n": 7,
+      "verification": "Chiffres canoniques conformes",
+      "verdict": "OK",
+      "detail": "1 490 €, six mois d'accompagnement, 100 % à distance, appel découverte, contenu des modules : tous lus sur la page de vente 40874. Aucune estimation."
+    },
+    {
+      "n": 8,
+      "verification": "Journal renseigné",
+      "verdict": "OK",
+      "detail": "Voir section Journal."
+    }
+  ],
+  "journal": [
+    "[ERREUR CONSTATÉE] Première version à 2 860 mots pour une cible de 1 600 à 2 200 : les tableaux, la FAQ et les sources gonflent vite le compte. → Règle : compter les mots hors balises AVANT d'écrire la FAQ et les sources, et budgéter ~600 mots pour FAQ + à retenir + disclaimer + sources.",
+    "[ERREUR CONSTATÉE] Les pages Équipédia (IFCE) et plusieurs libraires (Decitre, Fnac, Furet, Unithèque) ne se laissent pas lire par l'outil de fetch (403 ou contenu vide). → Règle : pour un chiffre IFCE ou une fiche livre, garder l'extrait de recherche avec l'URL et marquer « à contrôler » dans les notes plutôt que d'attendre une lecture directe."
+  ],
+  "checks_auto": {
+    "mots (texte hors balises)": 2219,
+    "URLs internes hors sitemap": [],
+    "nb liens internes": 6,
+    "yoast_title len": 60,
+    "yoast_desc len": 155,
+    "FAQ count": 6,
+    "tables": 3,
+    "h2": 7,
+    "définition (mots)": 55
+  }
+}

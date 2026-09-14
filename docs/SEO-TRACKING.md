@@ -138,4 +138,5 @@ blocs Gutenberg. Le WordPress est sur le **même compte SSH que l'app** (`naturo
 
 | Date | Événement |
 |---|---|
+| 14/09/2026 | Diagnostic GSC de `ecole-naturo.fr` (hors app) : décrochage de l'accueil sur « formation naturopathe » le 26/05 (May Core Update), cannibalisation avec `/formation-naturopathie-a-distance/` créée le 08/06, pivot animalier en page 2. Contenus correctifs et cluster « naturopathie animale » prêts dans [seo/2026-09-cluster-animal/](seo/2026-09-cluster-animal/README.md), à publier depuis une session locale (`script/wp-publish.mjs`). |
 | 15/08/2026 | Audit complet ([AUDIT-SEO-2026-08-15.md](AUDIT-SEO-2026-08-15.md)) : 13 actions identifiées. Les 13 appliquées et déployées le jour même. A14 (blocage GPTBot) découvert à la vérification, non résolu — hors dépôt. |

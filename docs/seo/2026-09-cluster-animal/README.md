@@ -30,8 +30,8 @@ satellites animaux. **Aucune mention du CPF nulle part** (financement abandonné
 | `naturopathie-chien-principes-limites.*` | nouveau post | brouillon, publication suggérée 21/09 |
 | `naturopathie-chat-approche-naturelle.*` | nouveau post | brouillon, 28/09 |
 | `fleurs-de-bach-animaux-usage-limites.*` | nouveau post | brouillon, 05/10 |
-| `naturopathe-equin-cheval-metier.*` | nouveau post | brouillon, 12/10 |
-| `naturopathe-animalier-veterinaire-cadre-legal.*` | nouveau post | brouillon, 19/10 |
+| `naturopathe-animalier-veterinaire-cadre-legal.*` | nouveau post | brouillon, 12/10 (avant les deux suivants, qui pointent vers lui) |
+| `naturopathe-equin-cheval-metier.*` | nouveau post | brouillon, 19/10 |
 | `apprendre-naturopathie-animale-livres-ressources.*` | nouveau post | brouillon, 26/10 |
 
 Chaque `.meta.json` porte `notes_julien` : ce qui dépend de lui avant publication (chiffres à
@@ -43,7 +43,10 @@ confirmer, cas terrain à valider par Eva, images).
    liens retour sur la page de vente, le guide et les 5 satellites existants. Ces cinq actions
    forment un seul chantier cohérent : les mesurer ensemble.
 2. **Un satellite par semaine** du 21/09 au 26/10 (gate de vélocité, site en récupération
-   post-core-update : pas de rafale).
+   post-core-update : pas de rafale). L'article « cadre légal » passe avant « naturopathe équin »
+   et « livres » : ces deux-là contiennent déjà un lien vers son URL prévue
+   (`/blog/naturopathe-animalier-veterinaire-cadre-legal/`, slug fixé par le `.meta.json`).
+   Si WordPress attribue un autre slug, corriger ces deux liens avant leur publication.
 3. **J+28 après chaque publication** : vérifier en Search Console que la page reçoit des clics
    avant d'ajouter des liens montants supplémentaires depuis elle.
 
@@ -80,6 +83,12 @@ Le script refuse tout contenu contenant « CPF », ajoute le JSON-LD du `.meta.j
 corps, écrit les meta Yoast des articles, et affiche les commandes WP-CLI pour celles des pages.
 Les blocs manuels (`*.md`) ne passent pas par le script.
 
+**Insertions manuelles (`liens-retour.md`, `home-20379-renforts.md`) : ne jamais republier le
+HTML rendu.** Récupérer le contenu brut (`GET /wp/v2/posts/<id>?context=edit` → `content.raw`,
+ou `wp post get <id> --field=post_content`), y insérer le bloc, et renvoyer ce brut. Republier le
+rendu détruit les délimiteurs de blocs Gutenberg (incident documenté dans `docs/SEO-TRACKING.md`).
+Les deux réécritures complètes (8203, 42322) remplacent volontairement tout le corps.
+
 ### Route 3 : WP-CLI en SSH (`naturo-prod`)
 
 Pour les meta Yoast des pages et la purge du cache, dans tous les cas :
@@ -99,6 +108,25 @@ ssh naturo-prod "cd /home/u379081112/domains/ecole-naturo.fr/public_html && wp p
 - [ ] `docs/SEO-TRACKING.md` : reporter la date de mise en ligne et l'état.
 
 ## Ce qui reste à Julien
+
+Chaque `.meta.json` détaille ses `notes_julien`. Les points transverses :
+
+- Trancher les incohérences relevées entre pages sources : 28 vs 31 vs 32 avis Google selon la
+  page, note 4,9 vs 5,0, tarif de consultation « 60 à 100 € » (page de vente) vs « 40 à 100 € »,
+  « 600+ » vs « 800+ » personnes accompagnées par Eva. Les contenus livrés s'alignent sur 800+
+  et 4,9/5 ; à harmoniser sur le site.
+- Sur la page de vente 40874 : « IRC première cause de mortalité » non sourcé, « plantes comme le
+  tea-tree » (le tea-tree est une huile essentielle), fleurs de Bach présentées sans réserve sur le
+  niveau de preuve, et la mention d'une « convention de coopération avec un vétérinaire » sans
+  base légale (relevée aussi dans l'ancien pivot, retirée de la réécriture).
+- Page 42322 : le compte à rebours « réservé aux 50 premiers inscrits » tourne en permanence sans
+  jamais se fermer. Risque DGCCRF (pratique commerciale trompeuse) et signal de confiance
+  négatif : à dater réellement ou à retirer. Non modifié, hors périmètre de la réécriture.
+- Accueil : 11 formulations à retirer ou reformuler listées au point 6 de
+  `home-20379-renforts.md` (« meilleur rapport qualité-prix », « top 3 du marché », « formatrices
+  agréées », dénigrement de concurrents, attribution à l'OMS non sourcée).
+- Article existant 43796 (stress du chat) : ajouter un lien vers l'article fleurs de Bach pour
+  éviter une concurrence interne sur « fleurs de Bach chat ».
 
 - Confirmer l'auteur du cluster animal : Eva Mischler signe déjà les articles animaux, mais sa
   page ne mentionne pas de qualification animale. Compléter sa bio (ou nommer la formatrice du
