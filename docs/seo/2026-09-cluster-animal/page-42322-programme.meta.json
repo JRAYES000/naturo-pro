@@ -1,0 +1,430 @@
+{
+  "type": "page",
+  "action": "update",
+  "id": 42322,
+  "slug": "formation-naturopathie-a-distance",
+  "slug_change": false,
+  "title": "Programme de la formation naturopathie à distance : modules, contenu et déroulé sur 6 ou 24 mois",
+  "yoast_title": "Programme de la formation naturopathie à distance (1 200 h)",
+  "yoast_desc": "Le contenu du cursus, module par module : 5 piliers, 50+ modules, 10 études de cas, 1 200 h, déroulé sur 6 ou 24 mois. Programme détaillé École Naturo.",
+  "focus_kw": "programme formation naturopathie",
+  "secondary_kw_note": "Mots-clés secondaires non relevés par outil (serp_analysis / page_keywords non exécutés dans cette session). Champ lexical utilisé, issu de la demande : programme, modules, contenu du cursus, ce que vous apprenez, volume horaire, déroulé sur 6 ou 24 mois.",
+  "author": 1,
+  "author_note": "Auteur WordPress inchangé (1, comme la source) : il s'agit d'une page, pas d'un article. Eva Mischler apparaît comme vérificatrice du contenu dans le corps et comme reviewedBy dans le JSON-LD.",
+  "categories": null,
+  "status": "publish",
+  "status_note": "Mise à jour en place d'une page déjà publiée : ne PAS passer la page en draft (elle sortirait de l'index). Coller le nouveau corps après relecture, puis mettre à jour les champs Yoast.",
+  "publish_date_suggested": "2026-09-15",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/formation-naturopathie-a-distance/",
+        "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/",
+        "name": "Programme de la formation naturopathie à distance : modules, contenu et déroulé sur 6 ou 24 mois",
+        "inLanguage": "fr-FR",
+        "dateModified": "2026-09-14",
+        "about": {
+          "@id": "https://ecole-naturo.fr/formation-naturopathie-a-distance/#course"
+        },
+        "reviewedBy": {
+          "@id": "https://ecole-naturo.fr/#eva-mischler"
+        },
+        "isPartOf": {
+          "@id": "https://ecole-naturo.fr/#website"
+        }
+      },
+      {
+        "@type": "Course",
+        "@id": "https://ecole-naturo.fr/formation-naturopathie-a-distance/#course",
+        "name": "Formation naturopathie à distance : programme complet (50+ modules, 1 200 h)",
+        "description": "Programme de la formation naturopathie à distance de l'École Naturo : 5 piliers, 50+ modules, 10 études de cas cliniques, 17 modules Naturopreneur, 1 200 heures de formation, déroulé sur 6 ou 24 mois.",
+        "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/",
+        "inLanguage": "fr",
+        "image": "https://ecole-naturo.fr/wp-content/uploads/2026/03/Eva-Mischler-.png",
+        "provider": {
+          "@type": "EducationalOrganization",
+          "@id": "https://ecole-naturo.fr/#organization",
+          "name": "École de Naturopathie & Sophrologie",
+          "alternateName": "École Naturo",
+          "url": "https://ecole-naturo.fr/"
+        },
+        "educationalCredentialAwarded": "Certificat de praticien professionnel de conseiller(ère) en diététique et naturopathie",
+        "timeRequired": "PT1200H",
+        "teaches": [
+          "Fondements de la naturopathie",
+          "Terrain et émonctoires",
+          "Physiologie des 11 systèmes du corps",
+          "Bromatologie",
+          "Phytothérapie",
+          "Aromathérapie",
+          "Gemmothérapie",
+          "Fleurs de Bach",
+          "Hydrologie",
+          "Réflexologie",
+          "Iridologie",
+          "Gestion du stress",
+          "Initiation à la sophrologie",
+          "Naturopathie animale",
+          "Anamnèse et bilan de vitalité",
+          "Création et développement d'une activité de naturopathe"
+        ],
+        "syllabusSections": [
+          {
+            "@type": "Syllabus",
+            "name": "01 Le socle scientifique : terrain, émonctoires et physiologie",
+            "description": "16 modules : fondements de la naturopathie, 5 émonctoires, notion de terrain, bromatologie, environnement et santé, physiologie des 11 systèmes du corps."
+          },
+          {
+            "@type": "Syllabus",
+            "name": "02 Les outils du praticien : 13 techniques naturopathiques",
+            "description": "13 modules : phytothérapie, aromathérapie, fleurs de Bach, gemmothérapie, hydrologie, compléments alimentaires, réflexologie, massages naturopathiques, iridologie, kinésiologie, lithothérapie, actinologie et magnétologie, travail postural."
+          },
+          {
+            "@type": "Syllabus",
+            "name": "03 L'accompagnement humain : stress, émotions, sophrologie",
+            "description": "4 modules : accompagnement psycho-émotionnel, gestion du stress, initiation à la sophrologie, naturopathie animale."
+          },
+          {
+            "@type": "Syllabus",
+            "name": "04 La pratique clinique : 10 études de cas réels",
+            "description": "10 dossiers clients avec anamnèse, bilan de vitalité et protocole, protocoles téléchargeables, corrections de cas en live chaque jeudi."
+          },
+          {
+            "@type": "Syllabus",
+            "name": "05 Naturopreneur : lancer et développer votre activité",
+            "description": "17 modules : positionnement, client idéal, offre, business plan, législation du métier, tunnel de vente, réseaux sociaux, campagnes publicitaires."
+          }
+        ],
+        "hasCourseInstance": [
+          {
+            "@type": "CourseInstance",
+            "name": "Formule intensive, 6 mois",
+            "courseMode": "online",
+            "location": {
+              "@type": "VirtualLocation",
+              "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/"
+            },
+            "courseWorkload": "PT1200H",
+            "courseSchedule": {
+              "@type": "Schedule",
+              "repeatFrequency": "Weekly",
+              "repeatCount": 25,
+              "duration": "PT2H"
+            },
+            "offers": {
+              "@type": "Offer",
+              "category": "Tuition",
+              "price": "1490",
+              "priceCurrency": "EUR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/#cdn-offre"
+            },
+            "instructor": [
+              {
+                "@id": "https://ecole-naturo.fr/#eva-mischler"
+              },
+              {
+                "@id": "https://ecole-naturo.fr/#sabrina-dussart"
+              },
+              {
+                "@id": "https://ecole-naturo.fr/#solene-geoffroy"
+              }
+            ],
+            "description": "Accompagnement de 6 mois, plus de 25 visioconférences collectives, ressources accessibles à vie, 1 490 € ou 6 mensualités sans frais."
+          },
+          {
+            "@type": "CourseInstance",
+            "name": "Formule sérénité, 24 mois",
+            "courseMode": "online",
+            "location": {
+              "@type": "VirtualLocation",
+              "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/"
+            },
+            "courseWorkload": "PT1200H",
+            "courseSchedule": {
+              "@type": "Schedule",
+              "repeatFrequency": "Weekly",
+              "repeatCount": 100,
+              "duration": "PT2H"
+            },
+            "offers": {
+              "@type": "Offer",
+              "category": "Tuition",
+              "price": "3000",
+              "priceCurrency": "EUR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/#cdn-offre"
+            },
+            "instructor": [
+              {
+                "@id": "https://ecole-naturo.fr/#eva-mischler"
+              },
+              {
+                "@id": "https://ecole-naturo.fr/#sabrina-dussart"
+              },
+              {
+                "@id": "https://ecole-naturo.fr/#solene-geoffroy"
+              }
+            ],
+            "description": "Accompagnement de 24 mois, plus de 100 visioconférences collectives, 6 visioconférences privées en 1-to-1, coaching business, 3 000 € ou 10 mensualités sans frais."
+          }
+        ],
+        "offers": {
+          "@type": "AggregateOffer",
+          "lowPrice": "1490",
+          "highPrice": "3000",
+          "priceCurrency": "EUR",
+          "offerCount": "2",
+          "availability": "https://schema.org/InStock",
+          "url": "https://ecole-naturo.fr/formation-naturopathie-a-distance/#cdn-offre"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "reviewCount": "31",
+          "bestRating": "5",
+          "worstRating": "1"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://ecole-naturo.fr/formation-naturopathie-a-distance/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Combien de modules contient le programme de la formation naturopathie ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Le programme compte plus de 50 modules de cours répartis en 5 piliers : 16 modules de socle scientifique, 13 techniques naturopathiques, 4 modules d’accompagnement humain, 10 études de cas cliniques et 17 modules Naturopreneur. L’ensemble représente 1 200 heures de formation, accessibles dès votre inscription et à vie."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quel est le volume horaire de la formation ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Le cursus complet représente 1 200 heures de formation. Ce volume couvre les cours écrits et vidéo, les masterclasses du dimanche, les études de cas et les modules Naturopreneur. Vous le répartissez sur 6 mois en formule intensive ou sur 24 mois en formule sérénité, à raison d’environ 2 heures par semaine en formule longue."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelles techniques naturopathiques sont enseignées ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Le pilier 2 couvre 13 techniques : phytothérapie, aromathérapie, fleurs de Bach, gemmothérapie, hydrologie, compléments alimentaires, réflexologie, massages naturopathiques, iridologie, kinésiologie, lithothérapie, actinologie et magnétologie, travail postural. Pour chacune, vous étudiez les indications, les contre-indications et les protocoles d’usage, afin de construire une consultation sur mesure."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Le programme comprend-il des études de cas pratiques ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. Le pilier 4 rassemble 10 dossiers clients réels : endométriose, fibromyalgie, diabète de type 2, cystites récurrentes, allergies au pollen, déséquilibres hormonaux, eczéma et psoriasis, troubles digestifs, burn-out, stress chronique. Chaque cas présente l’anamnèse, le bilan de vitalité et le protocole d’accompagnement. Un cas est corrigé en live chaque jeudi."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Le programme inclut-il la création de mon activité ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. Le pilier Naturopreneur compte 17 modules : positionnement, client idéal, offre, business plan, législation du métier, tunnel de vente, réseaux sociaux, campagnes publicitaires. En formule 24 mois, un coaching business dédié au lancement d’activité et aux premiers clients s’ajoute au programme."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Comment se déroule le programme semaine après semaine ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Chaque semaine suit le même fil : étude de cas ou challenge le lundi, correction d’un cas en live le jeudi, masterclass et coaching de groupe le dimanche à 18 h. Entre ces rendez-vous, vous avancez sur la plateforme, accessible 24 h/24, et posez vos questions sans limite sur le forum privé. Tout est enregistré et disponible en replay."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelle différence de contenu entre la formule 6 mois et la formule 24 mois ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Aucune sur le contenu : les 50+ modules, les 10 études de cas et les 17 modules Naturopreneur sont identiques. La formule 24 mois ajoute un accompagnement 4 fois plus long, plus de 100 visioconférences collectives au lieu de 25, 6 visioconférences privées en 1-to-1 et un coaching business."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Puis-je suivre le programme en débutant totalement ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. Aucun prérequis de formation n’est requis. Le socle scientifique repart des fondements : notion de terrain, émonctoires, physiologie des 11 systèmes du corps. Reconversion complète, professionnel de santé qui élargit sa pratique ou passionné de santé naturelle : la progression va du simple vers le complexe, à votre rythme."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Comment fonctionne le paiement ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Deux formules au choix : 1 490 € en formule intensive (6 mois), réglable en une fois ou en 6 mensualités sans frais, ou 3 000 € en formule sérénité (24 mois), réglable en 10 mensualités sans frais, par carte bancaire. Aucun frais caché. Dès l’inscription, vous accédez au forum privé, aux modules, aux études de cas et aux masterclasses."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quand est délivré le certificat de praticien professionnel ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Le certificat de praticien professionnel de conseiller(ère) en diététique et naturopathie est délivré après un délai minimum de 3 mois d’inscription, une fois les questionnaires d’auto-évaluation réalisés. Il n’y a pas d’examen final. Si vous démarrez le 1er mai, vous le recevez à partir du 1er août. Vos ressources pédagogiques restent accessibles à vie."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/#eva-mischler",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "url": "https://ecole-naturo.fr/eva-mischler/"
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/#sabrina-dussart",
+        "name": "Sabrina Dussart",
+        "jobTitle": "Naturopathe CENATHO-FENA et autrice",
+        "url": "https://ecole-naturo.fr/sabrina-dussart/"
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/#solene-geoffroy",
+        "name": "Solène Geoffroy",
+        "jobTitle": "Diététicienne et formatrice",
+        "url": "https://ecole-naturo.fr/solene-geoffroy/"
+      }
+    ]
+  },
+  "jsonld_note": "Le bloc est déjà embarqué en fin de corps HTML (commentaire ENA-SCHEMA-COURSE-FAQ) et remplace l'ancien. Yoast n'émet ni Course ni FAQPage : pas de doublon. Le WebPage porte le même @id que celui de Yoast (URL de la page) pour fusionner les deux descriptions. Tester sur https://search.google.com/test/rich-results et https://validator.schema.org/.",
+  "internal_links_out": [
+    {
+      "url": "https://ecole-naturo.fr/",
+      "anchor": "notre formation de naturopathe à distance",
+      "position": "intro sous le H1",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/",
+      "anchor": "la formation naturopathe de l'École Naturo",
+      "position": "bloc de fin de page",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/eva-mischler/",
+      "anchor": "Eva Mischler",
+      "position": "bloc vérificatrice + fiche formatrice",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/sabrina-dussart/",
+      "anchor": "Sabrina Dussart",
+      "position": "fiche formatrice",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/solene-geoffroy/",
+      "anchor": "Solène Geoffroy",
+      "position": "fiche formatrice",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/diplome-naturopathie/",
+      "anchor": "Tout comprendre sur la « reconnaissance par l'État » des formations naturopathie",
+      "position": "section certification (conservé)",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/comparatif-formations-naturopathie/",
+      "anchor": "Voir le comparatif complet : 14 critères, 6 écoles",
+      "position": "section comparatif (conservé)",
+      "verified_in_sitemap": true
+    },
+    {
+      "url": "https://ecole-naturo.fr/cours-de-naturopathie/",
+      "anchor": "cours de naturopathie",
+      "position": "fin de page (conservé)",
+      "verified_in_sitemap": true
+    }
+  ],
+  "internal_links_in_to_update": [
+    {
+      "from": "https://ecole-naturo.fr/ (page 20379, carte « Formation naturopathe »)",
+      "current_anchor": "Voir le détail du programme à distance →",
+      "suggested_anchor": "Voir le programme détaillé : 50+ modules, 1 200 h →",
+      "reason": "Ancre alignée sur la nouvelle intention de la page 42322."
+    }
+  ],
+  "what_changed": [
+    "H1, intro, H2 d'ouverture, sous-titres et FAQ recentrés sur « programme / modules / contenu du cursus / ce que vous apprenez / volume horaire / déroulé sur 6 ou 24 mois ». Le slug ne change pas.",
+    "Section d'ouverture réécrite : 6 cartes = 5 piliers + déroulé, suivie d'un tableau « Le programme en chiffres ».",
+    "Nouvelle section « Comment se déroule le programme sur 6 ou 24 mois ? » avec deux tableaux (semaine type ; 6 mois vs 24 mois).",
+    "FAQ entièrement réécrite : 10 questions sur le programme, réponses de 42 à 60 mots, JSON-LD FAQPage généré depuis le même texte.",
+    "Toutes les preuves conservées : témoignages, formatrices, piliers détaillés, certification (NDA, RNCP, DRIEETS), tarifs et boutons de paiement, comparatif 4 écoles, débouchés, distance vs présentiel.",
+    "Lien contextuel vers l'accueil ajouté dans l'intro (ancre « notre formation de naturopathe à distance ») ; le lien de fin vers l'accueil reformulé avec une ancre différente.",
+    "Retrait de tous les tirets cadratins du texte (il n'en reste qu'un dans un commentaire CSS), du « 90 % » non sourcé, et de l'ancre « la formation naturopathe » qui reprenait mot pour mot la requête money de l'accueil.",
+    "Fiches formatrices reliées à leurs pages ; rôle de chacune exprimé par pilier enseigné.",
+    "Aucune mention CPF trouvée dans la source (0 occurrence) : rien à retirer."
+  ],
+  "notes_julien": [
+    "Eva Mischler : la page 42322 disait « 600+ personnes accompagnées », sa page auteur et l'accueil disent « plus de 800 ». Aligné sur 800+. À confirmer.",
+    "Avis Google : la page dit 31 avis (3 endroits + aggregateRating du JSON-LD), l'accueil dit 32. Mettre le chiffre du jour partout, en une seule passe.",
+    "RNCP : la mention « non inscrite au RNCP (comme toutes les formations de naturopathie) » vient de la source. [À VÉRIFIER PAR JULIEN] car une inscription RNCP concurrente peut apparaître ; sinon écrire « notre certification n'est pas inscrite au RNCP ».",
+    "Urgence artificielle : « Cette offre est réservée aux 50 premiers inscrits » + date de clôture recalculée chaque mois par le script cdn-deadline-dyn-js. C'est un risque Trust (QRG) et un risque DGCCRF (fausse urgence). Recommandation : soit une vraie date, soit retirer la barre et la section finale d'urgence. Non modifié, hors périmètre.",
+    "Répartition des rôles entre formatrices (Eva : piliers 1, 2, 4 ; Sabrina : pilier 3 ; Solène : diététique) déduite des fiches existantes. À confirmer.",
+    "Information gain supplémentaire possible : [CAS TERRAIN À VALIDER PAR EVA] un paragraphe à la première personne sous le pilier 4 (« comment je corrige un cas le jeudi »), 80 à 120 mots.",
+    "Le H1 reste dans le corps, comme dans la source (template natif pleine largeur). Vérifier que le thème n'affiche pas en plus le titre WordPress, sinon double H1.",
+    "Les 3 anciennes questions de FAQ retirées (temps plein, venant du soin, groupe Facebook) sont couvertes par l'accueil. Si tu veux les garder, les ajouter après les 10 nouvelles sans toucher au JSON-LD.",
+    "Après publication : demander l'indexation des deux URL dans Search Console, puis attendre 28 jours. Résultat attendu : la page 42322 disparaît de « formation naturopathe à distance » (voulu) et apparaît sur « programme formation naturopathie ».",
+    "Mots-clés secondaires non relevés par outil dans cette session : à compléter avec serp_analysis + page_keywords sur « programme formation naturopathie » avant publication si tu veux affiner les H2."
+  ],
+  "verifications_dures": [
+    {
+      "check": "1. Auteur réel, nommé, qualifié pour CE sujet",
+      "verdict": "OK",
+      "detail": "Eva Mischler, naturopathe et formatrice depuis 2017 (page https://ecole-naturo.fr/eva-mischler/), enseigne les piliers décrits. Bloc « Contenu vérifié par » en tête de page, daté du 14 septembre 2026, et reviewedBy dans le WebPage du JSON-LD."
+    },
+    {
+      "check": "2. Aucune affirmation santé non sourcée",
+      "verdict": "OK",
+      "detail": "La page ne formule aucun effet sur une pathologie : les pathologies citées sont des intitulés d'études de cas. Le « 90 % de vos clients viendront aussi pour leur tête » de la source, sans origine, a été retiré et remplacé par « une grande partie »."
+    },
+    {
+      "check": "3. Aucune promesse thérapeutique",
+      "verdict": "OK",
+      "detail": "Aucun « soigne / guérit / traite ». Le rappel « le naturopathe-conseil accompagne et éduque ; il ne diagnostique ni ne prescrit » est conservé deux fois (certification, débouchés)."
+    },
+    {
+      "check": "4. Aucun chiffre, étude ou source inventé",
+      "verdict": "OK",
+      "detail": "Tous les chiffres viennent de la page source 42322 ou de l'accueil 20379 : 1 200 h, 50+ modules, 16/13/4/17 modules, 10 études de cas, 1 490 € / 6 x 248 €, 3 000 € / 10 x 300 €, +25 / +100 visios, 6 visios 1-to-1, réponse < 48 h, certificat après 3 mois, 4,9/5 sur 31 avis, QCM après chaque module, 2 h par semaine, 2 modules par semaine. Aucun chiffre externe ajouté."
+    },
+    {
+      "check": "5. Aucune URL interne devinée",
+      "verdict": "OK",
+      "detail": "7 liens internes, tous présents dans wp/urls.txt : /, /comparatif-formations-naturopathie/, /cours-de-naturopathie/, /diplome-naturopathie/, /eva-mischler/, /sabrina-dussart/, /solene-geoffroy/."
+    },
+    {
+      "check": "6. Information gain démontrable",
+      "verdict": "OK",
+      "detail": "Trois tableaux absents des pages concurrentes : « Le programme en chiffres » (pilier / volume / compétence visée / mise en pratique), « Une semaine type dans le programme » et « 6 mois ou 24 mois : ce qui change dans le déroulé ». Un cas terrain d'Eva à la première personne serait un plus : voir notes_julien."
+    },
+    {
+      "check": "7. Chiffres canoniques conformes",
+      "verdict": "À RECOUPER",
+      "detail": "La mémoire projet ecole-naturo-canonical-eeat-facts n'était pas chargée dans cette session : les chiffres ont été recoupés uniquement entre les pages sources fournies. Deux divergences relevées et tranchées (voir notes) : 600+ vs 800+ personnes accompagnées par Eva, 31 vs 32 avis Google."
+    },
+    {
+      "check": "8. Journal renseigné",
+      "verdict": "OK",
+      "detail": "Voir la section « journal » ci-dessous."
+    }
+  ],
+  "journal": [
+    "[ERREUR CONSTATÉE] La page source affirmait « 90 % de vos clients viendront aussi pour leur tête » sans aucune source. Règle à ajouter : tout pourcentage présent dans une page de vente est traité comme une affirmation à sourcer ou à retirer, même s'il ne porte pas sur la santé.",
+    "[ERREUR CONSTATÉE] La même preuve porte deux chiffres différents selon la page (Eva : 600+ sur la page 42322, 800+ sur sa page auteur et sur l'accueil ; avis Google : 31 sur la page 42322, 32 sur l'accueil). Règle à ajouter : avant toute réécriture, extraire les chiffres de preuve des pages sœurs et aligner sur la page canonique (page auteur pour un formateur, fiche Google du jour pour les avis).",
+    "[ERREUR CONSTATÉE] La page embarque un compte à rebours (« clôture le [dernier jour du mois] ») recalculé par script à chaque visite, donc jamais réellement clos. Règle à ajouter : signaler toute urgence artificielle comme risque Trust / DGCCRF dans les notes, même hors périmètre de la demande.",
+    "[ERREUR CONSTATÉE] La vérification 7 (chiffres canoniques) suppose une mémoire projet qui n'était pas chargée. Règle à ajouter : quand la mémoire canonique n'est pas disponible, le dire explicitement dans le verdict et se limiter aux sources fournies plutôt que de coter « OK »."
+  ]
+}

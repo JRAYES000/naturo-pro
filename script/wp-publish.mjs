@@ -53,8 +53,10 @@ async function wp(route, method = "GET", body) {
 const FORBIDDEN = [/\bCPF\b/i, /mon compte formation/i];
 
 function buildContent(html, meta) {
-  let out = html.trim();
-  if (meta.jsonld) {
+  // Les commentaires HTML de travail (vérifications, journal, repères d'images) ne partent pas
+  // en prod ; seuls les commentaires de blocs Gutenberg (<!-- wp:… -->) sont conservés.
+  let out = html.replace(/<!--(?!\s*\/?wp:)[\s\S]*?-->/g, "").trim();
+  if (meta.jsonld && !out.includes("application/ld+json")) {
     const ld = Array.isArray(meta.jsonld) ? meta.jsonld : [meta.jsonld];
     for (const block of ld) out += `\n\n<script type="application/ld+json">\n${JSON.stringify(block, null, 1)}\n</script>`;
   }
