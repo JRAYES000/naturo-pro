@@ -1,0 +1,235 @@
+{
+  "type": "post",
+  "action": "create",
+  "id": null,
+  "slug": "apprendre-naturopathie-animale-livres-ressources",
+  "title": "Apprendre la naturopathie animale : livres, ressources et limites de l'autoformation",
+  "yoast_title": "Apprendre la naturopathie animale : livres et limites",
+  "yoast_desc": "Apprendre la naturopathie animale : 7 livres vérifiés, critères de choix, ressources fiables et ce que l'autoformation ne remplace pas. Par l'École Naturo.",
+  "focus_kw": "livre naturopathie animale",
+  "secondary_keywords": [
+    "livre naturopathie animale (40/mois, Ubersuggest FR 14/09/2026)",
+    "apprendre naturopathie animale (0/mois)",
+    "se former naturopathie animale (0/mois)",
+    "relevés sur la page n°1 (inh.life) : livre naturopathie animale (40), naturopathie chien (70), naturopathe animalier (590), naturopathe chien (70)"
+  ],
+  "author": 2,
+  "categories": [
+    20,
+    78
+  ],
+  "status": "draft",
+  "publish_date_suggested": "2026-10-26",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://ecole-naturo.fr/blog/apprendre-naturopathie-animale-livres-ressources/#article",
+        "headline": "Apprendre la naturopathie animale : livres, ressources et limites de l'autoformation",
+        "description": "Apprendre la naturopathie animale : 7 livres vérifiés, critères de choix, ressources fiables et ce que l'autoformation ne remplace pas. Par l'École Naturo.",
+        "image": "[À COMPLÉTER : URL de l'image à la une]",
+        "datePublished": "2026-10-26",
+        "dateModified": "2026-10-26",
+        "inLanguage": "fr-FR",
+        "author": {
+          "@id": "https://ecole-naturo.fr/eva-mischler/#person"
+        },
+        "publisher": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        },
+        "mainEntityOfPage": {
+          "@id": "https://ecole-naturo.fr/blog/apprendre-naturopathie-animale-livres-ressources/#webpage"
+        },
+        "isPartOf": {
+          "@id": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/eva-mischler/#person",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "url": "https://ecole-naturo.fr/eva-mischler/",
+        "worksFor": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        }
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://ecole-naturo.fr/#organization",
+        "name": "École Naturo",
+        "url": "https://ecole-naturo.fr",
+        "logo": "[À COMPLÉTER : URL du logo dans la médiathèque]"
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/blog/apprendre-naturopathie-animale-livres-ressources/#webpage",
+        "url": "https://ecole-naturo.fr/blog/apprendre-naturopathie-animale-livres-ressources/",
+        "name": "Apprendre la naturopathie animale : livres, ressources et limites de l'autoformation",
+        "inLanguage": "fr-FR"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Accueil",
+            "item": "https://ecole-naturo.fr/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Blog",
+            "item": "https://ecole-naturo.fr/blog/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Apprendre la naturopathie animale : livres, ressources et limites de l'autoformation"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://ecole-naturo.fr/blog/apprendre-naturopathie-animale-livres-ressources/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Peut-on devenir naturopathe animalier en autodidacte ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "La profession n'étant pas réglementée, rien ne l'interdit. En pratique, l'autoformation couvre la culture générale et les bases de nutrition, pas la physiologie comparée, la sécurité par espèce ni la posture face au vétérinaire : une formation encadrée reste nécessaire pour pratiquer sans risque."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quel est le meilleur livre pour débuter en naturopathie animale ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Pour un premier socle sur le chien et le chat, deux ouvrages signés par des vétérinaires sont adaptés : « Le grand livre des médecines naturelles pour mon chat et mon chien » d'Ariane Garber (Eyrolles, 2022) et le « Guide de naturopathie vétérinaire pour chiens et chats » de Maïté Molla-Petot et Dominique Grandjean (Bussière, 2019)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Un livre écrit par un vétérinaire peut-il être appliqué par un naturopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Pas entièrement. Les livres de vétérinaires décrivent souvent des usages par pathologie, qui relèvent d'actes réservés au vétérinaire (diagnostic, traitement, prescription). Le naturopathe animalier en retient la physiologie, la nutrition et les précautions, rien de ce qui concerne une maladie."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Existe-t-il un livre de naturopathie animale pour le cheval ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Les références sérieuses sur les plantes et le cheval sont écrites par des vétérinaires, comme le tome 2 des « Médecines naturelles en élevage » de Philippe Labre (Femenvet, 2017). Pour la physiologie, l'alimentation et les plantes toxiques du cheval, Équipédia (IFCE) est la source gratuite la plus fiable."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelles sources gratuites sont fiables en naturopathie animale ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Équipédia (IFCE) pour le cheval, les fiches du Centre antipoison animal et environnemental de l'Ouest pour les toxiques et les huiles essentielles, et Légifrance pour le cadre légal (articles L243-1 à L243-5 du Code rural)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Combien de temps faut-il pour apprendre la naturopathie animale ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Quelques mois de lecture suffisent pour la culture générale. Le cursus de l'École Naturo prévoit six mois d'accompagnement, à votre rythme et à distance. La pratique et la veille continuent ensuite."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "internal_links_out": [
+    "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/",
+    "https://ecole-naturo.fr/formation-naturopathie-animale/",
+    "https://ecole-naturo.fr/guide-naturopathie-animale/",
+    "https://ecole-naturo.fr/blog/phytotherapie-chien-chat-plantes-toxiques/",
+    "https://ecole-naturo.fr/blog/barf-chien-alimentation-naturelle-guide-complet/",
+    "https://ecole-naturo.fr/blog/bien-etre-naturel-cheval-besoins-fondamentaux/",
+    "https://ecole-naturo.fr/eva-mischler/"
+  ],
+  "notes_julien": [
+    "Sept livres vérifiés par recherche web (titre, auteur, éditeur, année) le 14/09/2026 ; URLs de fiches éditeur/libraire en sources. « Soigner son cheval par les plantes » (Émilie Graebling, Artémis, 2017) a été écarté : qualification de l'auteure non vérifiable.",
+    "Blanchard & Paragon : 1re édition 2008 confirmée (Mollat). Une 2e édition (2020 ?) apparaît dans les résultats sans confirmation : marqué [À VÉRIFIER PAR JULIEN] dans le tableau.",
+    "Pierre May : 2e édition Med'Com datée du 11/12/2024 (fiche livres-medicaux.com), 1re édition 2014 ; qualification « docteur vétérinaire » lue sur la fiche de la 1re édition.",
+    "CAPAE-Ouest « environ 70 % des cas concernent le chat » : lu dans un extrait de recherche citant le centre ; page non lue directement. À contrôler sur centre-antipoison-animal.com.",
+    "Le pivot 8203 contient un lien « Livres de référence en naturopathie animale (en savoir plus) » : le faire pointer vers cet article une fois publié.",
+    "Un marqueur [LIEN À CRÉER : cadre légal] dans le corps : remplacer par l'URL de l'article 2 une fois publié.",
+    "Cas terrain marqué [CAS TERRAIN À VALIDER PAR EVA] : proposé, non fourni.",
+    "Qualification animale d'Eva à confirmer (voir article 1).",
+    "Une image à insérer. Image à la une et logo à renseigner dans le JSON-LD."
+  ],
+  "verifications_dures": [
+    {
+      "n": 1,
+      "verification": "Auteur réel, nommé, qualifié pour CE sujet",
+      "verdict": "À CONFIRMER",
+      "detail": "Eva Mischler, formatrice, référente du cursus animal ; sujet pédagogique cohérent avec son rôle. Qualification animale à confirmer."
+    },
+    {
+      "n": 2,
+      "verification": "Aucune affirmation santé non sourcée",
+      "verdict": "OK",
+      "detail": "Seule donnée santé : sensibilité du chat aux huiles essentielles (CAPAE-Ouest, ~70 % des cas), issue d'une recherche web citant le centre ; à contrôler."
+    },
+    {
+      "n": 3,
+      "verification": "Aucune promesse thérapeutique",
+      "verdict": "OK",
+      "detail": "« Soigner » n'apparaît que dans un titre de livre ; « traiter » uniquement pour les actes réservés au vétérinaire."
+    },
+    {
+      "n": 4,
+      "verification": "Aucun chiffre, étude ou source inventé",
+      "verdict": "OK avec réserve",
+      "detail": "7 livres vérifiés (titre, auteur, éditeur, année) avec URL de fiche ; un titre écarté faute de qualification vérifiable. Édition récente de Blanchard & Paragon marquée [À VÉRIFIER PAR JULIEN]."
+    },
+    {
+      "n": 5,
+      "verification": "Aucune URL interne devinée",
+      "verdict": "OK",
+      "detail": "7 liens internes, tous vérifiés. Lien vers l'article cadre légal en [LIEN À CRÉER]."
+    },
+    {
+      "n": 6,
+      "verification": "Information gain démontrable",
+      "verdict": "OK",
+      "detail": "Grille de choix en 5 critères appliquée livre par livre, tableau seul / avec cadre, tableau autoformation vs formation encadrée, parcours en 4 étapes, cas terrain à valider."
+    },
+    {
+      "n": 7,
+      "verification": "Chiffres canoniques conformes",
+      "verdict": "OK",
+      "detail": "1 490 €, six mois, sept modules, 100 % à distance : page de vente 40874. Guide gratuit 12 pages : page 42894."
+    },
+    {
+      "n": 8,
+      "verification": "Journal renseigné",
+      "verdict": "OK",
+      "detail": "Voir section Journal."
+    }
+  ],
+  "journal": [
+    "[ERREUR CONSTATÉE] Un livre pertinent (Graebling, Artémis 2017) a dû être écarté faute de qualification d'auteur vérifiable ; un autre (Blanchard & Paragon) a une édition récente non confirmée. → Règle : pour une sélection de livres, vérifier en priorité la qualification de l'auteur et l'édition la plus récente ; un titre sans auteur qualifiable n'est pas cité, même s'il est populaire.",
+    "[ERREUR CONSTATÉE] La SERP « livre naturopathie animale » est occupée par des libraires et des écoles concurrentes, pas par des articles ; la page n°1 (inh.life) est une page de formation. → Règle : sur une requête « livre + sujet », l'information gain vient de la grille de lecture appliquée, pas de la liste ; ne pas viser plus de 7-8 titres."
+  ],
+  "checks_auto": {
+    "mots (texte hors balises)": 2250,
+    "URLs internes hors sitemap": [],
+    "nb liens internes": 7,
+    "yoast_title len": 53,
+    "yoast_desc len": 155,
+    "FAQ count": 6,
+    "tables": 3,
+    "h2": 7,
+    "définition (mots)": 50
+  }
+}
