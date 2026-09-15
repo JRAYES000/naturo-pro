@@ -154,7 +154,7 @@ export default function Landing() {
                 (hash), cf. commentaire de tête de client/src/main.tsx — un Link
                 client-side ne pourrait pas y accéder, il faut une vraie navigation. */}
             <a href="/login" className="text-sm font-bold px-3 sm:px-4 py-2 rounded-lg hover:bg-secondary transition" data-testid="link-login">Connexion</a>
-            <a href="/register" className="btn-primary-naturo text-sm" data-testid="link-register">Créer un compte</a>
+            <a href="/inscription" className="btn-primary-naturo text-sm" data-testid="link-register">Créer un compte</a>
           </nav>
         </div>
       </header>
@@ -174,7 +174,7 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-wrap justify-center gap-3 mb-5">
-            <a href="/register" className="btn-primary-naturo" data-testid="cta-hero-register">
+            <a href="/inscription" className="btn-primary-naturo" data-testid="cta-hero-register">
               Démarrer gratuitement <ArrowRight className="h-4 w-4" />
             </a>
             {/* A2/A7 — l'annuaire remplace le lien direct vers la fiche de
@@ -324,7 +324,7 @@ export default function Landing() {
               <p className="text-white/75 text-lg mt-5 mb-8 max-w-xl mx-auto leading-relaxed">
                 Rejoignez les naturopathes qui ont fait le choix de la simplicité.
               </p>
-              <a href="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground font-bold px-8 py-4 transition hover:opacity-90" data-testid="cta-bottom-register">
+              <a href="/inscription" className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground font-bold px-8 py-4 transition hover:opacity-90" data-testid="cta-bottom-register">
                 Créer mon compte gratuitement <ArrowRight className="h-4 w-4" />
               </a>
               <p className="text-white/60 text-sm mt-5">Sans carte bancaire · Sans engagement</p>

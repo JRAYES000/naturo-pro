@@ -91,6 +91,25 @@ export function formatPrice(cents: number): string {
 }
 
 /**
+ * Ajuste un `<title>` à `max` caractères (audit Ubersuggest du 15/09/2026 : trois
+ * titres dépassaient 65 caractères).
+ *
+ * `core` + `suffix` si ça tient, sinon `core` seul, et si `core` seul dépasse
+ * encore `max`, une troncature propre sur une frontière de mot avec « … ». Sert
+ * aux DEUX gabarits dont le dépassement dépend d'une donnée variable (nom de
+ * ville, nom de praticien) : renderCityPage ici, et buildSeoHead dans static.ts.
+ */
+export function fitTitle(core: string, suffix = " | Naturo Pro", max = 65): string {
+  const withSuffix = `${core}${suffix}`;
+  if (withSuffix.length <= max) return withSuffix;
+  if (core.length <= max) return core;
+  const truncated = core.slice(0, max - 1);
+  const lastSpace = truncated.lastIndexOf(" ");
+  const base = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated;
+  return `${base}…`;
+}
+
+/**
  * Un profil est-il assez complet pour être indexé (A11) ?
  *
  * En dessous du seuil, la page reste accessible par son lien direct — la
@@ -211,7 +230,7 @@ export function renderSeoPage(opts: {
   <nav class="site">
     <a href="/naturopathes">Annuaire</a>
     <a href="/logiciel-naturopathe">Le logiciel</a>
-    <a href="/register">Essai gratuit</a>
+    <a href="/inscription">Essai gratuit</a>
   </nav>
 </div></header>
 ${opts.bodyHtml}
@@ -262,6 +281,29 @@ export function renderDirectoryIndex(base: string, profiles: SeoProfile[]): stri
   ${total === 0
     ? "<p class=\"lead\">Aucune fiche n'est publiée pour le moment.</p>"
     : `<div class="grid">${indexable.map(profileCard).join("\n")}</div>`}
+
+  <h2>Comment choisir un naturopathe</h2>
+  <p class="lead">La naturopathie n'est pas un titre protégé en France : la formation et l'expérience varient
+  beaucoup d'un praticien à l'autre. Avant de prendre rendez-vous, quelques points valent la peine d'être
+  vérifiés : la présentation du praticien mentionne-t-elle sa formation et ses certifications, ses spécialités
+  correspondent-elles à ce que vous cherchez (alimentation, sommeil, gestion du stress, accompagnement
+  sportif...), et les tarifs des prestations sont-ils affichés clairement avant la réservation. Un praticien
+  sérieux explique aussi ce que la naturopathie peut et ne peut pas faire : elle relève du bien-être et de la
+  prévention, elle ne remplace ni un diagnostic ni un traitement médical, et elle s'articule avec un suivi
+  médical plutôt qu'elle ne s'y substitue.</p>
+
+  <h2>Ce que vous trouvez sur chaque fiche</h2>
+  <p class="lead">Chaque fiche de cet annuaire réunit la présentation du praticien, ses spécialités, l'adresse
+  du cabinet quand il en a un, et la liste de ses prestations avec leur durée et leur tarif. Le bouton de
+  réservation ouvre directement les créneaux réellement disponibles dans son agenda : pas de rappel
+  téléphonique ni de délai de réponse, la confirmation arrive par email dès que le créneau est choisi.</p>
+
+  <h2>Pourquoi certaines fiches n'apparaissent pas encore</h2>
+  <p class="lead">Une fiche n'entre dans cet annuaire, et dans les pages par ville, que si elle est suffisamment
+  complète : ville renseignée, au moins une spécialité, une présentation d'une longueur minimale et au moins
+  une prestation active. Un praticien qui vient de créer son compte peut donc avoir une page de réservation
+  fonctionnelle sans encore apparaître ici — le temps de compléter son profil.</p>
+
   <h2>Vous êtes naturopathe ?</h2>
   <p class="lead">Créez votre page de réservation en ligne, gérez votre agenda, vos dossiers clients et
   votre facturation depuis un seul outil, pensé pour la naturopathie.</p>
@@ -286,7 +328,7 @@ export function renderDirectoryIndex(base: string, profiles: SeoProfile[]): stri
   };
 
   return renderSeoPage({
-    title: "Annuaire des naturopathes — prendre rendez-vous en ligne | Naturo Pro",
+    title: "Annuaire des naturopathes — rendez-vous en ligne | Naturo Pro",
     description: `Trouvez un naturopathe et réservez votre consultation en ligne. ${total} praticien${total > 1 ? "s" : ""} avec spécialités, tarifs et disponibilités à jour.`,
     canonical: `${base}/naturopathes`,
     jsonLd,
@@ -334,7 +376,7 @@ export function renderCityPage(base: string, city: string, slug: string, profile
   };
 
   return renderSeoPage({
-    title: `Naturopathe à ${label} — ${n} praticien${n > 1 ? "s" : ""}, rendez-vous en ligne | Naturo Pro`,
+    title: fitTitle(`Naturopathe à ${label} — ${n} praticien${n > 1 ? "s" : ""}`),
     description: `Trouvez un naturopathe à ${label} : ${n} praticien${n > 1 ? "s" : ""}, spécialités, tarifs et prise de rendez-vous en ligne directe.`,
     canonical: `${base}/naturopathes/${slug}`,
     jsonLd,
@@ -381,7 +423,7 @@ export function renderSoftwarePage(base: string): string {
   <p class="lead">Naturo Pro est le logiciel de gestion pensé pour les naturopathes et les praticiens du
   bien-être. Agenda, réservation en ligne, anamnèse, comptes-rendus de séance, forfaits et facturation —
   au même endroit, en français, sans engagement.</p>
-  <p><a class="cta" href="/register">Démarrer l'essai gratuit</a></p>
+  <p><a class="cta" href="/inscription">Démarrer l'essai gratuit</a></p>
 </div></section>
 <div class="wrap">
   <h2>Ce que le logiciel prend en charge</h2>
@@ -402,7 +444,7 @@ export function renderSoftwarePage(base: string): string {
   <h2>Combien ça coûte</h2>
   <p class="lead">L'essai est gratuit et ne demande pas de carte bancaire. Vous testez toutes les fonctions,
   y compris la page de réservation en ligne, avant de décider.</p>
-  <p><a class="cta" href="/register">Créer mon compte gratuitement</a></p>
+  <p><a class="cta" href="/inscription">Créer mon compte gratuitement</a></p>
 
   <h2>Questions fréquentes</h2>
   ${faqHtml}
@@ -438,7 +480,7 @@ export function renderSoftwarePage(base: string): string {
   };
 
   return renderSeoPage({
-    title: "Logiciel pour naturopathe — agenda, clients et facturation | Naturo Pro",
+    title: "Logiciel naturopathe : agenda, clients, facturation | Naturo Pro",
     description:
       "Le logiciel de gestion des naturopathes : agenda, réservation en ligne, dossiers clients, anamnèse et facturation. En français, essai gratuit sans carte bancaire.",
     canonical: `${base}/logiciel-naturopathe`,
@@ -499,14 +541,72 @@ export function renderProfileBody(p: SeoProfile): string {
 export function renderHomeBody(profileCount: number): string {
   return `<div style="max-width:760px;margin:0 auto;padding:28px 20px;font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;line-height:1.65">
   <h1 style="font-size:1.9rem;margin:0 0 10px;color:${BRAND.dark}">Naturo Pro — le logiciel des naturopathes</h1>
-  <p>Agenda, réservation en ligne, dossiers clients, questionnaire d'anamnèse, forfaits et
-  facturation : Naturo Pro réunit la gestion d'un cabinet de naturopathie dans un seul outil,
-  en français, avec un essai gratuit sans carte bancaire.</p>
+  <p>Naturo Pro est un logiciel de gestion pensé pour les naturopathes, les sophrologues et, plus largement,
+  les praticiens du bien-être qui reçoivent des clients sur rendez-vous. Il réunit dans un seul outil ce qui,
+  dans beaucoup de cabinets, reste réparti entre un agenda papier, un tableur de suivi et un logiciel de
+  facturation séparé — avec la double saisie et les oublis que cette dispersion entraîne au quotidien.</p>
+  <p>Le cœur du logiciel tient en quatre briques : l'agenda avec ses rappels automatiques la veille du
+  rendez-vous, une page de réservation en ligne à votre nom pour que vos clients choisissent seuls leur
+  créneau, un dossier par client avec l'historique des séances et le questionnaire d'anamnèse rempli en ligne
+  avant la consultation, et enfin la facturation avec forfaits de plusieurs séances et encaissement en ligne
+  par Stripe si vous l'activez. Les programmes d'hygiène de vie réutilisables et la base de solutions
+  naturelles viennent compléter le suivi entre deux rendez-vous.</p>
+  <p>Chaque praticien dispose de sa propre page publique de réservation, consultable par ses clients sans
+  qu'ils aient besoin de créer de compte. Cette page reprend vos spécialités, vos prestations avec leur durée
+  et leur tarif, et vos disponibilités réelles, mises à jour automatiquement au fil de vos rendez-vous et de
+  vos jours bloqués.</p>
+  <p>L'interface est entièrement en français, et l'essai est gratuit : vous testez toutes les fonctions avant
+  de décider, sans carte bancaire à renseigner. La création d'un compte prend moins d'une minute.</p>
+  <p>Naturo Pro s'adresse aussi bien à un praticien qui démarre son activité, sans historique à reprendre,
+  qu'à un cabinet déjà installé qui cherche à sortir d'un agenda papier ou d'un tableur devenu difficile à
+  tenir à jour. Le passage d'un outil à l'autre se fait à votre rythme : rien n'oblige à tout basculer le
+  même jour, l'agenda et les dossiers clients peuvent être renseignés progressivement au fil des semaines.</p>
   <ul>
-    <li><a href="/logiciel-naturopathe">Logiciel pour naturopathe : fonctions, tarifs et questions fréquentes</a></li>
-    <li><a href="/naturopathes">Annuaire des naturopathes${profileCount > 0 ? ` — ${profileCount} praticien${profileCount > 1 ? "s" : ""}` : ""}</a></li>
-    <li><a href="/register">Créer un compte et démarrer l'essai gratuit</a></li>
+    <li><a href="/logiciel-naturopathe">Le logiciel pour naturopathe en détail : fonctions, tarifs et questions fréquentes</a></li>
+    <li><a href="/naturopathes">Annuaire des naturopathes${profileCount > 0 ? ` — ${profileCount} praticien${profileCount > 1 ? "s" : ""}` : ""}</a>, pour voir des pages de réservation publiées avec Naturo Pro</li>
+    <li><a href="/inscription">Créer un compte et démarrer l'essai gratuit</a></li>
   </ul>
+</div>`;
+}
+
+/** Titre et description de /inscription — distincts de ceux de l'accueil (A10). */
+export const REGISTER_TITLE = "Créer un compte gratuit | Naturo Pro";
+export const REGISTER_DESCRIPTION =
+  "Créez votre compte Naturo Pro en une minute : essai gratuit, sans carte bancaire, accès complet à l'agenda, à la réservation en ligne et à la facturation.";
+
+/**
+ * Corps pré-rendu de /inscription (défaut Ubersuggest du 15/09/2026 : la route
+ * était servie par le catch-all SPA, donc sans H1 ni texte réel).
+ *
+ * Même principe que renderHomeBody : styles inline uniquement (Tailwind est purgé
+ * à partir de client/src, une classe écrite ici n'existerait pas dans le CSS
+ * livré), React écrase ce bloc au montage.
+ */
+export function renderRegisterBody(): string {
+  return `<div style="max-width:760px;margin:0 auto;padding:28px 20px;font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;line-height:1.65">
+  <h1 style="font-size:1.9rem;margin:0 0 10px;color:${BRAND.dark}">Créer un compte Naturo Pro</h1>
+  <p>Naturo Pro est le logiciel de gestion pensé pour les naturopathes et les praticiens du bien-être. Créer un
+  compte prend moins d'une minute et donne un accès complet à l'agenda, à la réservation en ligne, aux
+  dossiers clients et à la facturation, sans carte bancaire à saisir.</p>
+  <p>Le formulaire d'inscription demande seulement votre nom, votre adresse email et un mot de passe. Une fois le
+  compte créé, un email de confirmation est envoyé et vous êtes redirigé vers un court parcours de mise en
+  route : renseigner votre ville et vos spécialités, ajouter vos premières prestations avec leur durée et leur
+  tarif, puis choisir vos disponibilités. Ce parcours peut être repris plus tard, à tout moment, depuis les
+  réglages du compte.</p>
+  <p>Pendant l'essai, toutes les fonctions du logiciel sont accessibles : l'agenda avec ses vues jour, semaine
+  et mois, la page publique de réservation en ligne à votre nom, le dossier client avec l'historique des
+  séances et le questionnaire d'anamnèse rempli en ligne avant la consultation, ainsi que la facturation avec
+  numérotation continue et forfaits de plusieurs séances. Aucune fonction n'est réservée à une offre payante
+  pendant la période d'essai.</p>
+  <p>Les données de votre cabinet et de vos clients sont hébergées en Europe. Chaque praticien ne voit que ses
+  propres dossiers, protégés par mot de passe. Vous restez responsable du traitement de vos données clients au
+  sens du RGPD ; le compte permet à tout moment d'exporter ou de supprimer un dossier. Un compte gratuit resté
+  inactif pendant douze mois est supprimé automatiquement, avec l'ensemble de ses données.</p>
+  <p>Vous hésitez encore entre plusieurs outils ? Consultez d'abord <a href="/logiciel-naturopathe">la
+  présentation détaillée du logiciel</a> : elle liste précisément ce que couvre chaque fonction, avec les
+  questions les plus fréquentes. Vous pouvez aussi <a href="/naturopathes">parcourir l'annuaire</a> pour voir
+  à quoi ressemble une page de réservation en conditions réelles, publiée par un autre praticien.</p>
+  <p>Vous avez déjà un compte ? <a href="/login">Connectez-vous</a> plutôt que d'en créer un second.</p>
 </div>`;
 }
 

@@ -1,13 +1,30 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import express from "express";
 import {
   buildSitemapXml, buildRobotsTxt, buildMetaDescription, buildLlmsTxt,
-  applySeoHead, applySeoBody, isSpaPath,
+  applySeoHead, applySeoBody, isSpaPath, registerSeoRoutes,
 } from "./static";
 import {
   citySlug, titleCase, isIndexable, missingForIndexing, groupByCity,
-  MIN_PROFILES_PER_CITY, type SeoProfile,
+  MIN_PROFILES_PER_CITY, fitTitle, renderRegisterBody, renderHomeBody,
+  renderDirectoryIndex, renderSoftwarePage, REGISTER_TITLE, type SeoProfile,
 } from "./seo-pages";
+
+/** Compte les mots d'un fragment HTML (balises et entités retirées). */
+function countWords(html: string): number {
+  const text = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z#0-9]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length ? text.split(" ").length : 0;
+}
+
+/** Extrait le contenu de <title>…</title>. */
+function extractTitle(html: string): string {
+  return (html.match(/<title>([^<]*)<\/title>/) || [, ""])[1];
+}
 
 /** Profil complet, donc indexable. Les tests en dérivent par surcharge. */
 function profile(over: Partial<SeoProfile> = {}): SeoProfile {
@@ -226,7 +243,7 @@ test("applySeoBody — le corps pré-rendu atterrit dans #root (A1)", () => {
 // ── A3 — 404 ──────────────────────────────────────────────────────────────────
 
 test("isSpaPath — les chemins réels de l'app sont servis en 200", () => {
-  for (const p of ["/", "/login", "/register", "/app", "/app/agenda", "/admin/users", "/manage/abc", "/anamnese/xyz", "/reset-password/tok", "/book/3"]) {
+  for (const p of ["/", "/login", "/inscription", "/app", "/app/agenda", "/admin/users", "/manage/abc", "/anamnese/xyz", "/reset-password/tok", "/book/3"]) {
     assert.equal(isSpaPath(p), true, `${p} devrait être servi par le SPA`);
   }
 });
@@ -234,5 +251,85 @@ test("isSpaPath — les chemins réels de l'app sont servis en 200", () => {
 test("isSpaPath — tout le reste part en 404 (A3)", () => {
   for (const p of ["/inexistant-abc123", "/annuaire", "/trouver-un-naturopathe", "/wp-admin", "/index.php"]) {
     assert.equal(isSpaPath(p), false, `${p} devrait répondre 404`);
+  }
+});
+
+// ── fitTitle — titres de gabarit à 65 caractères maximum (audit Ubersuggest 15/09/2026) ──
+
+test("fitTitle — core + suffixe si ça tient", () => {
+  assert.equal(fitTitle("Naturopathe à Paris"), "Naturopathe à Paris | Naturo Pro");
+});
+
+test("fitTitle — suffixe retiré si core seul tient mais pas avec le suffixe", () => {
+  const core = "Naturopathe à Saint-Léger-Aux-Bois - (76340) — 3 praticiens";
+  assert.equal(fitTitle(core), core);
+  assert.ok(fitTitle(core).length <= 65);
+});
+
+test("fitTitle — troncature propre sur une frontière de mot si core seul dépasse aussi max", () => {
+  const core = "Un nom de praticien extrêmement long qui dépasse la limite fixée pour un titre";
+  const out = fitTitle(core);
+  assert.ok(out.length <= 65, `longueur = ${out.length}`);
+  assert.ok(out.endsWith("…"));
+  // Pas coupé au milieu d'un mot : le caractère juste avant l'ellipse n'est jamais
+  // collé à un fragment de mot tronqué (on a coupé sur un espace).
+  assert.ok(!/\S…$/.test(out) || core.startsWith(out.slice(0, -1)));
+});
+
+test("fitTitle — respecte un max personnalisé", () => {
+  assert.equal(fitTitle("abc", " | X", 10), "abc | X");
+  assert.equal(fitTitle("abc", " | Suffixe trop long", 6), "abc");
+});
+
+// ── Titres ≤ 65 caractères (audit Ubersuggest 15/09/2026) ────────────────────
+
+test("titres fixes — /logiciel-naturopathe, /naturopathes et /inscription ≤ 65 caractères", () => {
+  const software = extractTitle(renderSoftwarePage("https://app.ecole-naturo.fr"));
+  const directory = extractTitle(renderDirectoryIndex("https://app.ecole-naturo.fr", []));
+  assert.ok(software.length <= 65, `logiciel-naturopathe = ${software.length} : "${software}"`);
+  assert.ok(directory.length <= 65, `naturopathes = ${directory.length} : "${directory}"`);
+  assert.ok(REGISTER_TITLE.length <= 65, `inscription = ${REGISTER_TITLE.length} : "${REGISTER_TITLE}"`);
+});
+
+// ── /inscription — contenu (défaut Ubersuggest 15/09/2026 : catch-all SPA, 0 mot, 0 H1) ──
+
+test("renderRegisterBody — exactement un <h1> et au moins 300 mots", () => {
+  const body = renderRegisterBody();
+  assert.equal((body.match(/<h1[\s>]/g) || []).length, 1);
+  assert.ok(countWords(body) >= 300, `mots = ${countWords(body)}`);
+});
+
+test("renderHomeBody et renderDirectoryIndex — au moins 300 mots chacun", () => {
+  assert.ok(countWords(renderHomeBody(0)) >= 300, `accueil = ${countWords(renderHomeBody(0))} mots`);
+  assert.ok(
+    countWords(renderDirectoryIndex("https://app.ecole-naturo.fr", [])) >= 300,
+    "l'annuaire doit tenir 300 mots hors fiches praticiens (0 profil ici)",
+  );
+});
+
+test("accueil, annuaire et inscription — aucun paragraphe recopié d'une page à l'autre", () => {
+  const extractParagraphs = (html: string) =>
+    Array.from(html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)).map((m) => m[1].replace(/\s+/g, " ").trim());
+  const home = extractParagraphs(renderHomeBody(0));
+  const register = extractParagraphs(renderRegisterBody());
+  const directory = extractParagraphs(renderDirectoryIndex("https://app.ecole-naturo.fr", []));
+  const all = [...home, ...register, ...directory];
+  assert.equal(new Set(all).size, all.length, "un même paragraphe apparaît sur plusieurs pages");
+});
+
+// ── /register → /inscription — redirection 301 (dev comme prod) ─────────────
+
+test("GET /register redirige en 301 vers /inscription", async () => {
+  const app = express();
+  registerSeoRoutes(app);
+  const server = app.listen(0);
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const { port } = server.address() as { port: number };
+    const res = await fetch(`http://127.0.0.1:${port}/register`, { redirect: "manual" });
+    assert.equal(res.status, 301);
+    assert.equal(res.headers.get("location"), "/inscription");
+  } finally {
+    server.close();
   }
 });

@@ -27,7 +27,8 @@ import { storage } from "./storage";
 import {
   esc, citySlug, titleCase, groupByCity, isIndexable, renderDirectoryIndex,
   renderCityPage, renderSoftwarePage, renderProfileBody, buildProfileJsonLd,
-  renderHomeBody, buildHomeJsonLd, formatPrice, type SeoProfile,
+  renderHomeBody, buildHomeJsonLd, formatPrice, fitTitle, renderRegisterBody,
+  REGISTER_TITLE, REGISTER_DESCRIPTION, type SeoProfile,
 } from "./seo-pages";
 
 export { esc };
@@ -118,7 +119,7 @@ function ogSizedImage(url: string): string {
  */
 export function buildSeoHead(p: SeoProfile, url: string, canonical: string): string {
   const name = titleCase(p.name);
-  const title = `${name} — Naturopathe${p.city ? ` à ${titleCase(p.city)}` : ""} | Naturo Pro`;
+  const title = fitTitle(`${name} — Naturopathe${p.city ? ` à ${titleCase(p.city)}` : ""}`);
   const desc = buildMetaDescription(p);
   const img = p.photoUrl && /^https?:\/\//.test(p.photoUrl) ? p.photoUrl : "";
   const ogImg = img ? ogSizedImage(img) : "";
@@ -329,7 +330,7 @@ export function applySeoBody(html: string, bodyHtml: string): string {
  * qu'il laisse en URL propre (/ et /p/:slug).
  */
 const SPA_PATHS = new Set([
-  "/", "/login", "/register", "/forgot-password", "/book",
+  "/", "/login", "/inscription", "/forgot-password", "/book",
 ]);
 const SPA_PREFIXES = [
   "/app", "/admin", "/book/", "/manage/", "/anamnese/",
@@ -403,6 +404,57 @@ export function registerSeoRoutes(app: Express) {
     const entry = cities.get(slug);
     if (!entry) return next();
     sendHtml(res, renderCityPage(baseUrl().replace(/\/$/, ""), entry.city, slug, entry.profiles));
+  });
+
+  // ── /register → /inscription (301) ──────────────────────────────────────────
+  // Défaut Ubersuggest du 15/09/2026 : "/register" est un slug anglais sur un site
+  // français. L'URL publique devient "/inscription" ; "/register" reste
+  // fonctionnel via une redirection permanente, pour ne pas casser les liens déjà
+  // partagés ou indexés. Doit marcher en dev comme en prod : registerSeoRoutes est
+  // appelée avant la bifurcation dev/prod (cf. server/index.ts).
+  app.get("/register", (_req, res) => {
+    res.redirect(301, "/inscription");
+  });
+
+  // ── /inscription — création de compte, head et corps pré-rendus (A1 + A10) ──
+  // Avant cette route, "/inscription" (comme l'ancien "/register") était servi
+  // par le catch-all SPA : titre et meta description dupliqués avec "/", et un
+  // <div id="root"></div> vide tant que React n'a pas hydraté. Même motif que la
+  // route "/" ci-dessous (lecture de indexPath, bypass en dev), mais avec
+  // applySeoHead pour RETIRER le title/description génériques de
+  // client/index.html au lieu de simplement en ajouter par-dessus (comme /p/:slug) :
+  // sans ce nettoyage, la page aurait deux <title> et deux meta description.
+  app.get("/inscription", (_req, res, next) => {
+    if (process.env.NODE_ENV !== "production") return next();
+    try {
+      const base = baseUrl().replace(/\/$/, "");
+      const canonical = `${base}/inscription`;
+      const seoHead = [
+        `<title>${esc(REGISTER_TITLE)}</title>`,
+        `<meta name="description" content="${esc(REGISTER_DESCRIPTION)}" />`,
+        `<link rel="canonical" href="${esc(canonical)}" />`,
+        `<meta property="og:type" content="website" />`,
+        `<meta property="og:site_name" content="Naturo Pro" />`,
+        `<meta property="og:locale" content="fr_FR" />`,
+        `<meta property="og:title" content="${esc(REGISTER_TITLE)}" />`,
+        `<meta property="og:description" content="${esc(REGISTER_DESCRIPTION)}" />`,
+        `<meta property="og:url" content="${esc(canonical)}" />`,
+        // applySeoHead retire TOUTES les balises og:/twitter: de client/index.html :
+        // sans ces deux lignes, /inscription perdrait son image d'aperçu au partage.
+        `<meta property="og:image" content="${esc(base)}/og-image.png" />`,
+        `<meta property="og:image:width" content="1200" />`,
+        `<meta property="og:image:height" content="630" />`,
+        `<meta name="twitter:card" content="summary_large_image" />`,
+        `<meta name="twitter:image" content="${esc(base)}/og-image.png" />`,
+        `<meta name="twitter:title" content="${esc(REGISTER_TITLE)}" />`,
+        `<meta name="twitter:description" content="${esc(REGISTER_DESCRIPTION)}" />`,
+      ].join("\n    ");
+      const html = fs.readFileSync(indexPath, "utf-8");
+      const withHead = applySeoHead(html, seoHead);
+      sendHtml(res, applySeoBody(withHead, renderRegisterBody()));
+    } catch {
+      next(); // en cas d'erreur, on retombe sur le SPA standard
+    }
   });
 
   // ── / — accueil, corps et JSON-LD pré-rendus (A1 + A2 + A6) ─────────────────

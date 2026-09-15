@@ -96,7 +96,7 @@ function AppRouter() {
       <Route path="/" component={onTenant ? PublicPage : Landing} />
       {onTenant && <Route path="/book/:catId?" component={BookingFlow} />}
       <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
+      <Route path="/inscription" component={Register} />
       <Route path="/verify-email/:token" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
