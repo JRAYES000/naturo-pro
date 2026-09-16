@@ -323,6 +323,23 @@ export function applySeoBody(html: string, bodyHtml: string): string {
 }
 
 /**
+ * Ajoute <meta name="robots" content="noindex, follow"> au document.
+ *
+ * Utilisé par le catch-all 404 et par les écrans transactionnels (/forgot-password,
+ * /book) : ces pages n'ont rien à répondre à une requête de recherche, et elles
+ * héritaient du title et de la description de l'accueil faute de head à elles.
+ * "follow" et non "none" : les liens qu'elles portent restent suivis.
+ *
+ * Volontairement sans Disallow dans robots.txt — un chemin interdit au crawl
+ * n'est jamais lu, donc son noindex n'est jamais vu, et l'URL peut rester
+ * indexée sur la seule foi des liens entrants.
+ */
+export function applyNoindex(html: string): string {
+  if (/<meta\s+name=["']robots["']/i.test(html)) return html;
+  return html.replace(/<head>/, `<head>\n    <meta name="robots" content="noindex, follow" />`);
+}
+
+/**
  * Chemins réels (hors hash) que le SPA sait servir. Tout le reste part en 404 (A3).
  *
  * Rappel du fonctionnement : l'app privée est en hash routing (/#/agenda), donc le
@@ -461,6 +478,31 @@ export function registerSeoRoutes(app: Express) {
   prerendered("/inscription", REGISTER_TITLE, REGISTER_DESCRIPTION, renderRegisterBody);
   prerendered("/login", LOGIN_TITLE, LOGIN_DESCRIPTION, renderLoginBody);
 
+  // ── Écrans transactionnels — noindex (décision de Julien, 16/09/2026) ───────
+  // Même défaut latent que /login — title et description hérités de
+  // client/index.html, corps vide — mais l'inverse comme correctif : ces deux
+  // écrans ne répondent à aucune requête de recherche, alors que /login capte
+  // les requêtes de marque. Pas de page de contenu à écrire, donc : on les sort
+  // de l'index. Ubersuggest ne les avait pas encore crawlées (hors sitemap, sans
+  // lien entrant) ; elles auraient refait surface au premier lien.
+  const noindexed = (routePath: string) =>
+    app.get(routePath, (_req, res, next) => {
+      if (process.env.NODE_ENV !== "production") return next();
+      try {
+        sendHtml(res, applyNoindex(fs.readFileSync(indexPath, "utf-8")));
+      } catch {
+        next(); // en cas d'erreur, on retombe sur le SPA standard
+      }
+    });
+
+  noindexed("/forgot-password");
+  noindexed("/book");
+  // "/book/:id" est le même écran, une fois par praticien : sans lui, le noindex
+  // sur "/book" nu ne couvrirait aucune des URL réellement atteignables. Mesuré
+  // le 16/09/2026 : "/book/3" répondait 200 avec le <title> de l'accueil.
+  // Ne touche pas à "/p/:slug", la fiche publique, qui reste indexable.
+  noindexed("/book/:id");
+
   // ── / — accueil, corps et JSON-LD pré-rendus (A1 + A2 + A6) ─────────────────
   // La landing vit entièrement dans le bundle React : sans cette route, le HTML
   // servi sur `/` ne contient ni texte ni lien, et les pages liées depuis le
@@ -546,10 +588,6 @@ export function serveStatic(app: Express) {
     if (isSpaPath(req.originalUrl)) {
       return res.status(200).set("Content-Type", "text/html; charset=utf-8").send(html);
     }
-    const notFound = html.replace(
-      /<head>/,
-      `<head>\n    <meta name="robots" content="noindex, follow" />`,
-    );
-    res.status(404).set("Content-Type", "text/html; charset=utf-8").send(notFound);
+    res.status(404).set("Content-Type", "text/html; charset=utf-8").send(applyNoindex(html));
   });
 }

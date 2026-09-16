@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import express from "express";
 import {
   buildSitemapXml, buildRobotsTxt, buildMetaDescription, buildLlmsTxt,
-  applySeoHead, applySeoBody, isSpaPath, registerSeoRoutes,
+  applySeoHead, applySeoBody, applyNoindex, isSpaPath, registerSeoRoutes,
 } from "./static";
 import {
   citySlug, titleCase, isIndexable, missingForIndexing, groupByCity,
@@ -241,6 +241,19 @@ test("applySeoHead — les balises génériques sont retirées, pas doublées", 
 test("applySeoBody — le corps pré-rendu atterrit dans #root (A1)", () => {
   const out = applySeoBody(TEMPLATE, "<h1>Marie Dupont</h1>");
   assert.match(out, /<div id="root"><h1>Marie Dupont<\/h1><\/div>/);
+});
+
+// ── applyNoindex — écrans transactionnels et 404 ──────────────────────────────
+
+test("applyNoindex — pose un seul noindex, follow et n'en ajoute pas un second", () => {
+  const once = applyNoindex(TEMPLATE);
+  assert.match(once, /<meta name="robots" content="noindex, follow" \/>/);
+  assert.equal((applyNoindex(once).match(/name="robots"/g) || []).length, 1);
+});
+
+test("applyNoindex — respecte une directive robots déjà présente", () => {
+  const withRobots = TEMPLATE.replace(/<head>/, `<head>\n    <meta name="robots" content="noindex" />`);
+  assert.equal(applyNoindex(withRobots), withRobots);
 });
 
 // ── A3 — 404 ──────────────────────────────────────────────────────────────────
