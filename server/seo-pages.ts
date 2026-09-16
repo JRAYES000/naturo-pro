@@ -610,6 +610,48 @@ export function renderRegisterBody(): string {
 </div>`;
 }
 
+/** Titre et description de /login — distincts de ceux de l'accueil et de /inscription. */
+export const LOGIN_TITLE = "Connexion à votre espace | Naturo Pro";
+export const LOGIN_DESCRIPTION =
+  "Connectez-vous à Naturo Pro pour retrouver votre agenda, vos dossiers clients et vos factures. Mot de passe oublié : réinitialisation par email en une minute.";
+
+/**
+ * Corps pré-rendu de /login (défaut Ubersuggest du 16/09/2026 : la route tombait
+ * sur le catch-all SPA, elle servait donc le title et la meta description de
+ * l'accueil — doublons signalés sur les deux pages — pour un corps à zéro mot).
+ *
+ * Même principe que renderRegisterBody : styles inline uniquement, React écrase
+ * ce bloc au montage. Aucun paragraphe recopié des autres pages : c'est ce qui
+ * avait créé le défaut à l'origine.
+ */
+export function renderLoginBody(): string {
+  return `<div style="max-width:760px;margin:0 auto;padding:28px 20px;font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;line-height:1.65">
+  <h1 style="font-size:1.9rem;margin:0 0 10px;color:${BRAND.dark}">Connexion à Naturo Pro</h1>
+  <p>Cette page ouvre l'espace de travail des praticiens abonnés à Naturo Pro. L'identifiant est l'adresse email
+  saisie à la création du compte, accompagnée du mot de passe choisi à ce moment-là. Aucun code envoyé par SMS
+  n'est demandé, et il n'existe pas de connexion par réseau social : l'email et le mot de passe suffisent.</p>
+  <p>Une fois connecté, le praticien arrive sur son agenda du jour. Depuis cet écran, il consulte les rendez-vous
+  à venir, ouvre le dossier d'un consultant avant la séance, enregistre le compte rendu qui suit, édite une
+  facture ou un forfait, et met à jour les créneaux proposés sur sa page publique de réservation. Les
+  modifications d'horaires sont visibles immédiatement par les personnes qui réservent en ligne.</p>
+  <p>Mot de passe oublié : le lien situé sous le formulaire déclenche l'envoi d'un email de réinitialisation,
+  valable une heure. Si cet email n'arrive pas, il faut d'abord vérifier le dossier des indésirables, puis que
+  l'adresse saisie est bien celle du compte — un praticien qui utilise plusieurs adresses professionnelles se
+  trompe souvent d'email plutôt que de mot de passe. En cas d'échec répété, l'assistance répond depuis la page
+  de contact du logiciel.</p>
+  <p>La session reste ouverte sur l'appareil utilisé jusqu'à déconnexion explicite, ce qui évite de ressaisir
+  ses identifiants à chaque consultation. Sur un ordinateur partagé au cabinet, il vaut mieux se déconnecter en
+  fin de journée depuis le menu du compte. Les mots de passe sont stockés sous forme chiffrée, jamais en clair,
+  et l'équipe de Naturo Pro n'y a pas accès : elle ne peut que déclencher une réinitialisation.</p>
+  <p>L'espace s'ouvre aussi bien depuis un ordinateur que depuis un téléphone. L'application peut être ajoutée à
+  l'écran d'accueil d'un mobile et s'ouvre alors comme une application installée, avec les mêmes identifiants —
+  utile pour consulter son planning entre deux rendez-vous ou en déplacement.</p>
+  <p>Pas encore de compte ? <a href="/inscription">L'inscription est gratuite</a> et ne demande pas de carte
+  bancaire. Pour savoir ce que couvre exactement le logiciel avant de vous engager, la page
+  <a href="/logiciel-naturopathe">présentation du logiciel</a> détaille chaque fonction.</p>
+</div>`;
+}
+
 /** JSON-LD de l'accueil (A6) : l'éditeur et le produit. */
 export function buildHomeJsonLd(base: string): unknown {
   return {

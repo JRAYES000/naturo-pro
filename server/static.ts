@@ -28,7 +28,8 @@ import {
   esc, citySlug, titleCase, groupByCity, isIndexable, renderDirectoryIndex,
   renderCityPage, renderSoftwarePage, renderProfileBody, buildProfileJsonLd,
   renderHomeBody, buildHomeJsonLd, formatPrice, fitTitle, renderRegisterBody,
-  REGISTER_TITLE, REGISTER_DESCRIPTION, type SeoProfile,
+  REGISTER_TITLE, REGISTER_DESCRIPTION, renderLoginBody, LOGIN_TITLE,
+  LOGIN_DESCRIPTION, type SeoProfile,
 } from "./seo-pages";
 
 export { esc };
@@ -416,46 +417,49 @@ export function registerSeoRoutes(app: Express) {
     res.redirect(301, "/inscription");
   });
 
-  // ── /inscription — création de compte, head et corps pré-rendus (A1 + A10) ──
-  // Avant cette route, "/inscription" (comme l'ancien "/register") était servi
-  // par le catch-all SPA : titre et meta description dupliqués avec "/", et un
-  // <div id="root"></div> vide tant que React n'a pas hydraté. Même motif que la
-  // route "/" ci-dessous (lecture de indexPath, bypass en dev), mais avec
-  // applySeoHead pour RETIRER le title/description génériques de
-  // client/index.html au lieu de simplement en ajouter par-dessus (comme /p/:slug) :
-  // sans ce nettoyage, la page aurait deux <title> et deux meta description.
-  app.get("/inscription", (_req, res, next) => {
-    if (process.env.NODE_ENV !== "production") return next();
-    try {
-      const base = baseUrl().replace(/\/$/, "");
-      const canonical = `${base}/inscription`;
-      const seoHead = [
-        `<title>${esc(REGISTER_TITLE)}</title>`,
-        `<meta name="description" content="${esc(REGISTER_DESCRIPTION)}" />`,
-        `<link rel="canonical" href="${esc(canonical)}" />`,
-        `<meta property="og:type" content="website" />`,
-        `<meta property="og:site_name" content="Naturo Pro" />`,
-        `<meta property="og:locale" content="fr_FR" />`,
-        `<meta property="og:title" content="${esc(REGISTER_TITLE)}" />`,
-        `<meta property="og:description" content="${esc(REGISTER_DESCRIPTION)}" />`,
-        `<meta property="og:url" content="${esc(canonical)}" />`,
-        // applySeoHead retire TOUTES les balises og:/twitter: de client/index.html :
-        // sans ces deux lignes, /inscription perdrait son image d'aperçu au partage.
-        `<meta property="og:image" content="${esc(base)}/og-image.png" />`,
-        `<meta property="og:image:width" content="1200" />`,
-        `<meta property="og:image:height" content="630" />`,
-        `<meta name="twitter:card" content="summary_large_image" />`,
-        `<meta name="twitter:image" content="${esc(base)}/og-image.png" />`,
-        `<meta name="twitter:title" content="${esc(REGISTER_TITLE)}" />`,
-        `<meta name="twitter:description" content="${esc(REGISTER_DESCRIPTION)}" />`,
-      ].join("\n    ");
-      const html = fs.readFileSync(indexPath, "utf-8");
-      const withHead = applySeoHead(html, seoHead);
-      sendHtml(res, applySeoBody(withHead, renderRegisterBody()));
-    } catch {
-      next(); // en cas d'erreur, on retombe sur le SPA standard
-    }
-  });
+  // ── Routes SPA pré-rendues (/inscription, /login) — A1 + A10 ────────────────
+  // Sans elles, ces chemins sont servis par le catch-all SPA : titre et meta
+  // description repris de client/index.html, donc dupliqués avec "/", et un
+  // <div id="root"></div> vide tant que React n'a pas hydraté. Défaut relevé par
+  // Ubersuggest sur /inscription (15/09/2026) puis sur /login (16/09/2026) — même
+  // cause, même correctif. On passe par applySeoHead, qui RETIRE le
+  // title/description génériques au lieu d'en ajouter par-dessus (comme le fait
+  // /p/:slug) : sans ce nettoyage, la page aurait deux <title>.
+  const prerendered = (routePath: string, title: string, description: string, body: () => string) =>
+    app.get(routePath, (_req, res, next) => {
+      if (process.env.NODE_ENV !== "production") return next();
+      try {
+        const base = baseUrl().replace(/\/$/, "");
+        const canonical = `${base}${routePath}`;
+        const seoHead = [
+          `<title>${esc(title)}</title>`,
+          `<meta name="description" content="${esc(description)}" />`,
+          `<link rel="canonical" href="${esc(canonical)}" />`,
+          `<meta property="og:type" content="website" />`,
+          `<meta property="og:site_name" content="Naturo Pro" />`,
+          `<meta property="og:locale" content="fr_FR" />`,
+          `<meta property="og:title" content="${esc(title)}" />`,
+          `<meta property="og:description" content="${esc(description)}" />`,
+          `<meta property="og:url" content="${esc(canonical)}" />`,
+          // applySeoHead retire TOUTES les balises og:/twitter: de client/index.html :
+          // sans ces lignes, la page perdrait son image d'aperçu au partage.
+          `<meta property="og:image" content="${esc(base)}/og-image.png" />`,
+          `<meta property="og:image:width" content="1200" />`,
+          `<meta property="og:image:height" content="630" />`,
+          `<meta name="twitter:card" content="summary_large_image" />`,
+          `<meta name="twitter:image" content="${esc(base)}/og-image.png" />`,
+          `<meta name="twitter:title" content="${esc(title)}" />`,
+          `<meta name="twitter:description" content="${esc(description)}" />`,
+        ].join("\n    ");
+        const html = fs.readFileSync(indexPath, "utf-8");
+        sendHtml(res, applySeoBody(applySeoHead(html, seoHead), body()));
+      } catch {
+        next(); // en cas d'erreur, on retombe sur le SPA standard
+      }
+    });
+
+  prerendered("/inscription", REGISTER_TITLE, REGISTER_DESCRIPTION, renderRegisterBody);
+  prerendered("/login", LOGIN_TITLE, LOGIN_DESCRIPTION, renderLoginBody);
 
   // ── / — accueil, corps et JSON-LD pré-rendus (A1 + A2 + A6) ─────────────────
   // La landing vit entièrement dans le bundle React : sans cette route, le HTML

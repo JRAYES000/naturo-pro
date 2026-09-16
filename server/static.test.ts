@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import express from "express";
 import {
   buildSitemapXml, buildRobotsTxt, buildMetaDescription, buildLlmsTxt,
@@ -8,7 +10,8 @@ import {
 import {
   citySlug, titleCase, isIndexable, missingForIndexing, groupByCity,
   MIN_PROFILES_PER_CITY, fitTitle, renderRegisterBody, renderHomeBody,
-  renderDirectoryIndex, renderSoftwarePage, REGISTER_TITLE, type SeoProfile,
+  renderDirectoryIndex, renderSoftwarePage, REGISTER_TITLE, renderLoginBody,
+  LOGIN_TITLE, LOGIN_DESCRIPTION, REGISTER_DESCRIPTION, type SeoProfile,
 } from "./seo-pages";
 
 /** Compte les mots d'un fragment HTML (balises et entités retirées). */
@@ -283,18 +286,47 @@ test("fitTitle — respecte un max personnalisé", () => {
 
 // ── Titres ≤ 65 caractères (audit Ubersuggest 15/09/2026) ────────────────────
 
-test("titres fixes — /logiciel-naturopathe, /naturopathes et /inscription ≤ 65 caractères", () => {
+test("titres fixes — /logiciel-naturopathe, /naturopathes, /inscription et /login ≤ 65 caractères", () => {
   const software = extractTitle(renderSoftwarePage("https://app.ecole-naturo.fr"));
   const directory = extractTitle(renderDirectoryIndex("https://app.ecole-naturo.fr", []));
   assert.ok(software.length <= 65, `logiciel-naturopathe = ${software.length} : "${software}"`);
   assert.ok(directory.length <= 65, `naturopathes = ${directory.length} : "${directory}"`);
   assert.ok(REGISTER_TITLE.length <= 65, `inscription = ${REGISTER_TITLE.length} : "${REGISTER_TITLE}"`);
+  assert.ok(LOGIN_TITLE.length <= 65, `login = ${LOGIN_TITLE.length} : "${LOGIN_TITLE}"`);
+});
+
+// ── Doublons de title / meta description (erreurs Ubersuggest du 16/09/2026) ──
+// "/" et "/login" servaient le même client/index.html, donc le même couple
+// title + description. Chaque page pré-rendue doit porter le sien.
+
+test("title et meta description — /inscription et /login diffèrent de l'accueil et entre eux", () => {
+  // Le vrai client/index.html, pas le TEMPLATE de test : c'est bien son couple
+  // title/description que le catch-all servait sur /login.
+  const indexHtml = readFileSync(resolve(process.cwd(), "client/index.html"), "utf-8");
+  const homeTitle = extractTitle(indexHtml);
+  const homeDesc = (indexHtml.match(/<meta name="description" content="([^"]*)"/) || [, ""])[1];
+  assert.ok(homeTitle && homeDesc, "client/index.html doit porter un title et une description");
+  const titles = [homeTitle, REGISTER_TITLE, LOGIN_TITLE];
+  const descs = [homeDesc, REGISTER_DESCRIPTION, LOGIN_DESCRIPTION];
+  assert.equal(new Set(titles).size, titles.length, `titres dupliqués : ${JSON.stringify(titles)}`);
+  assert.equal(new Set(descs).size, descs.length, `descriptions dupliquées : ${JSON.stringify(descs)}`);
+  for (const d of [REGISTER_DESCRIPTION, LOGIN_DESCRIPTION]) {
+    assert.ok(d.length >= 70 && d.length <= 160, `description hors bornes (${d.length}) : "${d}"`);
+  }
 });
 
 // ── /inscription — contenu (défaut Ubersuggest 15/09/2026 : catch-all SPA, 0 mot, 0 H1) ──
 
 test("renderRegisterBody — exactement un <h1> et au moins 300 mots", () => {
   const body = renderRegisterBody();
+  assert.equal((body.match(/<h1[\s>]/g) || []).length, 1);
+  assert.ok(countWords(body) >= 300, `mots = ${countWords(body)}`);
+});
+
+// ── /login — contenu (erreur Ubersuggest 16/09/2026 : catch-all SPA, 0 mot) ──
+
+test("renderLoginBody — exactement un <h1> et au moins 300 mots", () => {
+  const body = renderLoginBody();
   assert.equal((body.match(/<h1[\s>]/g) || []).length, 1);
   assert.ok(countWords(body) >= 300, `mots = ${countWords(body)}`);
 });
@@ -307,13 +339,14 @@ test("renderHomeBody et renderDirectoryIndex — au moins 300 mots chacun", () =
   );
 });
 
-test("accueil, annuaire et inscription — aucun paragraphe recopié d'une page à l'autre", () => {
+test("accueil, annuaire, inscription et login — aucun paragraphe recopié d'une page à l'autre", () => {
   const extractParagraphs = (html: string) =>
     Array.from(html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)).map((m) => m[1].replace(/\s+/g, " ").trim());
   const home = extractParagraphs(renderHomeBody(0));
   const register = extractParagraphs(renderRegisterBody());
+  const login = extractParagraphs(renderLoginBody());
   const directory = extractParagraphs(renderDirectoryIndex("https://app.ecole-naturo.fr", []));
-  const all = [...home, ...register, ...directory];
+  const all = [...home, ...register, ...login, ...directory];
   assert.equal(new Set(all).size, all.length, "un même paragraphe apparaît sur plusieurs pages");
 });
 
