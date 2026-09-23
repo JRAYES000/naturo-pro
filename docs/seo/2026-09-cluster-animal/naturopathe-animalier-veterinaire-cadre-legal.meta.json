@@ -1,0 +1,234 @@
+{
+  "type": "post",
+  "action": "create",
+  "id": null,
+  "slug": "naturopathe-animalier-veterinaire-cadre-legal",
+  "title": "Naturopathe animalier et vétérinaire : cadre légal, limites et complémentarité en France",
+  "yoast_title": "Naturopathe animalier et vétérinaire : le cadre légal",
+  "yoast_desc": "Ce que la loi autorise et interdit au naturopathe animalier : articles L243-1 à L243-4 du Code rural, actes réservés, sanctions, check-list d'installation.",
+  "focus_kw": "naturopathe animalier vétérinaire",
+  "secondary_keywords": [
+    "naturopathe animalier réglementation (10/mois, Ubersuggest FR 14/09/2026)",
+    "naturopathe animalier légal (volume non relevé)",
+    "naturopathe animalier vétérinaire (0/mois)",
+    "relevés sur la page n°1 (zoopro.fr) : naturopathe animalier (590/mois), formation naturopathe animalier (140), naturopathe animalier formation (90), naturopathe chien (70) ; une requête liée à un financement que l'école ne propose plus (70) est volontairement ignorée"
+  ],
+  "author": 2,
+  "categories": [
+    20,
+    78
+  ],
+  "status": "draft",
+  "publish_date_suggested": "2026-10-12",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://ecole-naturo.fr/blog/naturopathe-animalier-veterinaire-cadre-legal/#article",
+        "headline": "Naturopathe animalier et vétérinaire : cadre légal, limites et complémentarité en France",
+        "description": "Ce que la loi autorise et interdit au naturopathe animalier : articles L243-1 à L243-4 du Code rural, actes réservés, sanctions, check-list d'installation.",
+        "image": "[À COMPLÉTER : URL de l'image à la une]",
+        "datePublished": "2026-10-19",
+        "dateModified": "2026-10-19",
+        "inLanguage": "fr-FR",
+        "author": {
+          "@id": "https://ecole-naturo.fr/eva-mischler/#person"
+        },
+        "publisher": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        },
+        "mainEntityOfPage": {
+          "@id": "https://ecole-naturo.fr/blog/naturopathe-animalier-veterinaire-cadre-legal/#webpage"
+        },
+        "isPartOf": {
+          "@id": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/eva-mischler/#person",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "url": "https://ecole-naturo.fr/eva-mischler/",
+        "worksFor": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        }
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://ecole-naturo.fr/#organization",
+        "name": "École Naturo",
+        "url": "https://ecole-naturo.fr",
+        "logo": "[À COMPLÉTER : URL du logo dans la médiathèque]"
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/blog/naturopathe-animalier-veterinaire-cadre-legal/#webpage",
+        "url": "https://ecole-naturo.fr/blog/naturopathe-animalier-veterinaire-cadre-legal/",
+        "name": "Naturopathe animalier et vétérinaire : cadre légal, limites et complémentarité en France",
+        "inLanguage": "fr-FR"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Accueil",
+            "item": "https://ecole-naturo.fr/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Blog",
+            "item": "https://ecole-naturo.fr/blog/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Naturopathe animalier et vétérinaire : cadre légal, limites et complémentarité en France"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://ecole-naturo.fr/blog/naturopathe-animalier-veterinaire-cadre-legal/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Le métier de naturopathe animalier est-il légal en France ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. La naturopathie animale n'est pas une profession réglementée : aucun diplôme d'État n'est exigé. L'activité s'exerce librement, à condition de ne réaliser aucun acte de médecine ou de chirurgie des animaux, réservés aux vétérinaires (article L243-1 du Code rural)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Un naturopathe animalier peut-il poser un diagnostic ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. Diagnostiquer une maladie, y compris comportementale, une blessure, une douleur ou une malformation est un acte de médecine des animaux réservé aux vétérinaires. Le naturopathe animalier observe un mode de vie et oriente vers le vétérinaire."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelle est la sanction en cas d'exercice illégal de la médecine vétérinaire ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "L'article L243-4 du Code rural punit l'exercice illégal de la médecine ou de la chirurgie des animaux de deux ans d'emprisonnement et de 30 000 € d'amende. Le tribunal peut aussi ordonner la fermeture de l'établissement et la confiscation du matériel."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Un naturopathe animalier peut-il conseiller des plantes ou des huiles essentielles ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Uniquement dans le cadre de l'hygiène de vie d'un animal en bonne santé, avec les précautions propres à chaque espèce. Conseiller une plante ou une huile essentielle pour prévenir ou traiter une maladie, ou indiquer une posologie, est un acte de médecine réservé au vétérinaire."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "L'assurance responsabilité civile professionnelle est-elle obligatoire ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non, aucune assurance n'est obligatoire pour une profession non réglementée. Elle est fortement recommandée, car la responsabilité civile du praticien peut être engagée si un conseil cause un dommage à l'animal ; elle ne couvre jamais un acte illégal."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelles mentions doivent figurer sur les documents d'un naturopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Le numéro SIREN, l'identité du praticien suivie ou précédée de la mention « EI » ou « Entrepreneur individuel » pour un entrepreneur individuel (décret n° 2022-725), et, par prudence, un avertissement : accompagnement de bien-être, qui ne remplace pas le vétérinaire."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "internal_links_out": [
+    "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/",
+    "https://ecole-naturo.fr/formation-naturopathie-animale/",
+    "https://ecole-naturo.fr/guide-naturopathie-animale/",
+    "https://ecole-naturo.fr/blog/chien-senior-accompagner-son-vieillissement-au-naturel/",
+    "https://ecole-naturo.fr/blog/stress-chat-solutions-naturelles/",
+    "https://ecole-naturo.fr/eva-mischler/"
+  ],
+  "notes_julien": [
+    "Qualification d'Eva : sa page auteur mentionne « Cadre légal du métier de naturopathe et installation professionnelle » (naturopathie humaine). Sa qualification sur le droit vétérinaire est à confirmer ; une relecture par un juriste ou un vétérinaire est recommandée sur cet article précisément (article de confiance du cluster).",
+    "Textes cités lus sur Légifrance le 14/09/2026 (section L243-1 à L243-5, version en vigueur au 26/03/2025). Citations entre guillemets = texte exact. Vérifier qu'aucune modification n'est intervenue avant publication.",
+    "L'interprétation « déterminer l'état de santé = acte de médecine » découle directement du I de L243-1 ; c'est une lecture littérale, pas une jurisprudence. Aucune décision de justice n'est citée (aucune n'a été vérifiée).",
+    "RC pro « non obligatoire pour une profession non réglementée » : information issue de sites d'assureurs (recherche web), pas d'un texte officiel. Formulation prudente conservée.",
+    "Mention EI : décret n° 2022-725 et page entreprendre.service-public.gouv.fr A15744 (vérifiés par recherche). Amende « jusqu'à 750 € » : reprise de plusieurs sources secondaires ; à contrôler.",
+    "Le pivot 8203 parle de « signer une convention de coopération avec un ou plusieurs vétérinaires » : cette convention n'a aucune base légale pour un naturopathe animalier (elle existe pour les techniciens dentaires équins). Suggestion : corriger le pivot.",
+    "Cas terrain marqué [CAS TERRAIN À VALIDER PAR EVA] : proposé, non fourni.",
+    "Encart « Vous voulez en faire votre métier ? » reprend uniquement les chiffres de la page de vente (1 490 €, six mois, 100 % à distance, appel découverte, module cadre légal).",
+    "Une image à insérer. Image à la une et logo à renseigner dans le JSON-LD."
+  ],
+  "verifications_dures": [
+    {
+      "n": 1,
+      "verification": "Auteur réel, nommé, qualifié pour CE sujet",
+      "verdict": "À CONFIRMER",
+      "detail": "Eva Mischler enseigne le cadre légal du naturopathe (humain) et l'installation (page auteur). Article de confiance du cluster : relecture par un juriste ou un vétérinaire fortement recommandée."
+    },
+    {
+      "n": 2,
+      "verification": "Aucune affirmation santé non sourcée",
+      "verdict": "OK",
+      "detail": "L'article ne contient aucune affirmation de santé ; il ne traite que du droit."
+    },
+    {
+      "n": 3,
+      "verification": "Aucune promesse thérapeutique",
+      "verdict": "OK",
+      "detail": "Les termes « soigner, guérir, traiter, efficace contre » figurent uniquement dans la colonne « à éviter » du tableau de vocabulaire et dans les citations de la loi."
+    },
+    {
+      "n": 4,
+      "verification": "Aucun chiffre, étude ou source inventé",
+      "verdict": "OK",
+      "detail": "Textes lus sur Légifrance le 14/09/2026 (L243-1 à L243-5, L121-2 conso, décrets 2016-1374, 2017-572/573, 2022-725). Sanctions 2 ans / 30 000 € = texte L243-4. Amende 750 € (mention EI) issue de sources secondaires : à contrôler. Aucune jurisprudence citée."
+    },
+    {
+      "n": 5,
+      "verification": "Aucune URL interne devinée",
+      "verdict": "OK",
+      "detail": "6 liens internes, tous vérifiés."
+    },
+    {
+      "n": 6,
+      "verification": "Information gain démontrable",
+      "verdict": "OK",
+      "detail": "Tableau acte / autorisé ? / pourquoi (11 lignes), tableau de vocabulaire, check-list de conformité en 10 points, lecture littérale de « déterminer l'état de santé », cas terrain à valider."
+    },
+    {
+      "n": 7,
+      "verification": "Chiffres canoniques conformes",
+      "verdict": "OK",
+      "detail": "1 490 €, six mois, 100 % à distance, module cadre légal : page de vente 40874."
+    },
+    {
+      "n": 8,
+      "verification": "Journal renseigné",
+      "verdict": "OK",
+      "detail": "Voir section Journal."
+    }
+  ],
+  "journal": [
+    "[ERREUR CONSTATÉE] Le pivot 8203 conseille de « signer une convention de coopération avec un ou plusieurs vétérinaires » : aucune base légale pour un naturopathe animalier (la convention existe pour les techniciens dentaires équins, L243-3 11°). → Règle : ne jamais présenter comme obligatoire ou existant un dispositif conventionnel sans l'avoir lu dans le Code rural ; relire les articles animaux existants sur ce point.",
+    "[ERREUR CONSTATÉE] Le mot-clé « naturopathe animalier vétérinaire » a 0 volume mesuré ; « naturopathe animalier réglementation » en a 10. → Règle : sur un article de confiance, accepter un mot-clé à faible volume mais aligner le title sur la requête réellement tapée (« cadre légal », « réglementation ») plutôt que sur l'intitulé du brief."
+  ],
+  "checks_auto": {
+    "mots (texte hors balises)": 2268,
+    "URLs internes hors sitemap": [],
+    "nb liens internes": 6,
+    "yoast_title len": 53,
+    "yoast_desc len": 155,
+    "FAQ count": 6,
+    "tables": 2,
+    "h2": 7,
+    "définition (mots)": 57
+  }
+}
