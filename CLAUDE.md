@@ -25,11 +25,10 @@ de chercher.
 `workflow_run` de `ci.yml`). Un push sur `main` avec CI rouge ne déploie **rien**, en silence :
 le job `Déploiement` apparaît en `skipped`.
 
-Au 29/09/2026 : la CI échoue depuis le 16/08 sur l'étape « Parcours fonctionnels (HTTP) »
-(`npm run test:e2e`). Dernier déploiement réussi : **12/08** (`ac71a53`) ; tous les suivants ont
-été sautés, jusqu'au commit du 16/09. **La production tourne donc sur du code plus ancien que
-`main`** — abonnement Stripe, gating par plan, migrations MySQL et correctifs SEO compris.
-`gh run list --limit 6` dit l'état réel.
+Précédent : du 15/08 au 29/09/2026, la CI est restée rouge et **aucun** déploiement n'est parti
+(prod figée au 12/08). Cause : `test:e2e` appelait des routes d'anamnèse inexistantes, masquées
+tant que toute URL inconnue répondait 200. **Après un push, vérifier que `Déploiement` est en
+`success`** — `gh run list --limit 6` dit l'état réel.
 
 ## Contexte business
 
@@ -152,7 +151,8 @@ Toutes les variables sont documentées dans `.env.example`.
    - `npm run smoke` — routes **critiques** (après touche au routing). **Exige `npm run dev`
      déjà lancé sur :3000.**
    - `npm run test:e2e` — parcours fonctionnel. **Exige aussi un serveur lancé** (la CI le
-     démarre elle-même). C'est cette étape qui bloque le déploiement depuis le 16/08.
+     démarre elle-même). Une URL d'API inconnue répond 404 : un test qui vise une route
+     inexistante échoue, et bloque le déploiement.
    - `npm run test:ui` — Playwright (démarre son propre serveur, SQLite jetable, 3 projets).
    - `npm run routes:inventory` — régénère `docs/routes-inventory.txt`.
    - `npm run seo:check` — rejoue les contrôles SEO sur la prod.
