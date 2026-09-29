@@ -54,7 +54,9 @@ tant que toute URL inconnue répondait 200. **Après un push, vérifier que `Dé
   **sans le paquet runtime** : c'est un résidu mort, ne pas « réparer » l'auth en l'installant.
 - Email : **Resend** (`server/email.ts`), API HTTP. Une clé **par praticienne**
   (`users.resendApiKey`, configurée dans `server/routes/profile.ts`), `RESEND_API_KEY` système en
-  repli. **Il n'y a plus aucun Mailjet dans le code.**
+  repli. **Il n'y a plus aucun Mailjet dans le code.** Une adresse Gmail/Orange ne se vérifie
+  pas chez Resend : sur « domain is not verified », `sendEmail` renvoie par la clé système, au
+  nom de la praticienne et avec son adresse en reply-to (`unverifiedDomainFallback`).
 - IA : **OpenRouter uniquement**. `server/mistral.ts` garde son nom historique mais route vers
   OpenRouter (`deepseek/deepseek-v4-flash`) ; `server/rag.ts` y route aussi les embeddings
   `mistralai/mistral-embed-2312`. « Mistral » n'est qu'un nom de fichier et un nom de modèle.
