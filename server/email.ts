@@ -34,9 +34,53 @@ export interface EmailAttachment {
 }
 
 /**
+ * Config de repli quand la clé Resend d'une praticienne refuse son adresse
+ * d'expédition (« The gmail.com domain is not verified »). Cas type : une adresse
+ * Gmail ou Orange, domaine qu'elle ne pourra jamais vérifier chez Resend — tous ses
+ * emails échouaient en silence (confirmations, rappels, récap).
+ *
+ * On renvoie alors par la clé système, sous le nom de la praticienne, avec son
+ * adresse en réponse : la cliente voit « Céline <noreply@…> » et lui répond à elle.
+ * `null` si l'erreur est d'une autre nature, si la config est déjà la config
+ * système, ou si aucune clé système n'est définie.
+ */
+export function unverifiedDomainFallback(
+  cfg: EmailConfig,
+  error: string,
+  system: EmailConfig | null,
+): EmailConfig | null {
+  if (!system || !/domain is not verified/i.test(error)) return null;
+  if (cfg.apiKey === system.apiKey && cfg.fromAddress === system.fromAddress) return null;
+  return {
+    apiKey: system.apiKey,
+    fromAddress: system.fromAddress,
+    fromName: cfg.fromName || system.fromName || null,
+    replyTo: cfg.replyTo || cfg.fromAddress,
+  };
+}
+
+/**
  * Envoi bas-niveau d'un email via Resend (avec pièces jointes optionnelles).
+ * Si le domaine d'expédition de la praticienne n'est pas vérifié, renvoie par la
+ * config système (voir `unverifiedDomainFallback`).
  */
 export async function sendEmail(
+  cfg: EmailConfig,
+  to: string,
+  subject: string,
+  html: string,
+  text?: string,
+  attachments?: EmailAttachment[],
+): Promise<SendResult> {
+  const res = await sendEmailOnce(cfg, to, subject, html, text, attachments);
+  if (res.ok) return res;
+  const fallback = unverifiedDomainFallback(cfg, res.error, getSystemEmailConfig());
+  if (!fallback) return res;
+  console.warn(`[email] domaine de ${cfg.fromAddress} non vérifié chez Resend — envoi par la config système`);
+  return sendEmailOnce(fallback, to, subject, html, text, attachments);
+}
+
+async function sendEmailOnce(
   cfg: EmailConfig,
   to: string,
   subject: string,
