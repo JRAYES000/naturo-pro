@@ -321,23 +321,23 @@ section("Facturation");
 // ─────────────────────────────────────────────────────────────────────────────
 section("Anamnèse, programmes, forfaits");
 {
-  const t = await api("POST", "/api/anamnese/templates", {
+  const t = await api("POST", "/api/anamnesis-templates", {
     name: "Bilan de vitalité", description: "Questionnaire initial",
-    questions: JSON.stringify([{ id: "q1", label: "Comment dormez-vous ?", type: "text" }]),
+    questions: [{ id: "q1", label: "Comment dormez-vous ?", type: "text" }],
   });
   note(t.status === 200 || t.status === 201, "création d'un questionnaire d'anamnèse");
   tplId = t.data?.id;
 
   if (tplId) {
-    const env = await api("POST", "/api/anamnese/send", { templateId: tplId, clientId });
+    const env = await api("POST", "/api/anamnesis-responses", { templateId: tplId, clientId });
     note(env.status === 200 || env.status === 201, "envoi du questionnaire à une cliente");
-    anamneseToken = env.data?.token || env.data?.response?.token;
+    anamneseToken = env.data?.token;
     if (anamneseToken) {
       const pub = await fetch(`${B}/api/public/anamnese/${anamneseToken}`);
       note(pub.status === 200, "questionnaire accessible par la cliente sans compte");
       const rep = await fetch(`${B}/api/public/anamnese/${anamneseToken}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: JSON.stringify({ q1: "Mal, je me réveille la nuit" }) }),
+        body: JSON.stringify({ answers: { q1: "Mal, je me réveille la nuit" } }),
       });
       note(rep.status === 200, "soumission des réponses");
     } else note(false, "token d'anamnèse récupéré");
