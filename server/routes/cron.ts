@@ -129,6 +129,11 @@ export function startCrons(): void {
     } catch (e: any) {
       console.error("[sessions]", e?.message || e);
     }
+    try {
+      await storage.purgeExpiredPortalTokens();
+    } catch (e: any) {
+      console.error("[espace-cliente] purge des jetons :", e?.message || e);
+    }
     // Lot 1 (action 11, décision 6) — un compte gratuit sans connexion depuis
     // 12 mois est supprimé avec ses données (mention affichée à l'inscription).
     try {

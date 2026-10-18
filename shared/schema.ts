@@ -292,6 +292,8 @@ export const clients = sqliteTable("clients", {
   archivedAt: integer("archived_at"),
   emailOptOutAt: integer("email_opt_out_at"),
   optOutToken: text("opt_out_token"),
+  // Lot 3a — dernière visite de la cliente dans son espace.
+  portalLastSeenAt: integer("portal_last_seen_at"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
@@ -331,6 +333,44 @@ export const clientBroadcasts = sqliteTable("client_broadcasts", {
 }));
 
 export type ClientBroadcast = typeof clientBroadcasts.$inferSelect;
+
+// Lot 3a — espace cliente : lien de connexion à usage unique (« link ») et session
+// (« session »). Seule l'empreinte SHA-256 du jeton est conservée.
+export const clientPortalTokens = sqliteTable("client_portal_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  clientId: integer("client_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  kind: text("kind").notNull(), // link | session
+  expiresAt: integer("expires_at").notNull(),
+  usedAt: integer("used_at"),
+  createdAt: integer("created_at").notNull(),
+}, (t) => ({
+  uk_portal_token_hash: uniqueIndex("uk_portal_token_hash").on(t.tokenHash),
+  idx_portal_tokens_client: index("idx_portal_tokens_client").on(t.clientId),
+}));
+
+export type ClientPortalToken = typeof clientPortalTokens.$inferSelect;
+
+// Lot 3a — observance d'un programme : un relevé par jour (suivi oui / en partie /
+// non, énergie de 1 à 5, note libre), saisi par la cliente dans son espace.
+export const programCheckins = sqliteTable("program_checkins", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  programId: integer("program_id").notNull(),
+  clientId: integer("client_id").notNull(),
+  day: text("day").notNull(), // AAAA-MM-JJ (heure de Paris)
+  adherence: integer("adherence").notNull(), // 0 non | 1 en partie | 2 oui
+  energy: integer("energy"),
+  note: text("note"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (t) => ({
+  uk_checkin_program_day: uniqueIndex("uk_checkin_program_day").on(t.programId, t.day),
+  idx_checkins_user: index("idx_checkins_user").on(t.userId),
+}));
+
+export type ProgramCheckin = typeof programCheckins.$inferSelect;
 
 // Appointments
 export const appointments = sqliteTable("appointments", {
@@ -416,6 +456,8 @@ export const anamnesisTemplates = sqliteTable("anamnesis_templates", {
   description: text("description"),
   questions: text("questions").notNull().default("[]"), // JSON: [{id,label,type,options?,required?}]
   isActive: integer("is_active", { mode: "boolean" }).default(true),
+  // Lot 3a — bilan noté : JSON { higherIsBetter, bands: [{ upTo, label }] } ; null = questionnaire simple.
+  scoring: text("scoring"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (t) => ({
@@ -432,6 +474,9 @@ export const anamnesisResponses = sqliteTable("anamnesis_responses", {
   token: text("token").notNull(), // lien public de saisie
   answers: text("answers"), // JSON: { [questionId]: value }
   submittedAt: integer("submitted_at"),
+  // Lot 3a — score d'un bilan noté (0-100) et son interprétation, figés à la soumission.
+  score: integer("score"),
+  scoreLabel: text("score_label"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_anamnesis_resp_user: index("idx_anamnesis_resp_user").on(t.userId),
@@ -445,8 +490,11 @@ export const programs = sqliteTable("programs", {
   clientId: integer("client_id"),
   appointmentId: integer("appointment_id"),
   title: text("title").notNull(),
-  content: text("content").notNull().default("[]"), // JSON: [{section,items[]}]
+  content: text("content").notNull().default("[]"), // JSON: [{section,items[],durationDays?}]
   status: text("status").default("draft"), // draft | sent
+  // Lot 3a — programme par étapes : date de début (AAAA-MM-JJ), chaque section
+  // pouvant durer N jours ; la cliente suit son étape dans son espace.
+  startDate: text("start_date"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (t) => ({
@@ -466,6 +514,8 @@ export const clientDocuments = sqliteTable("client_documents", {
   // Lot 4 — nature du document (null = document libre, "formulaire_externe" =
   // questionnaire rempli hors Naturo Pro et importé dans le dossier).
   kind: text("kind"),
+  // Lot 3a — document visible et téléchargeable dans l'espace cliente.
+  sharedWithClient: integer("shared_with_client", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_client_docs_user_client: index("idx_client_docs_user_client").on(t.userId, t.clientId),

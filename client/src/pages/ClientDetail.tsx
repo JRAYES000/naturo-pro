@@ -1,6 +1,6 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles, Mail, Phone, CalendarPlus, NotebookPen, ClipboardList, Check, X, Archive, ArchiveRestore, MessageSquare, Handshake, StickyNote } from "lucide-react";
+import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles, Mail, Phone, CalendarPlus, NotebookPen, ClipboardList, Check, X, Archive, ArchiveRestore, MessageSquare, Handshake, StickyNote, DoorOpen } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ interface ClientDocumentMeta {
   mimeType: string;
   sizeBytes: number;
   kind: string | null;
+  sharedWithClient?: boolean;
   createdAt: number;
 }
 
@@ -287,6 +288,24 @@ export default function ClientDetail() {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
+  // Lot 3a — invitation à l'espace cliente (lien de connexion valable 7 jours).
+  const portalMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/clients/${cid}/portal-invite`, {})).json(),
+    onSuccess: (r: { emailed: boolean; url: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "followups"] });
+      toast(r.emailed
+        ? { title: "Invitation envoyée", description: "La cliente reçoit un lien vers son espace, valable 7 jours.", variant: "success" }
+        : { title: "Email non envoyé", description: `Transmettez-lui ce lien (valable 7 jours) : ${r.url}` });
+    },
+    onError: (e: any) => toast({ title: "Invitation impossible", description: e.message, variant: "destructive" }),
+  });
+
+  const shareDocMut = useMutation({
+    mutationFn: async ({ id, shared }: { id: number; shared: boolean }) => apiRequest("PATCH", `/api/documents/${id}`, { sharedWithClient: shared }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "documents"] }),
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
   const optOutMut = useMutation({
     mutationFn: async (emailOptOut: boolean) => (await apiRequest("PATCH", `/api/clients/${cid}`, { emailOptOut })).json(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/clients", cid] }),
@@ -364,7 +383,14 @@ export default function ClientDetail() {
           subtitle={client.dateOfBirth ? `Né(e) le ${new Date(client.dateOfBirth).toLocaleDateString("fr-FR")}` : undefined}
           backTo={{ href: "/app/clients", label: "Clients" }}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+            {client.email && !(client as any).archivedAt && (
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={() => portalMut.mutate()} disabled={portalMut.isPending}
+                title={(client as any).portalLastSeenAt ? `Dernière visite de son espace : ${new Date((client as any).portalLastSeenAt).toLocaleDateString("fr-FR")}` : "Envoie à la cliente un lien vers son espace personnel"}
+                data-testid="button-portal-invite">
+                <DoorOpen className="h-4 w-4 mr-1" /> Inviter dans son espace
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="rounded-lg" onClick={() => archiveMut.mutate(!(client as any).archivedAt)}
               disabled={archiveMut.isPending} data-testid="button-archive-client">
               {(client as any).archivedAt ? <><ArchiveRestore className="h-4 w-4 mr-1" /> Désarchiver</> : <><Archive className="h-4 w-4 mr-1" /> Archiver</>}
@@ -720,6 +746,12 @@ export default function ClientDetail() {
                     <div>
                       <p className="font-bold">{a.submittedAt ? `Soumise le ${formatDay(a.submittedAt)}` : "En attente de réponse"}</p>
                       <p className="text-sm text-muted-foreground">Lien créé le {formatDay(a.createdAt)}</p>
+                      {/* Lot 3a — bilan noté : score figé à la soumission. */}
+                      {(a as any).score != null && (
+                        <p className="text-sm font-semibold text-heading" data-testid={`text-bilan-score-${a.id}`}>
+                          Score {(a as any).score}/100{(a as any).scoreLabel ? ` · ${(a as any).scoreLabel}` : ""}
+                        </p>
+                      )}
                     </div>
                     {a.submittedAt
                       ? <Badge className="bg-accent/30 text-primary border-0 text-xs"><Check className="h-3 w-3 mr-1" />Reçue</Badge>
@@ -878,6 +910,14 @@ export default function ClientDetail() {
                       <p className="text-xs text-muted-foreground">
                         {formatFileSize(doc.sizeBytes)} · {new Date(doc.createdAt).toLocaleDateString("fr-FR")}
                       </p>
+                      <label className="flex items-center gap-2 mt-1 text-xs text-muted-foreground cursor-pointer">
+                        <Checkbox
+                          checked={!!doc.sharedWithClient}
+                          onCheckedChange={(v) => shareDocMut.mutate({ id: doc.id, shared: !!v })}
+                          data-testid={`checkbox-share-document-${doc.id}`}
+                        />
+                        Visible dans l'espace de la cliente
+                      </label>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

@@ -9,6 +9,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
+import { parseScoring, scoreAnswers } from "../portal";
 import { genToken } from "./helpers/tokens";
 import { SYSTEM_PROMPT, completeText, AI_DAILY_LIMIT } from "../mistral";
 import { programmeFromMarkdown } from "./helpers/programme-bridge";
@@ -24,6 +25,14 @@ const questionSchema = z.object({
   type: z.enum(["text", "textarea", "choice", "multi", "scale"]),
   options: z.array(z.string()).optional(),
   required: z.boolean().optional(),
+  // Lot 3a — bilan noté : une échelle « inversée » compte à rebours (10 = mauvais).
+  reverse: z.boolean().optional(),
+});
+
+// Lot 3a — bilan noté : sens du score et paliers d'interprétation (score 0-100).
+const scoringSchema = z.object({
+  higherIsBetter: z.boolean(),
+  bands: z.array(z.object({ upTo: z.number().int().min(0).max(100), label: z.string().trim().min(1).max(120) })).min(1).max(6),
 });
 
 const createTemplateSchema = z.object({
@@ -31,6 +40,7 @@ const createTemplateSchema = z.object({
   description: z.string().nullable().optional(),
   questions: z.array(questionSchema).default([]),
   isActive: z.boolean().optional(),
+  scoring: scoringSchema.nullable().optional(),
 });
 
 const patchTemplateSchema = z.object({
@@ -38,6 +48,7 @@ const patchTemplateSchema = z.object({
   description: z.string().nullable().optional(),
   questions: z.array(questionSchema).optional(),
   isActive: z.boolean().optional(),
+  scoring: scoringSchema.nullable().optional(),
 }).strict();
 
 const createResponseSchema = z.object({
@@ -157,7 +168,8 @@ export function registerAnamneseRoutes(app: Express): void {
       questions: JSON.stringify(parsed.data.questions),
       description: parsed.data.description ?? null,
       isActive: parsed.data.isActive ?? true,
-    });
+      scoring: parsed.data.scoring ? JSON.stringify(parsed.data.scoring) : null,
+    } as any);
     res.json(tpl);
   });
 
@@ -170,6 +182,9 @@ export function registerAnamneseRoutes(app: Express): void {
     const patch: Record<string, unknown> = { ...parsed.data };
     if (parsed.data.questions !== undefined) {
       patch.questions = JSON.stringify(parsed.data.questions);
+    }
+    if (parsed.data.scoring !== undefined) {
+      patch.scoring = parsed.data.scoring ? JSON.stringify(parsed.data.scoring) : null;
     }
     const updated = await storage.updateAnamnesisTemplate(id, patch as any);
     res.json(updated);
@@ -384,9 +399,10 @@ export function registerAnamneseRoutes(app: Express): void {
     const parsed = submitAnswersSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
 
+    let scored: { score: number; label: string | null } | null = null;
     if (resp.templateId) {
       const tpl = await storage.getAnamnesisTemplate(resp.templateId);
-      let questions: { id: string; required?: boolean }[] = [];
+      let questions: { id: string; type: string; required?: boolean; reverse?: boolean }[] = [];
       try { questions = JSON.parse(tpl?.questions || "[]"); } catch { questions = []; }
       const missingIds = findMissingRequiredAnswers(questions, parsed.data.answers);
       if (missingIds.length > 0) {
@@ -395,12 +411,16 @@ export function registerAnamneseRoutes(app: Express): void {
           missingQuestionIds: missingIds,
         });
       }
+      // Lot 3a — bilan noté : score figé à la soumission (le modèle peut changer ensuite).
+      const scoring = parseScoring((tpl as any)?.scoring);
+      if (scoring) scored = scoreAnswers(questions, parsed.data.answers, scoring);
     }
 
     const updated = await storage.updateAnamnesisResponse(resp.id, {
       answers: JSON.stringify(parsed.data.answers),
       submittedAt: Date.now(),
-    });
+      ...(scored ? { score: scored.score, scoreLabel: scored.label } : {}),
+    } as any);
     res.json({ ok: true, submittedAt: updated?.submittedAt });
   });
 }

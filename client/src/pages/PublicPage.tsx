@@ -303,6 +303,10 @@ export default function PublicPage() {
       <footer className="border-t border-border py-6 sm:py-8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row gap-2 sm:gap-3 items-center justify-between text-sm text-muted-foreground">
           <span>© {new Date().getFullYear()} {naturo.name}</span>
+          {/* Lot 3a — espace cliente : connexion par lien reçu par email. */}
+          <a href={`/#/espace/connexion/${naturo.slug}`} className="text-primary font-bold" data-testid="link-client-portal">
+            Mon espace cliente
+          </a>
           <span>
             Page propulsée par{" "}
             <Link href="/" className="text-primary font-bold">

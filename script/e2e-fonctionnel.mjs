@@ -407,6 +407,67 @@ section("Anamnèse, programmes, forfaits");
 
   const sol = await api("GET", "/api/solutions");
   note(Array.isArray(sol.data) && sol.data.length > 50, "base de solutions naturelles", `${sol.data?.length} entrées`);
+
+  // Lot 3a — bilan noté : score calculé à la soumission.
+  const bilan = await api("POST", "/api/anamnesis-templates", {
+    name: "Bilan noté — vitalité", questions: [
+      { id: "e1", label: "Énergie au réveil", type: "scale", required: true },
+      { id: "e2", label: "Coups de fatigue", type: "scale", required: true, reverse: true },
+    ],
+    scoring: { higherIsBetter: true, bands: [{ upTo: 39, label: "Vitalité basse" }, { upTo: 100, label: "Bonne vitalité" }] },
+  });
+  const lienBilan = await api("POST", "/api/anamnesis-responses", { templateId: bilan.data?.id, clientId });
+  await fetch(`${B}/api/public/anamnese/${lienBilan.data?.token}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: { e1: 10, e2: 1 } }),
+  });
+  const reponses = await api("GET", `/api/anamnesis-responses?clientId=${clientId}`);
+  const noté = (reponses.data || []).find((r) => r.id === lienBilan.data?.id);
+  note(noté?.score === 100 && noté?.scoreLabel === "Bonne vitalité", "bilan noté : score et interprétation", `${noté?.score}/100`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+section("Espace cliente");
+{
+  // Programme par étapes partagé avec la cliente.
+  const aujourdhui = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+  const prog = await api("POST", "/api/programmes", {
+    clientId, title: "Programme par étapes", status: "sent", startDate: aujourdhui,
+    content: [{ section: "Étape 1", items: ["Eau chaude citronnée"], durationDays: 7 }, { section: "Étape 2", items: ["Légumes verts"], durationDays: 14 }],
+  });
+  const invit = await api("POST", `/api/clients/${clientId}/portal-invite`);
+  const jeton = (invit.data?.url || "").split("/").pop();
+  note(invit.status === 200 && /^[a-f0-9]{64}$/.test(jeton), "invitation à l'espace cliente");
+
+  const portail = async (method, path, body, c) => {
+    const r = await fetch(B + path, { method, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(c ? { Cookie: c } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, data: await r.json().catch(() => null), setCookie: r.headers.get("set-cookie") };
+  };
+  const echange = await portail("POST", "/api/public/portal/exchange", { token: jeton });
+  const cookiePortail = (echange.setCookie || "").split(";")[0];
+  note(echange.status === 200 && cookiePortail.startsWith("naturo_portal="), "lien échangé contre une session");
+  const reutilise = await portail("POST", "/api/public/portal/exchange", { token: jeton });
+  note(reutilise.status === 410, "lien de connexion à usage unique");
+
+  const moi = await portail("GET", "/api/portal/me", null, cookiePortail);
+  note(moi.status === 200 && moi.data?.client?.firstName === "Sophie" && moi.data?.programmes?.some((p) => p.id === prog.data?.id),
+    "espace : programmes partagés");
+  note(moi.data?.bilans?.some((b) => b.score === 100), "espace : bilans notés");
+  note(!JSON.stringify(moi.data || {}).includes("antecedents"), "espace : aucune donnée de santé de la fiche exposée");
+
+  const detail = await portail("GET", `/api/portal/programmes/${prog.data?.id}`, null, cookiePortail);
+  note(detail.status === 200 && detail.data?.current === 0 && detail.data?.stages?.[1]?.start, "programme : étape du jour et calendrier");
+  const releve = await portail("POST", `/api/portal/programmes/${prog.data?.id}/checkins`, { adherence: 2, energy: 4, note: "Bonne journée" }, cookiePortail);
+  note(releve.status === 200 && releve.data?.adherence === 2, "relevé d'observance de la cliente");
+  const futur = await portail("POST", `/api/portal/programmes/${prog.data?.id}/checkins`, { day: "2099-01-01", adherence: 2 }, cookiePortail);
+  note(futur.status === 400, "relevé dans le futur refusé");
+  const vuPraticienne = await api("GET", `/api/programmes/${prog.data?.id}/checkins`);
+  note(vuPraticienne.data?.stats?.rate === 100, "observance visible par la praticienne", `${vuPraticienne.data?.stats?.rate} %`);
+
+  const sansSession = await portail("GET", "/api/portal/me");
+  note(sansSession.status === 401, "espace inaccessible sans session");
+  const deco = await portail("POST", "/api/portal/logout", {}, cookiePortail);
+  const apresDeco = await portail("GET", "/api/portal/me", null, cookiePortail);
+  note(deco.status === 200 && apresDeco.status === 401, "déconnexion de l'espace");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

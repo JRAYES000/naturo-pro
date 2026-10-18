@@ -56,6 +56,9 @@ export const einvoicingConnections = activeSchema.einvoicingConnections;
 // Lot 2b — journal de suivi et messages groupés aux clientes
 export const clientFollowups = activeSchema.clientFollowups;
 export const clientBroadcasts = activeSchema.clientBroadcasts;
+// Lot 3a — espace cliente et observance des programmes
+export const clientPortalTokens = activeSchema.clientPortalTokens;
+export const programCheckins = activeSchema.programCheckins;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -109,5 +112,5 @@ export type {
   AiSavedReply, InsertAiSavedReply,
   BlockedDate, InsertBlockedDate,
   EInvoicingConnection,
-  ClientFollowup, ClientBroadcast,
+  ClientFollowup, ClientBroadcast, ClientPortalToken, ProgramCheckin,
 } from "./schema";

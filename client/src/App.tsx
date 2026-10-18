@@ -61,6 +61,11 @@ const StudioContenu = lazy(() => import("@/pages/StudioContenu"));
 const CadreLegal = lazy(() => import("@/pages/CadreLegal"));
 const SavedReplies = lazy(() => import("@/pages/SavedReplies"));
 const BookingManage = lazy(() => import("@/pages/BookingManage"));
+// Lot 3a — espace cliente (connexion par lien reçu par email).
+const PortalLogin = lazy(() => import("@/pages/portal/PortalLogin"));
+const PortalAccess = lazy(() => import("@/pages/portal/PortalAccess"));
+const PortalHome = lazy(() => import("@/pages/portal/PortalHome"));
+const PortalProgramme = lazy(() => import("@/pages/portal/PortalProgramme"));
 // Phase 3 Lot 4 — admin (rarement visité, jamais en même temps que le reste)
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminUserDetail = lazy(() => import("@/pages/admin/AdminUserDetail"));
@@ -139,6 +144,10 @@ function AppRouter() {
       <Route path="/p/:slug/book/:catId?" component={BookingFlow} />
       <Route path="/manage/:token" component={BookingManage} />
       <Route path="/anamnese/:token" component={AnamnesePublic} />
+      <Route path="/espace/connexion/:slug" component={PortalLogin} />
+      <Route path="/espace/acces/:token" component={PortalAccess} />
+      <Route path="/espace/programme/:id" component={PortalProgramme} />
+      <Route path="/espace" component={PortalHome} />
 
       <Route component={NotFound} />
     </Switch>

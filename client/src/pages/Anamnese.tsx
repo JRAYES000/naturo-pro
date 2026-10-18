@@ -50,6 +50,21 @@ interface Question {
   type: QuestionType;
   options?: string[];
   required?: boolean;
+  /** Lot 3a — bilan noté : échelle comptée à rebours (10 = défavorable). */
+  reverse?: boolean;
+}
+
+/** Lot 3a — bilan noté : score 0-100 tiré des questions « échelle », interprété par paliers. */
+interface Scoring {
+  higherIsBetter: boolean;
+  bands: Array<{ upTo: number; label: string }>;
+}
+
+function parseScoringJson(raw: string | null | undefined): Scoring | null {
+  try {
+    const v = JSON.parse(raw || "null");
+    return v && Array.isArray(v.bands) ? v : null;
+  } catch { return null; }
 }
 
 function parseQuestions(raw: string | null | undefined): Question[] {
@@ -113,8 +128,12 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 function q(label: string, type: QuestionType = "textarea", required = false): Question {
   return { id: crypto.randomUUID(), label, type, required };
 }
+/** Question « échelle » obligatoire d'un bilan noté ; `reverse` : 10 = défavorable. */
+function sc(label: string, reverse = false): Question {
+  return { id: crypto.randomUUID(), label, type: "scale", required: true, ...(reverse ? { reverse: true } : {}) };
+}
 
-const STARTER_TEMPLATES: Array<{ key: string; name: string; description: string; questions: () => Question[] }> = [
+const STARTER_TEMPLATES: Array<{ key: string; name: string; description: string; questions: () => Question[]; scoring?: () => Scoring }> = [
   {
     key: "premiere",
     name: "Anamnèse — première consultation",
@@ -173,7 +192,104 @@ const STARTER_TEMPLATES: Array<{ key: string; name: string; description: string;
       q("Sur une échelle de 1 à 10, à quel point ces symptômes impactent-ils votre quotidien ?", "scale"),
     ],
   },
+  // Lot 3a — bilans notés : à refaire à chaque rendez-vous pour suivre l'évolution.
+  {
+    key: "note-vitalite",
+    name: "Bilan noté — vitalité",
+    description: "Score de vitalité sur 100, à refaire régulièrement pour mesurer les progrès.",
+    questions: () => [
+      sc("De 1 à 10, quelle est votre énergie au réveil ?"),
+      sc("De 1 à 10, quelle est votre énergie en fin de journée ?"),
+      sc("De 1 à 10, comment évaluez-vous la qualité de votre sommeil ?"),
+      sc("De 1 à 10, comment évaluez-vous votre confort digestif ?"),
+      sc("De 1 à 10, comment va votre moral ?"),
+      sc("De 1 à 10, comment évaluez-vous votre concentration ?"),
+      sc("De 1 à 10, à quel point avez-vous envie de bouger ?"),
+      sc("De 1 à 10, à quelle fréquence avez-vous des coups de fatigue ? (10 = très souvent)", true),
+    ],
+    scoring: () => ({ higherIsBetter: true, bands: [{ upTo: 39, label: "Vitalité basse" }, { upTo: 69, label: "Vitalité moyenne" }, { upTo: 100, label: "Bonne vitalité" }] }),
+  },
+  {
+    key: "note-stress",
+    name: "Bilan noté — stress",
+    description: "Niveau de stress perçu sur 100 (plus le score est bas, mieux c'est).",
+    questions: () => [
+      sc("De 1 à 10, à quel point vous sentez-vous tendu(e) ou nerveux(se) ?"),
+      sc("De 1 à 10, à quel point avez-vous du mal à vous détendre ?"),
+      sc("De 1 à 10, à quel point vos pensées tournent-elles en boucle le soir ?"),
+      sc("De 1 à 10, à quel point vous sentez-vous débordé(e) ?"),
+      sc("De 1 à 10, à quel point êtes-vous irritable en ce moment ?"),
+      sc("De 1 à 10, à quel point ressentez-vous des tensions physiques (mâchoires, épaules, ventre) ?"),
+      sc("De 1 à 10, à quel point vous sentez-vous reposé(e) au réveil ? (10 = très reposé)", true),
+    ],
+    scoring: () => ({ higherIsBetter: false, bands: [{ upTo: 33, label: "Stress faible" }, { upTo: 66, label: "Stress modéré" }, { upTo: 100, label: "Stress élevé" }] }),
+  },
+  {
+    key: "note-digestion",
+    name: "Bilan noté — confort digestif",
+    description: "Inconfort digestif sur 100 (plus le score est bas, mieux c'est).",
+    questions: () => [
+      sc("De 1 à 10, à quel point êtes-vous gêné(e) par des ballonnements ?"),
+      sc("De 1 à 10, à quel point ressentez-vous des lourdeurs après les repas ?"),
+      sc("De 1 à 10, à quel point souffrez-vous de remontées acides ou de brûlures ?"),
+      sc("De 1 à 10, à quel point votre transit est-il irrégulier ?"),
+      sc("De 1 à 10, à quel point êtes-vous fatigué(e) après les repas ?"),
+      sc("De 1 à 10, quel plaisir avez-vous à manger ? (10 = beaucoup)", true),
+    ],
+    scoring: () => ({ higherIsBetter: false, bands: [{ upTo: 33, label: "Bon confort digestif" }, { upTo: 66, label: "Inconfort modéré" }, { upTo: 100, label: "Inconfort marqué" }] }),
+  },
 ];
+
+/** Lot 3a — réglage d'un bilan noté dans l'éditeur de modèle. */
+function ScoringEditor({ scoring, onChange }: { scoring: Scoring | null; onChange: (s: Scoring | null) => void }) {
+  const on = !!scoring;
+  const setBand = (i: number, patch: Partial<{ upTo: number; label: string }>) =>
+    scoring && onChange({ ...scoring, bands: scoring.bands.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+  return (
+    <div className="rounded-lg border p-3 space-y-3" data-testid="scoring-editor">
+      <label className="flex items-start gap-2 text-sm cursor-pointer">
+        <input type="checkbox" className="accent-primary mt-1" checked={on} data-testid="checkbox-scored"
+          onChange={(e) => onChange(e.target.checked ? { higherIsBetter: true, bands: [{ upTo: 39, label: "Faible" }, { upTo: 69, label: "Moyen" }, { upTo: 100, label: "Bon" }] } : null)} />
+        <span>
+          <span className="font-semibold">Bilan noté</span>
+          <span className="block text-xs text-muted-foreground">Les réponses « échelle » donnent un score sur 100, interprété par les paliers ci-dessous et suivi dans la fiche de la cliente.</span>
+        </span>
+      </label>
+      {scoring && (
+        <>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Un score élevé est</span>
+            <Select value={scoring.higherIsBetter ? "bon" : "mauvais"} onValueChange={(v) => onChange({ ...scoring, higherIsBetter: v === "bon" })}>
+              <SelectTrigger className="w-40" data-testid="select-score-direction"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bon">favorable</SelectItem>
+                <SelectItem value="mauvais">défavorable</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            {scoring.bands.map((b, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground shrink-0">Jusqu'à</span>
+                <Input type="number" min={0} max={100} value={b.upTo} onChange={(e) => setBand(i, { upTo: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} className="w-20" aria-label="Score maximal du palier" />
+                <Input value={b.label} onChange={(e) => setBand(i, { label: e.target.value })} placeholder="Interprétation" aria-label="Interprétation du palier" />
+                <button type="button" onClick={() => onChange({ ...scoring, bands: scoring.bands.filter((_, j) => j !== i) })} disabled={scoring.bands.length <= 1}
+                  className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-30" aria-label="Retirer le palier">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            {scoring.bands.length < 6 && (
+              <Button type="button" size="sm" variant="outline" className="rounded-md" onClick={() => onChange({ ...scoring, bands: [...scoring.bands, { upTo: 100, label: "" }] })}>
+                <Plus className="h-4 w-4 mr-1" /> Ajouter un palier
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
@@ -436,6 +552,11 @@ function AnamnesePage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      {(resp as any).score != null && (
+                        <Badge className="bg-sky-100 text-sky-800 border-0 text-xs" data-testid={`badge-score-${resp.id}`}>
+                          {(resp as any).score}/100{(resp as any).scoreLabel ? ` · ${(resp as any).scoreLabel}` : ""}
+                        </Badge>
+                      )}
                       {resp.submittedAt
                         ? <Badge className="bg-accent/30 text-primary border-0 text-xs"><Check className="h-3 w-3 mr-1" />Reçu</Badge>
                         : <Badge variant="secondary" className="text-xs">En attente</Badge>}
@@ -530,6 +651,7 @@ function TemplateDialog({ open, editing, onClose }: {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [starterKey, setStarterKey] = useState(STARTER_TEMPLATES[0].key);
+  const [scoring, setScoring] = useState<Scoring | null>(null);
 
   // Lot 4 (actions C6+C7) — choisir un modèle de départ thématique remplace
   // nom/description/questions d'un coup (avant toute personnalisation).
@@ -540,6 +662,7 @@ function TemplateDialog({ open, editing, onClose }: {
     setName(s.name);
     setDescription(s.description);
     setQuestions(s.questions());
+    setScoring(s.scoring ? s.scoring() : null);
   }
 
   if (open && !initialized) {
@@ -548,10 +671,12 @@ function TemplateDialog({ open, editing, onClose }: {
       setName("Anamnèse — première consultation");
       setDescription("Questionnaire à remplir avant le premier rendez-vous.");
       setQuestions(defaultQuestions());
+      setScoring(null);
     } else if (editing) {
       setName(editing.name);
       setDescription(editing.description ?? "");
       setQuestions(parseQuestions(editing.questions));
+      setScoring(parseScoringJson((editing as any).scoring));
     }
     setInitialized(true);
   }
@@ -559,7 +684,7 @@ function TemplateDialog({ open, editing, onClose }: {
 
   const mut = useMutation({
     mutationFn: async () => {
-      const body = { name, description: description || null, questions };
+      const body = { name, description: description || null, questions, scoring: scoring && scoring.bands.every((b) => b.label.trim()) ? scoring : null };
       if (editing === "new") {
         await apiRequest("POST", "/api/anamnesis-templates", body);
       } else if (editing) {
@@ -640,6 +765,8 @@ function TemplateDialog({ open, editing, onClose }: {
             />
           </div>
 
+          <ScoringEditor scoring={scoring} onChange={setScoring} />
+
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-base font-semibold">Questions ({questions.length})</Label>
@@ -668,6 +795,7 @@ function TemplateDialog({ open, editing, onClose }: {
                   question={q}
                   index={idx}
                   total={questions.length}
+                  scored={!!scoring}
                   onChange={patch => updateQuestion(idx, patch)}
                   onRemove={() => removeQuestion(idx)}
                   onMove={dir => moveQuestion(idx, dir)}
@@ -692,10 +820,11 @@ function TemplateDialog({ open, editing, onClose }: {
 
 // ─── Éditeur d'une question ───────────────────────────────────────────────────
 
-function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: {
+function QuestionEditor({ question, index, total, scored, onChange, onRemove, onMove }: {
   question: Question;
   index: number;
   total: number;
+  scored?: boolean;
   onChange: (patch: Partial<Question>) => void;
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
@@ -803,6 +932,19 @@ function QuestionEditor({ question, index, total, onChange, onRemove, onMove }: 
               data-testid={`checkbox-required-${index}`}
             />
             <label htmlFor={`req-${question.id}`} className="text-xs text-muted-foreground">Réponse obligatoire</label>
+            {scored && question.type === "scale" && (
+              <>
+                <input
+                  type="checkbox"
+                  id={`rev-${question.id}`}
+                  checked={!!question.reverse}
+                  onChange={e => onChange({ reverse: e.target.checked })}
+                  className="accent-primary ml-3"
+                  data-testid={`checkbox-reverse-${index}`}
+                />
+                <label htmlFor={`rev-${question.id}`} className="text-xs text-muted-foreground">Échelle inversée (10 = défavorable)</label>
+              </>
+            )}
           </div>
         </div>
 
@@ -981,6 +1123,11 @@ function ResponseViewDialog({ open, response, templates, onClose }: {
               Soumis le {new Date(response.submittedAt).toLocaleDateString("fr-FR", {
                 day: "numeric", month: "long", year: "numeric",
               })}
+            </p>
+          )}
+          {(response as any).score != null && (
+            <p className="text-sm font-semibold text-heading" data-testid="text-response-score">
+              Score : {(response as any).score}/100{(response as any).scoreLabel ? ` — ${(response as any).scoreLabel}` : ""}
             </p>
           )}
           {questions.length === 0 ? (

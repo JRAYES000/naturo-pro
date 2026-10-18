@@ -1,5 +1,5 @@
 # Inventaire des routes Express — généré par script/routes-inventory.ts
-# 195 routes — trié par (path, method), file-agnostic.
+# 205 routes — trié par (path, method), file-agnostic.
 # Le diff de ce fichier doit rester STRICTEMENT VIDE à travers le split de routes.ts.
 
 GET     /api/admin/analytics                             [requireAuth, requireAdmin]  (anonymous)
@@ -87,6 +87,7 @@ GET     /api/clients/:id/followups                       [requireAuth]  (anonymo
 POST    /api/clients/:id/followups                       [requireAuth]  (anonymous)
 DELETE  /api/clients/:id/followups/:fid                  [requireAuth]  (anonymous)
 GET     /api/clients/:id/notes                           [requireAuth]  (anonymous)
+POST    /api/clients/:id/portal-invite                   [requireAuth]  (anonymous)
 POST    /api/clients/import                              [requireAuth]  (anonymous)
 GET     /api/company-lookup                              [requireAuth]  (anonymous)
 POST    /api/content/generate                            [requireAuth]  (anonymous)
@@ -109,6 +110,7 @@ POST    /api/discussions/:id/create-programme            [requireAuth]  (anonymo
 GET     /api/discussions/:id/messages                    [requireAuth]  (anonymous)
 POST    /api/discussions/:id/messages                    [requireAuth]  (anonymous)
 DELETE  /api/documents/:id                               [requireAuth]  (anonymous)
+PATCH   /api/documents/:id                               [requireAuth]  (anonymous)
 GET     /api/documents/:id/download                      [requireAuth]  (anonymous)
 GET     /api/einvoicing/received                         [requireAuth]  (anonymous)
 GET     /api/einvoicing/received/:id/file                [requireAuth]  (anonymous)
@@ -153,6 +155,11 @@ DELETE  /api/packages/:id                                [requireAuth]  (anonymo
 GET     /api/packages/:id                                [requireAuth]  (anonymous)
 PATCH   /api/packages/:id                                [requireAuth]  (anonymous)
 POST    /api/packages/:id/use-session                    [requireAuth]  (anonymous)
+GET     /api/portal/documents/:id                        [requirePortal]  (anonymous)
+POST    /api/portal/logout                               []  (anonymous)
+GET     /api/portal/me                                   [requirePortal]  (anonymous)
+GET     /api/portal/programmes/:id                       [requirePortal]  (anonymous)
+POST    /api/portal/programmes/:id/checkins              [requirePortal]  (anonymous)
 GET     /api/profile                                     [requireAuth]  (anonymous)
 PATCH   /api/profile                                     [requireAuth]  (anonymous)
 GET     /api/profile/seo                                 [requireAuth]  (anonymous)
@@ -161,6 +168,7 @@ POST    /api/programmes                                  [requireAuth]  (anonymo
 DELETE  /api/programmes/:id                              [requireAuth]  (anonymous)
 GET     /api/programmes/:id                              [requireAuth]  (anonymous)
 PATCH   /api/programmes/:id                              [requireAuth]  (anonymous)
+GET     /api/programmes/:id/checkins                     [requireAuth]  (anonymous)
 GET     /api/programmes/:id/pdf                          [requireAuth]  (anonymous)
 GET     /api/public/_self                                []  (anonymous)
 GET     /api/public/:slug                                []  (anonymous)
@@ -180,6 +188,8 @@ POST    /api/public/manage/:token/reschedule             []  (anonymous)
 GET     /api/public/manage/:token/slots                  []  (anonymous)
 GET     /api/public/pay/cancel                           []  (anonymous)
 GET     /api/public/pay/success                          []  (anonymous)
+POST    /api/public/portal/exchange                      [bookingLimiter]  (anonymous)
+POST    /api/public/portal/request-link                  [bookingLimiter]  (anonymous)
 GET     /api/public/unsubscribe/:token                   []  (anonymous)
 POST    /api/public/unsubscribe/:token                   []  (anonymous)
 GET     /api/rdv/cancel/:token                           []  (anonymous)

@@ -22,7 +22,7 @@ import {
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
   analyticsEvents, aiSavedReplies, blockedDates, einvoicingConnections,
-  clientFollowups, clientBroadcasts,
+  clientFollowups, clientBroadcasts, clientPortalTokens, programCheckins,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -35,6 +35,7 @@ import type {
   Package, InsertPackage, AiChatMessage, AiChatUsage,
   AssistantSettings, KbDocument, KbChunk, ContentPost, AnalyticsEvent,
   AiSavedReply, BlockedDate, EInvoicingConnection, ClientFollowup, ClientBroadcast,
+  ClientPortalToken, ProgramCheckin,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull, inArray } from "drizzle-orm";
@@ -261,6 +262,8 @@ export const USER_SCOPED_TABLES = [
   einvoicingConnections,
   clientFollowups,
   clientBroadcasts,
+  clientPortalTokens,
+  programCheckins,
 ] as const;
 
 /**
@@ -811,6 +814,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(programs).where(eq(programs.clientId, id));
     await db.delete(packages).where(eq(packages.clientId, id));
     await db.delete(clientFollowups).where(eq(clientFollowups.clientId, id));
+    await db.delete(clientPortalTokens).where(eq(clientPortalTokens.clientId, id));
+    await db.delete(programCheckins).where(eq(programCheckins.clientId, id));
     // Lot 5 (QC Client) — les RDV FUTURS du client supprimé sont annulés, pas
     // laissés « confirmed » et anonymes sur le calendrier (RDV fantômes).
     await db.update(appointments)
@@ -1003,6 +1008,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAppointment(id: number): Promise<void> {
     await db.delete(appointments).where(eq(appointments.id, id));
+  }
+
+  /**
+   * Lot 3a — rendez-vous d'une cliente pour son espace : ceux rattachés à sa fiche
+   * ET ceux réservés en ligne avec son adresse (la réservation publique ne relie pas
+   * toujours la fiche).
+   */
+  async listAppointmentsForPortal(userId: number, clientId: number, email: string | null): Promise<Appointment[]> {
+    const parEmail = email ? sql`lower(${appointments.clientEmail}) = ${email.toLowerCase()}` : undefined;
+    return db.select().from(appointments)
+      .where(and(eq(appointments.userId, userId), parEmail ? or(eq(appointments.clientId, clientId), parEmail) : eq(appointments.clientId, clientId)))
+      .orderBy(desc(appointments.startAt));
   }
 
   async listClientAppointments(clientId: number): Promise<Appointment[]> {
@@ -1450,7 +1467,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProgram(id: number): Promise<void> {
+    await db.delete(programCheckins).where(eq(programCheckins.programId, id));
     await db.delete(programs).where(eq(programs.id, id));
+  }
+
+  // ── Lot 3a — observance des programmes ─────────────────────────────────────
+
+  async listProgramCheckins(programId: number): Promise<ProgramCheckin[]> {
+    return db.select().from(programCheckins).where(eq(programCheckins.programId, programId)).orderBy(desc(programCheckins.day));
+  }
+
+  /** Un relevé par programme et par jour : le second remplace le premier. */
+  async upsertProgramCheckin(data: { userId: number; programId: number; clientId: number; day: string; adherence: number; energy: number | null; note: string | null }): Promise<ProgramCheckin> {
+    const now = Date.now();
+    const existing = await first<ProgramCheckin>(db.select().from(programCheckins)
+      .where(and(eq(programCheckins.programId, data.programId), eq(programCheckins.day, data.day))));
+    if (existing) {
+      return (await dbUpdateReturning<ProgramCheckin>(programCheckins, existing.id, {
+        adherence: data.adherence, energy: data.energy, note: data.note, updatedAt: now,
+      }))!;
+    }
+    return dbInsertReturning<ProgramCheckin>(programCheckins, { ...data, createdAt: now, updatedAt: now });
   }
 
   // ── Documents client ───────────────────────────────────────────────────────
@@ -1465,6 +1502,7 @@ export class DatabaseStorage implements IStorage {
         mimeType: clientDocuments.mimeType,
         sizeBytes: clientDocuments.sizeBytes,
         kind: clientDocuments.kind,
+        sharedWithClient: clientDocuments.sharedWithClient,
         createdAt: clientDocuments.createdAt,
       })
       .from(clientDocuments)
@@ -1482,6 +1520,42 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClientDocument(id: number): Promise<void> {
     await db.delete(clientDocuments).where(eq(clientDocuments.id, id));
+  }
+
+  async updateClientDocument(id: number, patch: { sharedWithClient?: boolean }): Promise<void> {
+    await db.update(clientDocuments).set(patch as any).where(eq(clientDocuments.id, id));
+  }
+
+  // ── Lot 3a — espace cliente : liens de connexion et sessions ───────────────
+
+  async createPortalToken(data: { userId: number; clientId: number; tokenHash: string; kind: "link" | "session"; expiresAt: number }): Promise<ClientPortalToken> {
+    return dbInsertReturning<ClientPortalToken>(clientPortalTokens, { ...data, usedAt: null, createdAt: Date.now() });
+  }
+
+  async getPortalToken(tokenHash: string): Promise<ClientPortalToken | undefined> {
+    return first(db.select().from(clientPortalTokens).where(eq(clientPortalTokens.tokenHash, tokenHash)));
+  }
+
+  /**
+   * Consomme un lien de connexion : une seule fois. La mise à jour conditionnelle
+   * (used_at encore vide) départage deux clics simultanés sur le même lien.
+   */
+  async consumePortalLink(tokenHash: string, now = Date.now()): Promise<ClientPortalToken | null> {
+    const t = await this.getPortalToken(tokenHash);
+    if (!t || t.kind !== "link" || t.usedAt || t.expiresAt < now) return null;
+    await db.update(clientPortalTokens).set({ usedAt: now } as any)
+      .where(and(eq(clientPortalTokens.id, t.id), isNull(clientPortalTokens.usedAt)));
+    const after = await this.getPortalToken(tokenHash);
+    return after?.usedAt === now ? after : null;
+  }
+
+  async deletePortalToken(tokenHash: string): Promise<void> {
+    await db.delete(clientPortalTokens).where(eq(clientPortalTokens.tokenHash, tokenHash));
+  }
+
+  /** Purge des liens et sessions expirés (cron quotidien). */
+  async purgeExpiredPortalTokens(now = Date.now()): Promise<void> {
+    await db.delete(clientPortalTokens).where(lte(clientPortalTokens.expiresAt, now));
   }
 
   // ── Base de solutions naturelles ─────────────────────────────────────────────

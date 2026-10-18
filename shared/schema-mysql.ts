@@ -293,6 +293,8 @@ export const clients = mysqlTable("clients", {
   archivedAt: bigint("archived_at", { mode: "number" }),
   emailOptOutAt: bigint("email_opt_out_at", { mode: "number" }),
   optOutToken: varchar("opt_out_token", { length: 64 }),
+  // Lot 3a — dernière visite de la cliente dans son espace.
+  portalLastSeenAt: bigint("portal_last_seen_at", { mode: "number" }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
@@ -332,6 +334,44 @@ export const clientBroadcasts = mysqlTable("client_broadcasts", {
 }));
 
 export type ClientBroadcast = typeof clientBroadcasts.$inferSelect;
+
+// Lot 3a — espace cliente : lien de connexion à usage unique (« link ») et session
+// (« session »). Seule l'empreinte SHA-256 du jeton est conservée.
+export const clientPortalTokens = mysqlTable("client_portal_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  clientId: int("client_id").notNull(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+  kind: varchar("kind", { length: 10 }).notNull(), // link | session
+  expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
+  usedAt: bigint("used_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  uk_portal_token_hash: uniqueIndex("uk_portal_token_hash").on(t.tokenHash),
+  idx_portal_tokens_client: index("idx_portal_tokens_client").on(t.clientId),
+}));
+
+export type ClientPortalToken = typeof clientPortalTokens.$inferSelect;
+
+// Lot 3a — observance d'un programme : un relevé par jour (suivi oui / en partie /
+// non, énergie de 1 à 5, note libre), saisi par la cliente dans son espace.
+export const programCheckins = mysqlTable("program_checkins", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  programId: int("program_id").notNull(),
+  clientId: int("client_id").notNull(),
+  day: varchar("day", { length: 10 }).notNull(), // AAAA-MM-JJ (heure de Paris)
+  adherence: int("adherence").notNull(), // 0 non | 1 en partie | 2 oui
+  energy: int("energy"),
+  note: text("note"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  uk_checkin_program_day: uniqueIndex("uk_checkin_program_day").on(t.programId, t.day),
+  idx_checkins_user: index("idx_checkins_user").on(t.userId),
+}));
+
+export type ProgramCheckin = typeof programCheckins.$inferSelect;
 
 // ─── Appointments ─────────────────────────────────────────────────────────────
 export const appointments = mysqlTable("appointments", {
@@ -425,6 +465,8 @@ export const anamnesisTemplates = mysqlTable("anamnesis_templates", {
   description: text("description"),
   questions: text("questions").notNull(), // JSON
   isActive: boolean("is_active").default(true),
+  // Lot 3a — bilan noté : JSON { higherIsBetter, bands: [{ upTo, label }] } ; null = questionnaire simple.
+  scoring: text("scoring"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 }, (t) => ({
@@ -440,6 +482,9 @@ export const anamnesisResponses = mysqlTable("anamnesis_responses", {
   token: varchar("token", { length: 64 }).notNull(),
   answers: text("answers"), // JSON
   submittedAt: bigint("submitted_at", { mode: "number" }),
+  // Lot 3a — score d'un bilan noté (0-100) et son interprétation, figés à la soumission.
+  score: int("score"),
+  scoreLabel: varchar("score_label", { length: 120 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_anamnesis_resp_user: index("idx_anamnesis_resp_user").on(t.userId),
@@ -454,6 +499,9 @@ export const programs = mysqlTable("programs", {
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(), // JSON
   status: varchar("status", { length: 20 }).default("draft"),
+  // Lot 3a — programme par étapes : date de début (AAAA-MM-JJ), chaque section
+  // pouvant durer N jours ; la cliente suit son étape dans son espace.
+  startDate: varchar("start_date", { length: 10 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 }, (t) => ({
@@ -472,6 +520,8 @@ export const clientDocuments = mysqlTable("client_documents", {
   // Lot 4 — nature du document (null = document libre, "formulaire_externe" =
   // questionnaire rempli hors Naturo Pro et importé dans le dossier).
   kind: varchar("kind", { length: 32 }),
+  // Lot 3a — document visible et téléchargeable dans l'espace cliente.
+  sharedWithClient: boolean("shared_with_client").notNull().default(false),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_client_docs_user_client: index("idx_client_docs_user_client").on(t.userId, t.clientId),

@@ -16,7 +16,10 @@ import { APP_TZ } from "../timezone";
 const programSectionSchema = z.object({
   section: z.string().min(1).max(255),
   items: z.array(z.string().min(1).max(2000)),
+  // Lot 3a — programme par étapes : durée de la section en jours (vide = tout du long).
+  durationDays: z.number().int().min(1).max(365).nullable().optional(),
 });
+const startDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
 
 const programContentSchema = z.array(programSectionSchema);
 
@@ -27,6 +30,7 @@ const createProgramSchema = z.object({
   appointmentId: z.number().int().positive().optional().nullable(),
   content: programContentSchema.default([]),
   status: z.enum(["draft", "sent"]).default("draft"),
+  startDate: startDateSchema,
 });
 
 // ── Schéma de modification ────────────────────────────────────────────────────
@@ -36,6 +40,7 @@ const patchProgramSchema = z.object({
   appointmentId: z.number().int().positive().nullable().optional(),
   content: programContentSchema.optional(),
   status: z.enum(["draft", "sent"]).optional(),
+  startDate: startDateSchema,
 }).strict();
 
 // ── Helpers PDF ───────────────────────────────────────────────────────────────

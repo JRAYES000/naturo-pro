@@ -34,6 +34,8 @@ import { FeatureGate } from "@/components/FeatureGate";
 interface ProgramSection {
   section: string;
   items: string[];
+  /** Lot 3a — durée de l'étape en jours (vide = conseils valables tout du long). */
+  durationDays?: number | null;
 }
 
 interface Program {
@@ -44,8 +46,55 @@ interface Program {
   title: string;
   content: string; // JSON stringifié
   status: "draft" | "sent";
+  startDate?: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+interface ObservanceData {
+  today: string;
+  current: number | null;
+  stages: Array<{ index: number; section: string; start: string | null; end: string | null }>;
+  checkins: Array<{ day: string; adherence: number; energy: number | null; note: string | null }>;
+  stats: { rate: number | null; energyAvg: number | null; streak: number; checkinDays: number; windowDays: number };
+  stats30: { rate: number | null; checkinDays: number };
+}
+
+const ADHERENCE_LABEL = ["Non suivi", "En partie", "Suivi"];
+const ADHERENCE_CLASS = ["bg-red-100 text-red-800", "bg-amber-100 text-amber-800", "bg-emerald-100 text-emerald-800"];
+
+/** Lot 3a — observance saisie par la cliente dans son espace (relevé quotidien). */
+function ObservancePanel({ programId }: { programId: number }) {
+  const { data } = useQuery<ObservanceData>({ queryKey: ["/api/programmes", programId, "checkins"] });
+  if (!data) return null;
+  const etape = data.current != null ? data.stages.find((st) => st.index === data.current) : null;
+  return (
+    <div className="rounded-lg border p-4 space-y-2" data-testid="panel-observance">
+      <p className="font-semibold text-sm">Observance (relevés de la cliente)</p>
+      {etape && <p className="text-sm">Étape en cours : <strong>{etape.section}</strong></p>}
+      {data.checkins.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Aucun relevé pour l'instant. La cliente le remplit chaque jour depuis son espace.</p>
+      ) : (
+        <>
+          <p className="text-sm">
+            {data.stats.rate != null ? <>Suivi à <strong>{data.stats.rate} %</strong> sur 14 jours</> : "Aucun relevé ces 14 derniers jours"}
+            {data.stats30.rate != null ? ` · ${data.stats30.rate} % sur 30 jours` : ""}
+            {data.stats.energyAvg != null ? ` · énergie moyenne ${String(data.stats.energyAvg).replace(".", ",")}/5` : ""}
+          </p>
+          <ul className="space-y-1 max-h-48 overflow-y-auto">
+            {data.checkins.slice(0, 14).map((c) => (
+              <li key={c.day} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-24 text-muted-foreground">{new Date(`${c.day}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
+                <span className={`rounded-sm px-1.5 py-0.5 text-xs font-bold ${ADHERENCE_CLASS[c.adherence] ?? ""}`}>{ADHERENCE_LABEL[c.adherence] ?? "?"}</span>
+                {c.energy != null && <span className="text-xs text-muted-foreground">énergie {c.energy}/5</span>}
+                {c.note && <span className="text-xs italic text-muted-foreground">« {c.note} »</span>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
 }
 
 function parseSections(raw: string): ProgramSection[] {
@@ -113,6 +162,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
   const [title, setTitle] = useState(initial?.title ?? "Programme d'hygiène de vie");
   const [clientId, setClientId] = useState<string>(initial?.clientId ? String(initial.clientId) : "none");
   const [status, setStatus] = useState<"draft" | "sent">(initial?.status ?? "draft");
+  const [startDate, setStartDate] = useState<string>(initial?.startDate ?? "");
   const [sections, setSections] = useState<ProgramSection[]>(
     initial ? parseSections(initial.content) : defaultSections(),
   );
@@ -140,6 +190,10 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
   function updateSectionTitle(idx: number, value: string) {
     setSections(s => s.map((sec, i) => i === idx ? { ...sec, section: value } : sec));
   }
+  function updateSectionDuration(idx: number, value: string) {
+    const n = Math.floor(Number(value));
+    setSections(s => s.map((sec, i) => i === idx ? { ...sec, durationDays: value && n > 0 ? Math.min(365, n) : null } : sec));
+  }
   function addItem(sectionIdx: number) {
     setSections(s => s.map((sec, i) =>
       i === sectionIdx ? { ...sec, items: [...sec.items, ""] } : sec,
@@ -164,6 +218,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
         title: title.trim(),
         clientId: clientId !== "none" ? Number(clientId) : null,
         status,
+        startDate: startDate || null,
         content: sections.filter(s => s.section.trim()),
       };
       if (isNew) {
@@ -222,10 +277,22 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="draft">Brouillon</SelectItem>
-            <SelectItem value="sent">Envoyé</SelectItem>
+            <SelectItem value="sent">Envoyé (visible dans l'espace de la cliente)</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Lot 3a — programme par étapes */}
+      <div className="space-y-1.5">
+        <Label htmlFor="prog-start">Date de début (programme par étapes)</Label>
+        <Input id="prog-start" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-48" data-testid="input-start-programme" />
+        <p className="text-xs text-muted-foreground">
+          Donnez une durée en jours aux sections qui forment des étapes (ex. détox 7 jours, puis reminéralisation 21 jours) :
+          votre cliente voit l'étape du jour dans son espace et y note son suivi.
+        </p>
+      </div>
+
+      {!isNew && initial?.clientId && status === "sent" && <ObservancePanel programId={initial.id} />}
 
       {/* Sections */}
       <div className="space-y-3">
@@ -258,6 +325,18 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                 onChange={e => updateSectionTitle(sIdx, e.target.value)}
                 className="font-semibold"
                 data-testid={`input-section-title-${sIdx}`}
+              />
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={sec.durationDays ?? ""}
+                onChange={e => updateSectionDuration(sIdx, e.target.value)}
+                placeholder="Jours"
+                aria-label="Durée de l'étape en jours"
+                title="Durée de l'étape en jours (vide = tout du long)"
+                className="w-24 shrink-0"
+                data-testid={`input-section-days-${sIdx}`}
               />
               <Button
                 type="button"

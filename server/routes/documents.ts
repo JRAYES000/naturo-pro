@@ -107,6 +107,17 @@ export function registerDocumentRoutes(app: Express): void {
     res.send(buffer);
   });
 
+  // ── PATCH /api/documents/:id — partage dans l'espace cliente (lot 3a) ─────
+  app.patch("/api/documents/:id", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const doc = await storage.getClientDocument(id);
+    if (!doc || doc.userId !== req.userId!) return res.status(404).json({ message: "Document introuvable" });
+    const shared = req.body?.sharedWithClient;
+    if (typeof shared !== "boolean") return res.status(400).json({ message: "sharedWithClient attendu" });
+    await storage.updateClientDocument(id, { sharedWithClient: shared });
+    res.json({ ok: true, sharedWithClient: shared });
+  });
+
   // ── DELETE /api/documents/:id — suppression ───────────────────────────────
   app.delete("/api/documents/:id", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
