@@ -24,6 +24,25 @@ Auth : **sessions maison** — `crypto.randomBytes` + table `sessions` + cookie 
 (`server/auth.ts`), mots de passe en bcrypt. `@types/express-session` traîne en devDependency
 **sans le paquet runtime** : c'est un résidu mort, ne pas « réparer » l'auth en l'installant.
 
+Trois accès s'y ajoutent (octobre 2026), tous maison et sans dépendance :
+
+- **Double authentification** (`server/totp.ts`, `server/routes/two-factor.ts`) : TOTP RFC 6238
+  et 10 codes de secours hachés. Pour un compte protégé, `/api/auth/login` ne crée **pas** de
+  session : il renvoie un défi signé (10 min) échangé sur `/api/auth/2fa/verify`. Toute
+  nouvelle façon de créer une session doit passer par ce contrôle. Secret chiffré par
+  `token-crypto` (purpose `totp-secrets`, clé dérivée de `SESSION_SECRET`) : changer ce secret
+  rend les secrets illisibles, seuls les codes de secours restent valables. Désactiver la 2FA
+  d'une praticienne bloquée : vider `totp_*` sur sa ligne `users` (SSH + mysql).
+- **Espace cliente** (`server/routes/portal.ts`) : lien magique à usage unique → session de
+  30 jours, cookie `naturo_portal` distinct de celui des praticiennes, jetons stockés hachés
+  (`client_portal_tokens`). N'y exposer aucun champ santé de la fiche.
+- **Liens publics de documents** (`/api/public/doc/:jeton`, `server/routes/public-documents.ts`) :
+  devis acceptés en ligne, factures réglées par Stripe Checkout (clé de la praticienne) ; le
+  rattrapage Stripe du cron traite aussi ces sessions (`metadata.kind = "invoice"`).
+
+Clés de services tiers de la praticienne (Brevo) : chiffrées avec `token-crypto` et un
+`purpose` propre ; ne jamais les renvoyer au front (`publicUser` les retire).
+
 ## État de la production
 
 **Le déploiement n'est pas déclenché par le push mais par une CI verte** (`deploy.yml` sur

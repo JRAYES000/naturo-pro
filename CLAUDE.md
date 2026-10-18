@@ -43,6 +43,9 @@ en `success`.
   modèle pour PDF et XML). Numéro légal attribué à l'**émission** (brouillon = `BROUILLON-…`),
   avoir = `docType "avoir"` à montants positifs. Règles, sources et lot 1B (Super PDP) :
   `docs/EFACTURATION-2026.md`. La CI valide les Factur-X (XSD + schématrons BR-FR).
+- **Accès sans mot de passe ni session classique** : double authentification (TOTP), espace
+  cliente (lien magique, cookie `naturo_portal`), liens publics de devis et factures. ↗ (section
+  « Auth maison + bcrypt »)
 
 ## Carte du code
 
