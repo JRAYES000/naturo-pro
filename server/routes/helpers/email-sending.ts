@@ -168,10 +168,15 @@ export function renderNewBookingNotification(opts: {
   clientPhone?: string | null;
   depositCents?: number | null;
   appUrl?: string;
+  /** Demande à valider (validation manuelle des réservations). */
+  pending?: boolean;
 }): { subject: string; html: string; text: string } {
   const nom = opts.clientName.trim() || "(cliente inconnue)";
   const appUrl = opts.appUrl || process.env.APP_URL || "https://app.ecole-naturo.fr";
-  const subject = `Nouvelle réservation — ${nom}, ${opts.rdvDateText}`;
+  const verbe = opts.pending ? "demande" : "vient de réserver";
+  const subject = opts.pending
+    ? `Demande de rendez-vous à valider — ${nom}, ${opts.rdvDateText}`
+    : `Nouvelle réservation — ${nom}, ${opts.rdvDateText}`;
   const lignes: string[] = [];
   if (opts.categoryName) lignes.push(`Prestation : ${opts.categoryName}`);
   if (opts.clientEmail) lignes.push(`Email : ${opts.clientEmail}`);
@@ -181,12 +186,13 @@ export function renderNewBookingNotification(opts: {
   }
   const html =
     `<p>Bonjour,</p>` +
-    `<p><strong>${escapeHtmlLocal(nom)}</strong> vient de réserver un rendez-vous le ` +
+    `<p><strong>${escapeHtmlLocal(nom)}</strong> ${verbe} un rendez-vous le ` +
     `<strong>${escapeHtmlLocal(opts.rdvDateText)}</strong>.</p>` +
     (lignes.length ? `<p>${lignes.map(escapeHtmlLocal).join("<br>")}</p>` : "") +
-    `<p><a href="${appUrl}/#/app/agenda">Voir mon agenda</a></p>`;
-  const text = `${nom} vient de réserver un rendez-vous le ${opts.rdvDateText}.\n` +
-    (lignes.length ? lignes.join("\n") + "\n" : "") + `${appUrl}/#/app/agenda`;
+    (opts.pending ? `<p>Acceptez ou refusez la demande depuis votre tableau de bord : sans réponse sous 48 h, elle expire.</p>` : "") +
+    `<p><a href="${appUrl}/#/app${opts.pending ? "" : "/agenda"}">${opts.pending ? "Valider la demande" : "Voir mon agenda"}</a></p>`;
+  const text = `${nom} ${verbe} un rendez-vous le ${opts.rdvDateText}.\n` +
+    (lignes.length ? lignes.join("\n") + "\n" : "") + `${appUrl}/#/app${opts.pending ? "" : "/agenda"}`;
   return { subject, html, text };
 }
 
@@ -210,7 +216,63 @@ export async function sendNewBookingNotificationEmail(
     clientEmail: appt.clientEmail || null,
     clientPhone: appt.clientPhone || null,
     depositCents: opts?.depositCents ?? appt.depositAmountCents ?? null,
+    pending: appt.status === "pending",
   });
   const r = await sendEmail(cfg, user.email, subject, html, text);
   if (!r.ok) console.error(`[booking-notif] échec pour appt ${appt.id}: ${r.error}`);
 }
+
+/**
+ * Emails à la cliente pour une réservation soumise à validation : demande reçue,
+ * refusée (avec le message de la praticienne) ou expirée sans réponse. Rendu pur, testé.
+ */
+export function renderBookingDecisionEmail(opts: {
+  kind: "pending" | "refused" | "expired";
+  firstName?: string | null;
+  practitionerName: string;
+  rdvDateText: string;
+  categoryName?: string | null;
+  message?: string | null;
+  bookingUrl?: string | null;
+}): { subject: string; html: string; text: string } {
+  const quoi = opts.categoryName ? `${opts.categoryName} le ${opts.rdvDateText}` : `le ${opts.rdvDateText}`;
+  const lignes: string[] = opts.kind === "pending"
+    ? [`Votre demande de rendez-vous (${quoi}) est bien arrivée.`, `${opts.practitionerName} va la valider : vous recevrez un email de confirmation dès son acceptation.`]
+    : opts.kind === "refused"
+      ? [`${opts.practitionerName} ne peut malheureusement pas vous recevoir ${quoi}.`]
+      : [`Votre demande de rendez-vous (${quoi}) n'a pas pu être validée à temps et a expiré.`];
+  if (opts.kind === "refused" && opts.message) lignes.push(`Son message : « ${opts.message} »`);
+  if (opts.kind !== "pending" && opts.bookingUrl) lignes.push(`Vous pouvez choisir un autre créneau : ${opts.bookingUrl}`);
+  const subject = opts.kind === "pending"
+    ? `Demande de rendez-vous reçue — ${opts.practitionerName}`
+    : opts.kind === "refused"
+      ? `Votre demande de rendez-vous — ${opts.practitionerName}`
+      : `Demande de rendez-vous expirée — ${opts.practitionerName}`;
+  const bonjour = `Bonjour${opts.firstName ? ` ${opts.firstName}` : ""},`;
+  const html = `<p>${escapeHtmlLocal(bonjour)}</p>` + lignes.map((l) => `<p>${escapeHtmlLocal(l)}</p>`).join("")
+    + `<p>Bien cordialement,<br>${escapeHtmlLocal(opts.practitionerName)}</p>`;
+  const text = [bonjour, "", ...lignes, "", "Bien cordialement,", opts.practitionerName].join("\n");
+  return { subject, html, text };
+}
+
+async function sendBookingDecision(user: any, appt: any, cat: any, kind: "pending" | "refused" | "expired", message?: string | null): Promise<void> {
+  if (!appt?.clientEmail) return;
+  const cfg = getEmailConfigOrSystem(user);
+  if (!cfg) return;
+  const appUrl = process.env.APP_URL || "https://app.ecole-naturo.fr";
+  const { subject, html, text } = renderBookingDecisionEmail({
+    kind,
+    firstName: appt.clientFirstName,
+    practitionerName: user.emailFromName || user.name,
+    rdvDateText: formatRdvDate(appt.startAt),
+    categoryName: cat?.name || null,
+    message: message || null,
+    bookingUrl: user.slug ? `${appUrl}/p/${user.slug}` : null,
+  });
+  const r = await sendEmail(cfg, appt.clientEmail, subject, html, text);
+  if (!r.ok) console.error(`[booking-${kind}] échec pour appt ${appt.id}: ${r.error}`);
+}
+
+export const sendBookingPendingEmail = (user: any, appt: any, cat: any) => sendBookingDecision(user, appt, cat, "pending");
+export const sendBookingRefusedEmail = (user: any, appt: any, cat: any, message?: string | null) => sendBookingDecision(user, appt, cat, "refused", message);
+export const sendBookingExpiredEmail = (user: any, appt: any, cat: any) => sendBookingDecision(user, appt, cat, "expired");

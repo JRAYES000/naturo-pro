@@ -72,6 +72,12 @@ export const users = mysqlTable("users", {
   billingMediatorName: varchar("billing_mediator_name", { length: 255 }), // médiateur de la consommation (art. L612-1 C. conso)
   billingMediatorUrl: varchar("billing_mediator_url", { length: 255 }),
   autoInvoiceOnCompleted: boolean("auto_invoice_on_completed").notNull().default(false),
+  // Règles de réservation en ligne (parité naturooo).
+  bookingMinNoticeHours: int("booking_min_notice_hours").default(2),       // délai minimum avant un RDV
+  bookingMaxDaysAhead: int("booking_max_days_ahead"),                     // horizon de réservation (NULL : 90 j)
+  bookingCancelNoticeHours: int("booking_cancel_notice_hours").default(0), // annulation/report en ligne jusqu'à N h avant
+  bookingRequiresApproval: boolean("booking_requires_approval").notNull().default(false), // demandes à valider
+  bookingNewClientsAllowed: boolean("booking_new_clients_allowed").notNull().default(true),
   invoiceCounterYear: int("invoice_counter_year").notNull().default(0),
   invoiceCounterValue: int("invoice_counter_value").notNull().default(0),
   // Phase 3 Lot 1 — Multi-tenant SaaS
@@ -507,6 +513,11 @@ export const blockedDates = mysqlTable("blocked_dates", {
   startDate: varchar("start_date", { length: 10 }).notNull(),
   endDate: varchar("end_date", { length: 10 }).notNull(),
   reason: varchar("reason", { length: 255 }),
+  // Plage horaire (NULL : journée entière) et répétition hebdomadaire (jours « 1,3 »,
+  // 0 = dimanche ; NULL : tous les jours de la période).
+  startTime: varchar("start_time", { length: 5 }),
+  endTime: varchar("end_time", { length: 5 }),
+  weekdays: varchar("weekdays", { length: 20 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_blocked_dates_user: index("idx_blocked_dates_user").on(t.userId),

@@ -130,6 +130,8 @@ export default function BookingFlow() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", notes: "" });
   const [confirmedAt, setConfirmedAt] = useState<{ when: Date; cat: any } | null>(null);
   const [emailConfigured, setEmailConfigured] = useState<boolean | undefined>(undefined);
+  // Validation manuelle : la réservation est une demande, confirmée plus tard.
+  const [pending, setPending] = useState(false);
 
   const {
     data,
@@ -205,6 +207,7 @@ export default function BookingFlow() {
       setConfirmedAt({ when: new Date(selectedSlot!), cat });
       // Lot 5 (QC Page publique) — le serveur dit si un email de confirmation peut partir.
       setEmailConfigured(typeof data?.emailConfigured === "boolean" ? data.emailConfigured : undefined);
+      setPending(!!data?.pending);
       setStep(5);
     },
     onError: (e: any) => {
@@ -737,6 +740,7 @@ export default function BookingFlow() {
             email={form.email}
             backHref={backHref}
             emailConfigured={emailConfigured}
+            pending={pending}
           />
         )}
       </div>

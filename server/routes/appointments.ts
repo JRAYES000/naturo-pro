@@ -15,6 +15,7 @@ import { syncApptToGoogle } from "./helpers/google-sync";
 import { createInvoiceFromAppointment } from "./helpers/invoices";
 import { buildIcsForAppointment } from "../ics";
 import { formatRdvDate } from "../email";
+import { sendBookingConfirmationEmail, sendBookingRefusedEmail } from "./helpers/email-sending";
 
 // Mass-assignment whitelists (Phase 3 Lot 1 — security hardening).
 // Ces schémas Zod limitent les champs modifiables via PATCH/POST, empêchant
@@ -107,6 +108,11 @@ export function registerAppointmentRoutes(app: Express): void {
     const from = req.query.from ? Number(req.query.from) : undefined;
     const to = req.query.to ? Number(req.query.to) : undefined;
     res.json(await storage.listAppointments(req.userId!, from, to));
+  });
+  // Demandes de réservation en attente de validation (avant /:id, qui l'intercepterait).
+  app.get("/api/appointments/pending", requireAuth, async (req: AuthedRequest, res) => {
+    const list = (await storage.listPendingAppointments(req.userId!)).sort((a, b) => a.startAt - b.startAt);
+    res.json(list);
   });
   // Schéma de récurrence (champs optionnels, ignorés si absents)
   const recurrenceSchema = z.object({
@@ -238,6 +244,40 @@ export function registerAppointmentRoutes(app: Express): void {
     await syncApptToGoogle("delete", req.userId!, a);
     await storage.deleteAppointment(id);
     res.json({ ok: true });
+  });
+
+  // ---------- DEMANDES À VALIDER (validation manuelle des réservations) ----------
+  // Une réservation en ligne arrive « pending » quand la praticienne a activé la
+  // validation : le créneau est retenu, elle l'accepte (confirmation envoyée) ou le
+  // refuse (avec un message facultatif). Sans réponse sous 48 h, le cron l'expire.
+  app.post("/api/appointments/:id/accept", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const a = await storage.getAppointment(id);
+    if (!a || a.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if (a.status !== "pending") return res.status(409).json({ message: "Cette demande n'est plus en attente." });
+    let updated = (await storage.updateAppointment(id, { status: "confirmed" } as any))!;
+    const user = await storage.getUserById(req.userId!);
+    const cat = a.categoryId ? await storage.getCategory(a.categoryId) : null;
+    const eventId = await syncApptToGoogle("create", req.userId!, updated);
+    if (eventId) updated = (await storage.updateAppointment(id, { googleEventId: eventId } as any)) ?? updated;
+    if (user && updated.clientEmail) {
+      void sendBookingConfirmationEmail(user, updated, cat).catch((e) => console.error("[booking-accept]", e));
+    }
+    res.json(updated);
+  });
+
+  app.post("/api/appointments/:id/refuse", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const a = await storage.getAppointment(id);
+    if (!a || a.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if (a.status !== "pending") return res.status(409).json({ message: "Cette demande n'est plus en attente." });
+    const parsed = z.object({ message: z.string().max(1000).optional() }).safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ message: "Message invalide" });
+    const updated = await storage.updateAppointment(id, { status: "cancelled" } as any);
+    const user = await storage.getUserById(req.userId!);
+    const cat = a.categoryId ? await storage.getCategory(a.categoryId) : null;
+    if (user) void sendBookingRefusedEmail(user, a, cat, parsed.data.message).catch((e) => console.error("[booking-refuse]", e));
+    res.json(updated);
   });
 
   // ---------- NOTES ----------

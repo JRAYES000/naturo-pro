@@ -963,6 +963,7 @@ export class DatabaseStorage implements IStorage {
       !a.reminderSent
       && a.status !== "cancelled"
       && a.status !== "blocked"
+      && a.status !== "pending" // demande pas encore acceptée : pas de rappel
       && a.clientCancelledAt == null
       && (a.clientEmail || a.clientId), // nécessite un email accessible (direct ou via client)
     );
@@ -1723,7 +1724,10 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(blockedDates).where(eq(blockedDates.userId, userId)).orderBy(blockedDates.startDate);
   }
 
-  async createBlockedDate(data: { userId: number; startDate: string; endDate: string; reason?: string | null }): Promise<BlockedDate> {
+  async createBlockedDate(data: {
+    userId: number; startDate: string; endDate: string; reason?: string | null;
+    startTime?: string | null; endTime?: string | null; weekdays?: string | null;
+  }): Promise<BlockedDate> {
     return dbInsertReturning<BlockedDate>(blockedDates, { reason: null, ...data, createdAt: Date.now() });
   }
 
@@ -1733,6 +1737,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBlockedDate(id: number): Promise<void> {
     await db.delete(blockedDates).where(eq(blockedDates.id, id));
+  }
+
+  /** Demandes de rendez-vous en attente de validation (d'une praticienne, ou de toutes pour le cron). */
+  async listPendingAppointments(userId?: number): Promise<Appointment[]> {
+    const cond = userId
+      ? and(eq(appointments.status, "pending"), eq(appointments.userId, userId))
+      : eq(appointments.status, "pending");
+    return db.select().from(appointments).where(cond);
   }
 
   // ── Réforme facturation 2026, lot 1B — compte chez la plateforme agréée ────

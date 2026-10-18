@@ -57,6 +57,13 @@
       "when": 1792353387549,
       "tag": "0007_giant_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1792354207111,
+      "tag": "0008_glorious_synch",
+      "breakpoints": true
     }
   ]
 }

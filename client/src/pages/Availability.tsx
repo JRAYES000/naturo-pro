@@ -13,7 +13,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AvailabilitySlot, BlockedDate } from "@shared/schema";
 import { Label } from "@/components/ui/label";
-import { CalendarOff } from "lucide-react";
+import { CalendarOff, ShieldCheck } from "lucide-react";
 
 const DAYS = [
   { dow: 1, label: "Lundi" },
@@ -342,13 +342,95 @@ export default function Availability() {
 
         {/* Lot 5 (QC Disponibilité) — dates bloquées : congés et fermetures
             ponctuelles, sans démonter le planning hebdomadaire. */}
+        <BookingRulesSection />
+
         <BlockedDatesSection />
       </div>
     </AppLayout>
   );
 }
 
-// ─── Lot 5 (QC Disponibilité) — section « Dates bloquées » ────────────────────
+// ─── Règles de réservation en ligne (parité naturooo) ────────────────────────
+const NOTICE_CHOICES: Array<[number, string]> = [[0, "Aucun"], [1, "1 h"], [2, "2 h"], [4, "4 h"], [12, "12 h"], [24, "24 h"], [48, "48 h"]];
+const AHEAD_CHOICES: Array<[number | null, string]> = [[14, "2 semaines"], [30, "1 mois"], [60, "2 mois"], [90, "3 mois"], [180, "6 mois"], [null, "Sans limite"]];
+const CANCEL_CHOICES: Array<[number, string]> = [[0, "Jusqu'au rendez-vous"], [12, "12 h avant"], [24, "24 h avant"], [48, "48 h avant"], [72, "72 h avant"]];
+
+function BookingRulesSection() {
+  const { toast } = useToast();
+  const { data } = useQuery<any>({ queryKey: ["/api/profile"] });
+  const u = data?.user;
+  const save = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => apiRequest("PATCH", "/api/profile", patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "Règle enregistrée", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+  if (!u) return null;
+  const minNotice = typeof u.bookingMinNoticeHours === "number" ? u.bookingMinNoticeHours : 2;
+  const cancelNotice = u.bookingCancelNoticeHours || 0;
+  const select = (label: string, value: string, options: Array<[number | null, string]>, onChange: (v: number | null) => void, testid: string, hint?: string) => (
+    <div>
+      <Label>{label}</Label>
+      <select
+        className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        value={value}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        data-testid={testid}
+      >
+        {options.map(([v, l]) => <option key={String(v)} value={v === null ? "" : String(v)}>{l}</option>)}
+      </select>
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+    </div>
+  );
+
+  return (
+    <div className="card-naturo mt-8 space-y-4" data-testid="section-booking-rules">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-5 w-5 text-primary" />
+        <h2 className="text-heading">Règles de réservation en ligne</h2>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3">
+        {select("Délai minimum avant un rendez-vous", String(minNotice), NOTICE_CHOICES, (v) => save.mutate({ bookingMinNoticeHours: v ?? 0 }), "select-min-notice")}
+        {select("Réservable jusqu'à", u.bookingMaxDaysAhead ? String(u.bookingMaxDaysAhead) : "", AHEAD_CHOICES, (v) => save.mutate({ bookingMaxDaysAhead: v }), "select-max-ahead")}
+        {select("Annulation ou report en ligne", String(cancelNotice), CANCEL_CHOICES, (v) => save.mutate({ bookingCancelNoticeHours: v ?? 0 }), "select-cancel-notice", "Passé ce délai, la cliente doit vous contacter.")}
+      </div>
+      <label className="flex items-start gap-3 cursor-pointer">
+        <Checkbox
+          checked={!!u.bookingRequiresApproval}
+          onCheckedChange={(v) => save.mutate({ bookingRequiresApproval: !!v })}
+          data-testid="checkbox-requires-approval"
+        />
+        <span className="text-sm">
+          <span className="font-semibold text-foreground">Valider chaque demande avant confirmation</span>
+          <span className="block text-muted-foreground">
+            La réservation arrive « en attente » : vous l'acceptez ou la refusez depuis le tableau de bord. Sans réponse
+            sous 48 h, elle expire et la cliente est prévenue. L'acompte en ligne ne s'applique pas aux demandes à valider.
+          </span>
+        </span>
+      </label>
+      <label className="flex items-start gap-3 cursor-pointer">
+        <Checkbox
+          checked={u.bookingNewClientsAllowed !== false}
+          onCheckedChange={(v) => save.mutate({ bookingNewClientsAllowed: !!v })}
+          data-testid="checkbox-new-clients"
+        />
+        <span className="text-sm">
+          <span className="font-semibold text-foreground">Accepter les nouvelles clientes en ligne</span>
+          <span className="block text-muted-foreground">
+            Décoché, seules les clientes déjà enregistrées (même adresse email) peuvent réserver sur votre page.
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
+// ─── Indisponibilités : congés, absences, plages récurrentes ─────────────────
+const WEEKDAYS: Array<[number, string]> = [[1, "L"], [2, "M"], [3, "M"], [4, "J"], [5, "V"], [6, "S"], [0, "D"]];
+const WEEKDAY_NAMES = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+
 function BlockedDatesSection() {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -356,17 +438,24 @@ function BlockedDatesSection() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
+  const [allDay, setAllDay] = useState(true);
+  const [startTime, setStartTime] = useState("14:00");
+  const [endTime, setEndTime] = useState("18:00");
+  const [weekdays, setWeekdays] = useState<number[]>([]);
 
   const addMut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/blocked-dates", {
       startDate,
       endDate: endDate || startDate,
       reason: reason.trim() || null,
+      startTime: allDay ? null : startTime,
+      endTime: allDay ? null : endTime,
+      weekdays: weekdays.length ? weekdays : null,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blocked-dates"] });
-      setStartDate(""); setEndDate(""); setReason("");
-      toast({ title: "Période bloquée", description: "Aucun créneau ne sera proposé sur ces dates à la réservation en ligne.", variant: "success" });
+      setStartDate(""); setEndDate(""); setReason(""); setWeekdays([]); setAllDay(true);
+      toast({ title: "Indisponibilité ajoutée", description: "Aucun créneau ne sera proposé sur cette période à la réservation en ligne.", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
@@ -375,25 +464,31 @@ function BlockedDatesSection() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/blocked-dates/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blocked-dates"] });
-      toast({ title: "Blocage retiré", variant: "success" });
+      toast({ title: "Indisponibilité retirée", variant: "success" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
 
   const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+  const describe = (b: any) => {
+    const period = b.startDate === b.endDate ? fmt(b.startDate) : `${fmt(b.startDate)} → ${fmt(b.endDate)}`;
+    const days = b.weekdays ? `chaque ${String(b.weekdays).split(",").map((d: string) => WEEKDAY_NAMES[Number(d)]).join(", ")}` : "";
+    const hours = b.startTime && b.endTime ? `de ${b.startTime} à ${b.endTime}` : "journée entière";
+    return [period, days, hours].filter(Boolean).join(" · ");
+  };
 
   return (
     <div className="card-naturo mt-8" data-testid="section-blocked-dates">
       <div className="flex items-center gap-2 mb-2">
         <CalendarOff className="h-5 w-5 text-primary" />
-        <h2 className="font-bold text-heading">Dates bloquées (congés, absences)</h2>
+        <h2 className="text-heading">Indisponibilités (congés, absences, plages récurrentes)</h2>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Bloquez une période ponctuelle (vacances, formation…) : aucun créneau n'est proposé à la réservation
-        en ligne sur ces dates, sans toucher à votre planning hebdomadaire.
+        Bloquez une période (vacances, formation…), une plage horaire, ou une plage qui revient chaque semaine
+        (par exemple tous les mercredis après-midi jusqu'en juin) : aucun créneau n'y est proposé à la réservation en ligne.
       </p>
 
-      <div className="grid sm:grid-cols-4 gap-3 items-end mb-4">
+      <div className="grid sm:grid-cols-3 gap-3 mb-3">
         <div>
           <Label>Du</Label>
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} data-testid="input-blocked-start" />
@@ -406,10 +501,49 @@ function BlockedDatesSection() {
           <Label>Motif (optionnel)</Label>
           <Input placeholder="Vacances, formation…" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="input-blocked-reason" />
         </div>
+      </div>
+      <div className="flex flex-wrap items-end gap-4 mb-4">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <Checkbox checked={allDay} onCheckedChange={(v) => setAllDay(!!v)} data-testid="checkbox-blocked-all-day" />
+          Journée entière
+        </label>
+        {!allDay && (
+          <div className="flex items-end gap-2">
+            <div>
+              <Label>De</Label>
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-28" data-testid="input-blocked-start-time" />
+            </div>
+            <div>
+              <Label>À</Label>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-28" data-testid="input-blocked-end-time" />
+            </div>
+          </div>
+        )}
+        <div>
+          <Label>Seulement le (facultatif)</Label>
+          <div className="flex gap-1 mt-1" role="group" aria-label="Jours de la semaine">
+            {WEEKDAYS.map(([d, l], idx) => {
+              const on = weekdays.includes(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={WEEKDAY_NAMES[d]}
+                  onClick={() => setWeekdays(on ? weekdays.filter((x) => x !== d) : [...weekdays, d])}
+                  className={`h-9 w-9 rounded-md border text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? "border-primary bg-primary/10 text-primary" : "border-input hover:bg-secondary"}`}
+                  data-testid={`button-blocked-weekday-${idx}`}
+                >
+                  {l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <Button
           onClick={() => addMut.mutate()}
           disabled={addMut.isPending || !startDate}
-          className="rounded-lg font-bold"
+          className="rounded-md font-bold"
           data-testid="button-add-blocked"
         >
           <Plus className="h-4 w-4 mr-1" /> Bloquer
@@ -417,15 +551,13 @@ function BlockedDatesSection() {
       </div>
 
       {blocked.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Aucune période bloquée pour le moment.</p>
+        <p className="text-sm text-muted-foreground italic">Aucune indisponibilité pour le moment.</p>
       ) : (
         <ul className="space-y-2">
           {blocked.map((b) => (
-            <li key={b.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-2.5" data-testid={`blocked-date-${b.id}`}>
+            <li key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2.5" data-testid={`blocked-date-${b.id}`}>
               <div className="text-sm">
-                <span className="font-bold">
-                  {b.startDate === b.endDate ? fmt(b.startDate) : `${fmt(b.startDate)} → ${fmt(b.endDate)}`}
-                </span>
+                <span className="font-bold">{describe(b)}</span>
                 {b.reason && <span className="text-muted-foreground"> — {b.reason}</span>}
               </div>
               <Button
@@ -433,10 +565,10 @@ function BlockedDatesSection() {
                 size="icon"
                 className="h-9 w-9 rounded-md text-destructive border-destructive/30 hover:bg-destructive/10"
                 onClick={async () => {
-                  if (!(await confirm({ title: "Retirer ce blocage ?", description: "Les créneaux redeviendront réservables sur cette période.", confirmLabel: "Retirer", cancelLabel: "Annuler" }))) return;
+                  if (!(await confirm({ title: "Retirer cette indisponibilité ?", description: "Les créneaux redeviendront réservables sur cette période.", confirmLabel: "Retirer", cancelLabel: "Annuler" }))) return;
                   delMut.mutate(b.id);
                 }}
-                aria-label="Retirer le blocage"
+                aria-label="Retirer l'indisponibilité"
                 data-testid={`button-delete-blocked-${b.id}`}
               >
                 <Trash2 className="h-4 w-4" />

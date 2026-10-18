@@ -68,6 +68,12 @@ export function registerProfileRoutes(app: Express): void {
     billingMediatorName: z.string().max(255).nullable().optional(),
     billingMediatorUrl: z.string().max(255).nullable().optional(),
     autoInvoiceOnCompleted: z.boolean().optional(),
+    // Règles de réservation en ligne
+    bookingMinNoticeHours: z.number().int().min(0).max(168).optional(),
+    bookingMaxDaysAhead: z.number().int().min(1).max(365).nullable().optional(),
+    bookingCancelNoticeHours: z.number().int().min(0).max(168).optional(),
+    bookingRequiresApproval: z.boolean().optional(),
+    bookingNewClientsAllowed: z.boolean().optional(),
     // Avis Google
     googleReviewUrl: z.string().url().nullable().optional(),
     reviewRequestEnabled: z.boolean().optional(),

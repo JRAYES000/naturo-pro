@@ -78,6 +78,12 @@ export const users = sqliteTable("users", {
   billingMediatorName: text("billing_mediator_name"), // médiateur de la consommation (art. L612-1 C. conso)
   billingMediatorUrl: text("billing_mediator_url"),
   autoInvoiceOnCompleted: integer("auto_invoice_on_completed", { mode: "boolean" }).default(false),
+  // Règles de réservation en ligne (parité naturooo).
+  bookingMinNoticeHours: integer("booking_min_notice_hours").default(2),       // délai minimum avant un RDV
+  bookingMaxDaysAhead: integer("booking_max_days_ahead"),                     // horizon de réservation (NULL : 90 j)
+  bookingCancelNoticeHours: integer("booking_cancel_notice_hours").default(0), // annulation/report en ligne jusqu'à N h avant
+  bookingRequiresApproval: integer("booking_requires_approval", { mode: "boolean" }).default(false), // demandes à valider
+  bookingNewClientsAllowed: integer("booking_new_clients_allowed", { mode: "boolean" }).default(true),
   invoiceCounterYear: integer("invoice_counter_year").default(0),
   invoiceCounterValue: integer("invoice_counter_value").default(0),
   // Phase 3 Lot 1 — Multi-tenant SaaS
@@ -504,6 +510,11 @@ export const blockedDates = sqliteTable("blocked_dates", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   reason: text("reason"),
+  // Plage horaire (NULL : journée entière) et répétition hebdomadaire (jours « 1,3 »,
+  // 0 = dimanche ; NULL : tous les jours de la période).
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  weekdays: text("weekdays"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_blocked_dates_user: index("idx_blocked_dates_user").on(t.userId),

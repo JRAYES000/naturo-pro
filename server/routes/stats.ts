@@ -68,8 +68,10 @@ export function registerStatsRoutes(app: Express): void {
         .filter((i) => i.status === "paid")
         .reduce((s, i) => s + signedTotalCents(i), 0);
 
+      // Émises et non réglées. Un brouillon n'est pas encore une facture : il n'entre
+      // pas dans le prévisionnel (un brouillon d'avoir le rendait même négatif).
       const caPrevuCents = invoices
-        .filter((i) => i.status === "issued" || i.status === "sent" || i.status === "draft")
+        .filter((i) => i.status === "issued" || i.status === "sent")
         .reduce((s, i) => s + signedTotalCents(i), 0);
 
       // RDV sur la période

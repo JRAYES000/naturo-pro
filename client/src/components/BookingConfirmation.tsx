@@ -30,6 +30,8 @@ interface BookingConfirmationProps {
   // Lot 5 (QC Page publique) — état réel de l'envoi d'email, renvoyé par /book :
   // on n'affirme l'envoi que s'il est effectivement possible.
   emailConfigured?: boolean;
+  /** Demande soumise à validation de la praticienne (pas encore confirmée). */
+  pending?: boolean;
 }
 
 // Heure du CABINET (Europe/Paris), pas celle du navigateur de la visiteuse :
@@ -37,7 +39,7 @@ interface BookingConfirmationProps {
 const formatDayFr = (date: Date): string => formatJourCabinet(date);
 const formatTimeFr = (date: Date): string => formatHeureCabinet(date);
 
-export function BookingConfirmation({ confirmed, naturo, email, backHref, emailConfigured }: BookingConfirmationProps) {
+export function BookingConfirmation({ confirmed, naturo, email, backHref, emailConfigured, pending }: BookingConfirmationProps) {
   const { when, cat } = confirmed;
 
   return (
@@ -52,10 +54,12 @@ export function BookingConfirmation({ confirmed, naturo, email, backHref, emailC
       </div>
 
       <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-heading" data-testid="text-confirmation-title">
-        C'est confirmé&nbsp;!
+        {pending ? <>Demande envoyée&nbsp;!</> : <>C'est confirmé&nbsp;!</>}
       </h1>
       <p className="text-muted-foreground mb-2 max-w-sm mx-auto">
-        Votre rendez-vous avec <strong>{naturo.name}</strong> est bien enregistré.
+        {pending
+          ? <><strong>{naturo.name}</strong> valide chaque demande : vous recevrez un email dès qu'elle aura accepté ce créneau, retenu pour vous en attendant.</>
+          : <>Votre rendez-vous avec <strong>{naturo.name}</strong> est bien enregistré.</>}
       </p>
       {emailConfigured === false ? (
         <p className="text-sm text-amber-700 mb-8 max-w-sm mx-auto" data-testid="text-confirmation-no-email">

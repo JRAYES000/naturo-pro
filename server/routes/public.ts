@@ -31,7 +31,7 @@ import { createCheckoutSession, retrieveCheckoutSession } from "../stripe";
 import { renderUserTemplate } from "../email-templates/render-user";
 import type { TemplateVars } from "../email-templates/render";
 import { syncApptToGoogle } from "./helpers/google-sync";
-import { getEmailConfigOrSystem, sendBookingConfirmationEmail, sendNewBookingNotificationEmail } from "./helpers/email-sending";
+import { getEmailConfigOrSystem, sendBookingConfirmationEmail, sendNewBookingNotificationEmail, sendBookingPendingEmail } from "./helpers/email-sending";
 import { creerRdvDepuisSessionPayee } from "./helpers/stripe-booking";
 import { escapeHtmlMin, htmlFeedbackPage } from "./helpers/html";
 import { zonedCivilDays, zonedDateKey, zonedTimeToUtc, zonedTimeKey } from "../timezone";
@@ -85,6 +85,42 @@ export function isDateBlocked(dateKey: string, blocked: Array<{ startDate: strin
   return blocked.some((b) => dateKey >= b.startDate && dateKey <= b.endDate);
 }
 
+type BlockedPeriod = { startDate: string; endDate: string; startTime?: string | null; endTime?: string | null; weekdays?: string | null };
+
+const minutesOf = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+
+/**
+ * Le créneau [startMin, endMin[ (minutes depuis minuit, heure locale) du jour
+ * `dateKey` / `weekday` est-il couvert par une indisponibilité ? Une période peut
+ * porter une plage horaire (sinon journée entière) et des jours de la semaine
+ * (répétition hebdomadaire sur la période ; sinon tous les jours).
+ */
+export function isSlotBlocked(dateKey: string, weekday: number, startMin: number, endMin: number, blocked: BlockedPeriod[]): boolean {
+  return blocked.some((b) => {
+    if (dateKey < b.startDate || dateKey > b.endDate) return false;
+    if (b.weekdays && !b.weekdays.split(",").map(Number).includes(weekday)) return false;
+    if (!b.startTime || !b.endTime) return true;
+    return startMin < minutesOf(b.endTime) && endMin > minutesOf(b.startTime);
+  });
+}
+
+/** Règles de réservation en ligne d'une praticienne (valeurs par défaut = comportement historique). */
+export function bookingRules(u: any): {
+  minNoticeMs: number; maxAheadMs: number | null; cancelNoticeMs: number; requiresApproval: boolean; newClientsAllowed: boolean;
+} {
+  const minNotice = typeof u?.bookingMinNoticeHours === "number" ? u.bookingMinNoticeHours : 2;
+  return {
+    minNoticeMs: Math.max(0, minNotice) * 3600000,
+    maxAheadMs: u?.bookingMaxDaysAhead ? u.bookingMaxDaysAhead * 86400000 : null,
+    cancelNoticeMs: Math.max(0, u?.bookingCancelNoticeHours || 0) * 3600000,
+    requiresApproval: !!u?.bookingRequiresApproval,
+    newClientsAllowed: u?.bookingNewClientsAllowed !== false,
+  };
+}
+
 export function computeSlotsByDay(opts: {
   avail: Array<{ dayOfWeek: number; startTime: string; endTime: string }>;
   busy: Array<[number, number]>;
@@ -94,15 +130,19 @@ export function computeSlotsByDay(opts: {
   stepMin?: number;
   // Lot 5 (QC Disponibilité) — congés / fermetures ponctuelles : aucun créneau
   // proposé sur ces dates, sans toucher au planning hebdomadaire récurrent.
-  blocked?: Array<{ startDate: string; endDate: string }>;
+  blocked?: BlockedPeriod[];
+  /** Délai minimum avant un rendez-vous (défaut 2 h, réglable par la praticienne). */
+  minNoticeMs?: number;
+  /** Horizon de réservation : rien au-delà de maintenant + maxAheadMs. */
+  maxAheadMs?: number | null;
 }): Record<string, string[]> {
-  const { avail, busy, from, to, durationMin, stepMin = 30, blocked = [] } = opts;
+  const { avail, busy, from, to, durationMin, stepMin = 30, blocked = [], minNoticeMs = 2 * 3600 * 1000, maxAheadMs = null } = opts;
   const slotsByDay: Record<string, string[]> = {};
-  const minBookHorizon = Date.now() + 2 * 3600 * 1000;
+  const minBookHorizon = Date.now() + minNoticeMs;
+  const maxBookHorizon = maxAheadMs ? Date.now() + maxAheadMs : Infinity;
 
   for (const jour of zonedCivilDays(from, to)) {
     const jourKey = `${jour.year}-${String(jour.month).padStart(2, "0")}-${String(jour.day).padStart(2, "0")}`;
-    if (isDateBlocked(jourKey, blocked)) continue;
     for (const a of avail) {
       if (a.dayOfWeek !== jour.weekday) continue;
       const [sh, sm] = a.startTime.split(":").map(Number);
@@ -110,8 +150,10 @@ export function computeSlotsByDay(opts: {
       const start = zonedTimeToUtc(jour.year, jour.month, jour.day, sh, sm);
       const end = zonedTimeToUtc(jour.year, jour.month, jour.day, eh, em);
       for (let cur = start; cur + durationMin * 60000 <= end; cur += stepMin * 60000) {
-        if (cur < minBookHorizon) continue;
+        if (cur < minBookHorizon || cur > maxBookHorizon) continue;
         const slotEnd = cur + durationMin * 60000;
+        const startMin = sh * 60 + sm + Math.round((cur - start) / 60000);
+        if (isSlotBlocked(jourKey, jour.weekday, startMin, startMin + durationMin, blocked)) continue;
         if (busy.some(([s, e]) => cur < e && slotEnd > s)) continue;
         const key = zonedDateKey(cur);
         (slotsByDay[key] ||= []).push(new Date(cur).toISOString());
@@ -133,6 +175,7 @@ export function computeSlotsByDay(opts: {
 async function creneauProposable(
   userId: number, startMs: number, durationMin: number, exclureApptId?: number,
 ): Promise<boolean> {
+  const rules = bookingRules(await storage.getUserById(userId));
   const avail = await storage.listAvailability(userId);
   if (!avail.length) return false;
   const finJournee = startMs + 86400000;
@@ -141,7 +184,10 @@ async function creneauProposable(
     .filter((a) => a.status !== "cancelled" && a.id !== exclureApptId)
     .map((a) => [a.startAt, (a as any).endAt] as [number, number]);
   const blocked = await storage.listBlockedDates(userId);
-  const proposes = computeSlotsByDay({ avail, busy, from: startMs, to: startMs, durationMin, blocked });
+  const proposes = computeSlotsByDay({
+    avail, busy, from: startMs, to: startMs, durationMin, blocked,
+    minNoticeMs: rules.minNoticeMs, maxAheadMs: rules.maxAheadMs,
+  });
   return (proposes[zonedDateKey(startMs)] || []).includes(new Date(startMs).toISOString());
 }
 
@@ -204,8 +250,12 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     const appts = await storage.listAppointments(u.id, from, to);
     const busy = appts.filter(a => a.status !== "cancelled").map(a => [a.startAt, a.endAt] as [number, number]);
     const blocked = await storage.listBlockedDates(u.id);
+    const rules = bookingRules(u);
 
-    res.json({ slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin, blocked }) });
+    res.json({
+      slotsByDay: computeSlotsByDay({ avail, busy, from, to, durationMin, blocked, minNoticeMs: rules.minNoticeMs, maxAheadMs: rules.maxAheadMs }),
+      requiresApproval: rules.requiresApproval,
+    });
   });
 
   app.post("/api/public/:slug/book", ctx.bookingLimiter, async (req, res) => {
@@ -229,7 +279,11 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
 
     const cat = await storage.getCategory(categoryId);
     if (!cat || cat.userId !== u.id) return res.status(400).json({ message: "Catégorie invalide" });
-    if (startAt < Date.now() + 2 * 3600 * 1000) return res.status(400).json({ message: "Créneau trop proche" });
+    const rules = bookingRules(u);
+    if (startAt < Date.now() + rules.minNoticeMs) return res.status(400).json({ message: "Créneau trop proche" });
+    if (!rules.newClientsAllowed && !(await storage.findClientByEmail(u.id, email))) {
+      return res.status(403).json({ message: "Cette praticienne ne prend pas de nouvelles clientes en ligne pour le moment. Contactez-la directement." });
+    }
 
     const endAt = startAt + cat.durationMinutes * 60000;
     if (!(await creneauProposable(u.id, startAt, cat.durationMinutes))) {
@@ -240,7 +294,9 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     //    Le RDV ne sera créé qu'au retour (success_url) une fois le paiement confirmé.
     const depositPercent = (u as any).stripeDepositPercent || 0;
     const stripeKey = (u as any).stripeSecretKey || "";
-    if (stripeKey && depositPercent > 0 && cat.priceCents > 0) {
+    // Une demande à valider ne se paie pas d'avance (comme chez naturooo) : l'acompte
+    // suppose un créneau acquis.
+    if (!rules.requiresApproval && stripeKey && depositPercent > 0 && cat.priceCents > 0) {
       const depositCents = Math.round((cat.priceCents * depositPercent) / 100);
       if (depositCents > 0) {
         const APP = process.env.APP_URL || "https://app.ecole-naturo.fr";
@@ -267,7 +323,8 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
       if (!(await creneauProposable(u.id, startAt, cat.durationMinutes))) return null;
       return storage.createAppointment({
         userId: u.id, clientId: null, categoryId,
-        startAt, endAt, status: "confirmed",
+        // Validation manuelle : le créneau est retenu, la praticienne accepte ou refuse.
+        startAt, endAt, status: rules.requiresApproval ? "pending" : "confirmed",
         clientFirstName: firstName, clientLastName: lastName,
         clientEmail: email, clientPhone: phone,
         notesBefore: notes || null,
@@ -288,7 +345,8 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     }
 
     // Push to Google Calendar if practitioner has connected
-    const eventId = await syncApptToGoogle("create", u.id, appt);
+    // Une demande à valider n'apparaît dans Google Agenda qu'une fois acceptée.
+    const eventId = appt.status === "pending" ? null : await syncApptToGoogle("create", u.id, appt);
     if (eventId) {
       const refreshed = await storage.updateAppointment(appt.id, { googleEventId: eventId });
       if (refreshed) appt = refreshed;
@@ -297,7 +355,9 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     // ── Phase 3.5-A : email de confirmation au client ────────────────────────
     // Envoyé uniquement si le client a fourni une adresse email.
     // Wrap en try/catch : un échec d'email ne bloque JAMAIS la création du RDV.
-    if (email) {
+    if (email && rules.requiresApproval) {
+      void sendBookingPendingEmail(u, appt, cat).catch((e) => console.error("[booking-pending]", e));
+    } else if (email) {
       void sendBookingConfirmationEmail(u, appt, cat).catch((e) =>
         console.error("[booking-confirm] unexpected:", e),
       );
@@ -312,7 +372,7 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
 
     // Lot 5 (QC Page publique) — le frontend ne doit plus affirmer « une
     // confirmation a été envoyée » sans savoir si un envoi est seulement possible.
-    res.json({ appointment: appt, category: cat, emailConfigured: !!getEmailConfigOrSystem(u) });
+    res.json({ appointment: appt, category: cat, emailConfigured: !!getEmailConfigOrSystem(u), pending: rules.requiresApproval });
   });
 
   // ── Retour de paiement Stripe (acompte) ──────────────────────────────────────
@@ -492,6 +552,12 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
 
     const isPast = appt.startAt < Date.now();
     if (isPast) return res.status(409).json({ message: "Ce RDV est déjà passé" });
+    const cancelNotice = bookingRules(await storage.getUserById(appt.userId)).cancelNoticeMs;
+    if (cancelNotice && appt.startAt - Date.now() < cancelNotice) {
+      return res.status(409).json({
+        message: `L'annulation en ligne n'est plus possible moins de ${cancelNotice / 3600000} h avant le rendez-vous : contactez directement votre praticienne.`,
+      });
+    }
 
     await storage.updateAppointment(appt.id, {
       status: "cancelled",
@@ -619,12 +685,17 @@ export function registerPublicRoutes(app: Express, ctx: RouteContext): void {
     if (!parsed.success) return res.status(400).json({ message: "newStartMs requis" });
     const { newStartMs } = parsed.data;
 
-    if (newStartMs < Date.now() + 2 * 3600 * 1000) {
-      return res.status(400).json({ message: "Créneau trop proche" });
-    }
-
     const u = await storage.getUserById(appt.userId);
     if (!u) return res.status(404).json({ message: "Praticien introuvable" });
+    const rulesR = bookingRules(u);
+    if (rulesR.cancelNoticeMs && appt.startAt - Date.now() < rulesR.cancelNoticeMs) {
+      return res.status(409).json({
+        message: `Le report en ligne n'est plus possible moins de ${rulesR.cancelNoticeMs / 3600000} h avant le rendez-vous : contactez directement votre praticienne.`,
+      });
+    }
+    if (newStartMs < Date.now() + rulesR.minNoticeMs) {
+      return res.status(400).json({ message: "Créneau trop proche" });
+    }
 
     const cat = appt.categoryId ? await storage.getCategory(appt.categoryId) : null;
     const durationMin = cat ? cat.durationMinutes : Math.round(((appt as any).endAt - appt.startAt) / 60000);

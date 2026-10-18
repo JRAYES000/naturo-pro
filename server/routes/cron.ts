@@ -14,6 +14,7 @@ import { reconcilierPaiementsStripe } from "./helpers/stripe-booking";
 import { purgeInactiveFreeAccounts } from "./helpers/purge";
 import { superPdpConfig } from "../einvoicing/superpdp";
 import { syncAllStatuses } from "../einvoicing/service";
+import { sendBookingExpiredEmail } from "./helpers/email-sending";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   sendFollowupsForUser, getLocalHour, getLocalDayKey, TZ,
@@ -36,6 +37,28 @@ const lastReminderRunDay = new Map<number, string>();
 const lastRecapRunDay = new Map<number, string>();
 const lastReviewRunDay = new Map<number, string>();
 const lastRelanceRunDay = new Map<number, string>();
+
+/** Délai de réponse d'une praticienne à une demande de rendez-vous. */
+export const PENDING_BOOKING_TTL_MS = 48 * 3600 * 1000;
+
+/** Expire les demandes trop anciennes (ou dont le créneau est passé). Exporté pour les tests. */
+export async function expirePendingBookings(now = Date.now()): Promise<number> {
+  let n = 0;
+  try {
+    for (const a of await storage.listPendingAppointments()) {
+      if (now - a.createdAt < PENDING_BOOKING_TTL_MS && a.startAt > now) continue;
+      await storage.updateAppointment(a.id, { status: "cancelled" } as any);
+      n++;
+      const user = await storage.getUserById(a.userId);
+      const cat = a.categoryId ? await storage.getCategory(a.categoryId) : null;
+      if (user) await sendBookingExpiredEmail(user, a, cat).catch((e) => console.error("[booking-expire]", e?.message || e));
+    }
+    if (n) console.log(`[booking-expire] ${n} demande(s) expirée(s)`);
+  } catch (e: any) {
+    console.error("[booking-expire]", e?.message || e);
+  }
+  return n;
+}
 
 export function startCrons(): void {
   const isProd = process.env.NODE_ENV === "production";
@@ -71,6 +94,13 @@ export function startCrons(): void {
   if ((isProd || process.env.ENABLE_EINVOICING_SYNC === "1") && superPdpConfig()) {
     setInterval(() => { void syncAllStatuses(); }, EINVOICING_SYNC_MS);
     console.log(`[einvoicing] synchronisation des statuts toutes les ${EINVOICING_SYNC_MS / 60000} min`);
+  }
+
+  // ─── Demandes de rendez-vous non validées : expirées au bout de 48 h ───────
+  // (ou dès que l'heure du rendez-vous est passée) ; la cliente est prévenue.
+  const PENDING_MS = 30 * 60 * 1000;
+  if (isProd || process.env.ENABLE_EMAIL_CRON === "1") {
+    setInterval(() => { void expirePendingBookings(); }, PENDING_MS);
   }
 
   // ─── Purge quotidienne des sessions expirées ───────────────────────────────

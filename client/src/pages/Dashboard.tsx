@@ -14,6 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Appointment, Client, AppointmentCategory } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
+import { PendingBookings } from "@/components/PendingBookings";
 
 interface StatsOverview {
   caEncaisseCents: number;
@@ -175,6 +176,8 @@ function Dashboard() {
         )}
 
         <OnboardingChecklistCard />
+
+        <PendingBookings />
 
         <h2 className="text-lg font-bold mb-3">Activité</h2>
         <StatBand className="mb-4">

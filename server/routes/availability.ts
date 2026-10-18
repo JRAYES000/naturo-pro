@@ -60,17 +60,34 @@ export function registerAvailabilityRoutes(app: Express): void {
   });
 
   app.post("/api/blocked-dates", requireAuth, async (req: AuthedRequest, res) => {
+    const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
     const schema = z.object({
       startDate: z.string().regex(DATE_RE),
       endDate: z.string().regex(DATE_RE),
       reason: z.string().max(255).nullable().optional(),
+      // Plage horaire facultative (sinon journée entière) et répétition hebdomadaire.
+      startTime: z.string().regex(TIME_RE).nullable().optional(),
+      endTime: z.string().regex(TIME_RE).nullable().optional(),
+      weekdays: z.array(z.number().int().min(0).max(6)).max(7).nullable().optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
-    if (parsed.data.endDate < parsed.data.startDate) {
+    const d = parsed.data;
+    if (d.endDate < d.startDate) {
       return res.status(400).json({ message: "La date de fin doit être postérieure ou égale à la date de début." });
     }
-    const bd = await storage.createBlockedDate({ ...parsed.data, reason: parsed.data.reason ?? null, userId: req.userId! });
+    if ((d.startTime && !d.endTime) || (!d.startTime && d.endTime) || (d.startTime && d.endTime && d.endTime <= d.startTime)) {
+      return res.status(400).json({ message: "Indiquez une heure de début et une heure de fin (la fin après le début)." });
+    }
+    const bd = await storage.createBlockedDate({
+      startDate: d.startDate,
+      endDate: d.endDate,
+      reason: d.reason ?? null,
+      startTime: d.startTime ?? null,
+      endTime: d.endTime ?? null,
+      weekdays: d.weekdays?.length ? d.weekdays.filter((x, i, a) => a.indexOf(x) === i).sort().join(",") : null,
+      userId: req.userId!,
+    } as any);
     res.status(201).json(bd);
   });
 
