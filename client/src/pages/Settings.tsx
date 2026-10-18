@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CompanyLookup } from "@/components/CompanyLookup";
 import { EInvoicingStatus } from "@/components/EInvoicingStatus";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+import { BrevoSettings } from "@/components/BrevoSettings";
 
 const LEGAL_FORMS: Array<[string, string]> = [
   ["EI", "Entreprise individuelle (EI, micro-entreprise)"],
@@ -360,6 +361,9 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        {/* Lot 3b — Brevo : contacts et rappels SMS (compte de la praticienne). */}
+        {data?.user?.hasFullAccess && <BrevoSettings />}
 
         <div className="card-naturo space-y-3">
           <div className="flex items-center gap-2">

@@ -28,6 +28,7 @@ export function publicUser(u: any) {
     emailVerifyToken, emailVerifyExpiresAt,
     passwordResetToken, passwordResetExpiresAt,
     totpSecret, totpBackupCodes, totpLastCounter,
+    brevoApiKey,
     ...rest
   } = u;
   // Indique au frontend si une clé Resend est configurée (sans la révéler).
@@ -42,6 +43,7 @@ export function publicUser(u: any) {
     hasResendApiKey: !!resendApiKey,
     hasStripeSecretKey: !!stripeSecretKey,
     twoFactorEnabled: !!rest.totpEnabledAt,
+    hasBrevo: !!brevoApiKey,
     emailVerified: !!rest.emailVerifiedAt,
     onboardingCompleted: !!rest.onboardingCompletedAt,
     daysUntilTrialEnds,

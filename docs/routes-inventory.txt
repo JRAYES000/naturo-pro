@@ -1,5 +1,5 @@
 # Inventaire des routes Express — généré par script/routes-inventory.ts
-# 205 routes — trié par (path, method), file-agnostic.
+# 213 routes — trié par (path, method), file-agnostic.
 # Le diff de ce fichier doit rester STRICTEMENT VIDE à travers le split de routes.ts.
 
 GET     /api/admin/analytics                             [requireAuth, requireAdmin]  (anonymous)
@@ -86,6 +86,8 @@ POST    /api/clients/:id/archive                         [requireAuth]  (anonymo
 GET     /api/clients/:id/followups                       [requireAuth]  (anonymous)
 POST    /api/clients/:id/followups                       [requireAuth]  (anonymous)
 DELETE  /api/clients/:id/followups/:fid                  [requireAuth]  (anonymous)
+POST    /api/clients/:id/import-notes                    [requireAuth]  (anonymous)
+POST    /api/clients/:id/import-notes/save               [requireAuth]  (anonymous)
 GET     /api/clients/:id/notes                           [requireAuth]  (anonymous)
 POST    /api/clients/:id/portal-invite                   [requireAuth]  (anonymous)
 POST    /api/clients/import                              [requireAuth]  (anonymous)
@@ -127,6 +129,12 @@ POST    /api/email-templates/:kind/preview               [requireAuth]  (anonymo
 POST    /api/google/disconnect                           [requireAuth]  (anonymous)
 GET     /api/google/status                               []  (anonymous)
 POST    /api/google/sync-import                          [requireAuth]  (anonymous)
+DELETE  /api/integrations/brevo                          [requireAuth]  (anonymous)
+GET     /api/integrations/brevo                          [requireAuth]  (anonymous)
+PATCH   /api/integrations/brevo                          [requireAuth]  (anonymous)
+POST    /api/integrations/brevo                          [requireAuth]  (anonymous)
+POST    /api/integrations/brevo/sync                     [requireAuth]  (anonymous)
+POST    /api/integrations/brevo/test-sms                 [requireAuth]  (anonymous)
 POST    /api/internal/run-crons                          []  (anonymous)
 POST    /api/internal/send-daily-recap                   []  (anonymous)
 POST    /api/internal/send-reminders                     []  (anonymous)

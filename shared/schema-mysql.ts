@@ -112,6 +112,14 @@ export const users = mysqlTable("users", {
   totpEnabledAt: bigint("totp_enabled_at", { mode: "number" }),
   totpLastCounter: bigint("totp_last_counter", { mode: "number" }),
   totpBackupCodes: text("totp_backup_codes"),
+  // Lot 3b — Brevo de la praticienne (clé chiffrée) : liste de contacts synchronisée
+  // et rappels SMS la veille, envoyés avec SES crédits SMS.
+  brevoApiKey: text("brevo_api_key"),
+  brevoListId: int("brevo_list_id"),
+  brevoSmsSender: varchar("brevo_sms_sender", { length: 11 }),
+  smsRemindersEnabled: boolean("sms_reminders_enabled").notNull().default(false),
+  brevoLastSyncAt: bigint("brevo_last_sync_at", { mode: "number" }),
+  brevoLastSyncCount: int("brevo_last_sync_count"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -394,6 +402,8 @@ export const appointments = mysqlTable("appointments", {
   depositAmountCents: int("deposit_amount_cents"),
   reminderSent: boolean("reminder_sent").notNull().default(false),
   reminderSentAt: bigint("reminder_sent_at", { mode: "number" }),
+  // Lot 3b — rappel SMS de la veille envoyé (idempotence du cron).
+  smsReminderSentAt: bigint("sms_reminder_sent_at", { mode: "number" }),
   // Phase 0.7 — Tokens publics pour confirmer/annuler depuis l'email
   confirmToken: varchar("confirm_token", { length: 64 }),
   cancelToken: varchar("cancel_token", { length: 64 }),

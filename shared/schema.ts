@@ -116,6 +116,14 @@ export const users = sqliteTable("users", {
   totpEnabledAt: integer("totp_enabled_at"),
   totpLastCounter: integer("totp_last_counter"),
   totpBackupCodes: text("totp_backup_codes"),
+  // Lot 3b — Brevo de la praticienne (clé chiffrée) : liste de contacts synchronisée
+  // et rappels SMS la veille, envoyés avec SES crédits SMS.
+  brevoApiKey: text("brevo_api_key"),
+  brevoListId: integer("brevo_list_id"),
+  brevoSmsSender: text("brevo_sms_sender"),
+  smsRemindersEnabled: integer("sms_reminders_enabled", { mode: "boolean" }).notNull().default(false),
+  brevoLastSyncAt: integer("brevo_last_sync_at"),
+  brevoLastSyncCount: integer("brevo_last_sync_count"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
@@ -393,6 +401,8 @@ export const appointments = sqliteTable("appointments", {
   depositAmountCents: integer("deposit_amount_cents"),
   reminderSent: integer("reminder_sent", { mode: "boolean" }).default(false),
   reminderSentAt: integer("reminder_sent_at"),
+  // Lot 3b — rappel SMS de la veille envoyé (idempotence du cron).
+  smsReminderSentAt: integer("sms_reminder_sent_at"),
   // Phase 0.7 — Tokens publics pour confirmer/annuler depuis l'email
   confirmToken: text("confirm_token"),
   // PHASE 3.5-B — Manage token : 32 hex chars (16 bytes randomBytes), nullable, sans default

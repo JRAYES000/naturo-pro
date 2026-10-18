@@ -471,6 +471,27 @@ section("Espace cliente");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+section("Brevo et import d'anciennes notes");
+{
+  // Sans appel au vrai Brevo ni à l'IA : états, garde-fous et enregistrement relu.
+  const etat = await api("GET", "/api/integrations/brevo");
+  note(etat.status === 200 && etat.data?.connected === false, "Brevo : non connecté par défaut");
+  const sansCompte = await api("PATCH", "/api/integrations/brevo", { smsRemindersEnabled: true });
+  note(sansCompte.status === 409, "Brevo : réglages refusés sans compte connecté");
+
+  const tropCourt = await api("POST", `/api/clients/${clientId}/import-notes`, { text: "trop court" });
+  note(tropCourt.status === 400, "import : texte trop court refusé");
+  const avant = await api("GET", `/api/clients/${clientId}/notes`);
+  const enreg = await api("POST", `/api/clients/${clientId}/import-notes/save`, {
+    consultations: [{ date: "2024-03-12", motif: "Fatigue", anamnese: "Dort mal", bilan: "", conseilsAlimentaires: "Moins de café", hygieneDeVie: "", suivi: "", notesLibres: "" }],
+  });
+  const apres = await api("GET", `/api/clients/${clientId}/notes`);
+  note(enreg.status === 201 && enreg.data?.created === 1 && apres.data?.length === (avant.data?.length || 0) + 1, "import : consultation relue enregistrée");
+  const importee = (apres.data || []).find((n) => n.motif === "Fatigue");
+  note(importee && new Date(importee.createdAt).toISOString().startsWith("2024-03-12"), "import : datée de la consultation d'origine");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 section("Statistiques et emails");
 {
   const s = await api("GET", `/api/stats/overview?from=${Date.now() - 30 * 86400000}&to=${Date.now() + 30 * 86400000}`);

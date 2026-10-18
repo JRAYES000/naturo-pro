@@ -541,6 +541,21 @@ export class DatabaseStorage implements IStorage {
     return rows.filter((u: any) => !!u.googleCalendarToken) as User[];
   }
 
+  /** Lot 3b — praticiennes ayant activé les rappels SMS par leur compte Brevo. */
+  async listUsersWithSmsReminders(): Promise<User[]> {
+    const rows = await db.select().from(users);
+    return rows.filter((u: any) => !!u.smsRemindersEnabled && !!u.brevoApiKey && !!u.brevoSmsSender) as User[];
+  }
+
+  /** Lot 3b — rendez-vous confirmés de la période, avec téléphone, sans rappel SMS envoyé. */
+  async listAppointmentsForSmsReminder(userId: number, fromMs: number, toMs: number): Promise<Appointment[]> {
+    const rows: Appointment[] = await db.select().from(appointments).where(and(
+      eq(appointments.userId, userId), gte(appointments.startAt, fromMs), lte(appointments.startAt, toMs),
+      isNull(appointments.smsReminderSentAt),
+    ));
+    return rows.filter((a) => a.status === "confirmed" && !!a.clientPhone && !a.clientCancelledAt);
+  }
+
   async listUsersWithEmailConfig(): Promise<User[]> {
     const rows = await db.select().from(users);
     return rows.filter((u: any) => !!u.resendApiKey && !!u.emailFromAddress) as User[];

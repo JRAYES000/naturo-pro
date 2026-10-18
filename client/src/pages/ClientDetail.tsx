@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CompanyLookup } from "@/components/CompanyLookup";
 import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program, Package, ClientFollowup } from "@shared/schema";
 import { FollowupForm, FOLLOWUP_META } from "@/components/FollowupForm";
+import { NotesImportDialog } from "@/components/NotesImportDialog";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
 import { computeImc, imcLabel, ageFromDateOfBirth, poidsIdealCreff } from "@/lib/imc";
 
@@ -226,6 +227,7 @@ export default function ClientDetail() {
   const [, navigate] = useLocation();
   const [draft, setDraft] = useState<Partial<Client>>({});
   const [uploading, setUploading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Lot 4 (action C8) — nature du prochain upload (null = document libre).
   const uploadKindRef = useRef<string | null>(null);
@@ -680,6 +682,14 @@ export default function ClientDetail() {
           </TabsContent>
 
           <TabsContent value="history">
+            {fullAccess && (
+              <div className="flex justify-end mb-3">
+                <Button variant="outline" size="sm" className="rounded-md font-bold" onClick={() => setImporting(true)} data-testid="button-import-notes">
+                  <Sparkles className="h-4 w-4 mr-1" /> Importer d'anciennes notes
+                </Button>
+              </div>
+            )}
+            <NotesImportDialog clientId={cid} open={importing} onClose={() => setImporting(false)} />
             {notes.length === 0 ? (
               <EmptyState
                 icon={FileText}

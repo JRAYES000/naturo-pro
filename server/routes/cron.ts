@@ -16,6 +16,7 @@ import { superPdpConfig } from "../einvoicing/superpdp";
 import { syncAllStatuses } from "../einvoicing/service";
 import { sendBookingExpiredEmail } from "./helpers/email-sending";
 import { zonedParts, zonedTimeToUtc } from "../timezone";
+import { sendSmsRemindersForUser } from "./integrations";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   sendFollowupsForUser, getLocalHour, getLocalDayKey, TZ,
@@ -38,6 +39,7 @@ const lastReminderRunDay = new Map<number, string>();
 const lastRecapRunDay = new Map<number, string>();
 const lastReviewRunDay = new Map<number, string>();
 const lastRelanceRunDay = new Map<number, string>();
+const lastSmsRunDay = new Map<number, string>();
 
 /** Délai de réponse d'une praticienne à une demande de rendez-vous. */
 export const PENDING_BOOKING_TTL_MS = 48 * 3600 * 1000;
@@ -227,6 +229,20 @@ export function startCrons(): void {
             } catch (e: any) {
               console.error(`[review-cron] user=${u.id}:`, e?.message || e);
             }
+          }
+        }
+
+        // Lot 3b — rappels SMS de la veille (compte Brevo de la praticienne), à l'heure
+        // de ses rappels email ; indépendants de la configuration email.
+        for (const u of await storage.listUsersWithSmsReminders()) {
+          const reminderHour = (u as any).reminderHourLocal ?? 10;
+          if (hour !== reminderHour || lastSmsRunDay.get(u.id) === dayKey) continue;
+          try {
+            const r = await sendSmsRemindersForUser(u);
+            if (r.sent || r.errors) console.log(`[sms-cron] user=${u.id} sent=${r.sent} skipped=${r.skipped} errors=${r.errors}`);
+            lastSmsRunDay.set(u.id, dayKey);
+          } catch (e: any) {
+            console.error(`[sms-cron] user=${u.id}:`, e?.message || e);
           }
         }
       } catch (e: any) {

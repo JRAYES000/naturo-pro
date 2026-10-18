@@ -255,6 +255,47 @@ export async function completeText(
   return text;
 }
 
+/**
+ * Complétion JSON (response_format json_object) — import d'anciennes notes (lot 3b).
+ * Renvoie le texte brut ; l'appelant le valide (le modèle peut s'écarter du schéma).
+ */
+export async function completeJson(
+  messages: Array<{ role: string; content: string }>,
+  opts?: { maxTokens?: number },
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    const e: any = new Error("OPENROUTER_API_KEY manquante");
+    e.status = 503;
+    throw e;
+  }
+  const res = await fetch(OPENROUTER_CHAT_URL, {
+    method: "POST",
+    headers: openrouterHeaders(apiKey),
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      messages,
+      max_tokens: opts?.maxTokens ?? 4000,
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+    }),
+    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const e: any = new Error(`OpenRouter ${res.status}`);
+    e.status = 502;
+    throw e;
+  }
+  const data: any = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) {
+    const e: any = new Error("Réponse OpenRouter vide");
+    e.status = 502;
+    throw e;
+  }
+  return text;
+}
+
 // Génère un titre court + une thématique (parmi ASSISTANT_THEMES) depuis la 1re question.
 // Appel non-streaming, court. Fallback robuste : titre tronqué + « Autre… ».
 export async function generateDiscussionMeta(firstQuestion: string): Promise<{ title: string; theme: string }> {

@@ -38,6 +38,8 @@ import { registerPublicDocumentRoutes } from "./public-documents";
 import { registerBroadcastRoutes } from "./broadcasts";
 import { registerTwoFactorRoutes } from "./two-factor";
 import { registerPortalRoutes } from "./portal";
+import { registerIntegrationRoutes } from "./integrations";
+import { registerNotesImportRoutes } from "./notes-import";
 import { registerAuthRoutes } from "./auth";
 import { registerAnamneseRoutes } from "./anamnese";
 import { registerProgrammeRoutes } from "./programmes";
@@ -161,6 +163,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerPublicDocumentRoutes(app);
   registerBroadcastRoutes(app);
   registerPortalRoutes(app);
+  registerIntegrationRoutes(app);
+  registerNotesImportRoutes(app);
   registerInvoiceRoutes(app);
   registerEInvoicingRoutes(app);
   registerAdminRoutes(app);
