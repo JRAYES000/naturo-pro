@@ -16,6 +16,7 @@ import { SpecialtiesInput } from "@/components/SpecialtiesInput";
 import { PublicPagePreview } from "@/components/PublicPagePreview";
 // Phase 3 Lot 2 — URL publique (path-based en mode actif, sous-domaine en attente DNS)
 import { tenantPathUrl } from "@/lib/tenant";
+import { QrCodeCard } from "@/components/QrCode";
 
 // Suggestions de spécialités naturo courantes (alignées sur l'onboarding).
 const SPECIALTY_SUGGESTIONS = [
@@ -230,6 +231,9 @@ export default function PublicPageEditor() {
             Partagez ce lien avec vos clients par email, SMS ou sur vos réseaux sociaux.
           </p>
         </div>
+
+        {/* Lot 2c — QR code imprimable de la page de réservation. */}
+        {publicUrl && <QrCodeCard url={publicUrl} fileName={`qr-reservation-${user?.slug || "page"}`} />}
 
         {/* Barre de complétude du profil */}
         <div className="card-naturo mb-5" data-testid="card-completeness">

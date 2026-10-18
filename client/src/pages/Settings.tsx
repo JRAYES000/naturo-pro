@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CompanyLookup } from "@/components/CompanyLookup";
 import { EInvoicingStatus } from "@/components/EInvoicingStatus";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 
 const LEGAL_FORMS: Array<[string, string]> = [
   ["EI", "Entreprise individuelle (EI, micro-entreprise)"],
@@ -218,6 +219,9 @@ export default function Settings() {
           <div><Label>Nom</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-name" /></div>
           <div><Label>Email</Label><Input value={draft.email || ""} disabled data-testid="input-email" /></div>
         </div>
+
+        {/* Lot 2c — double authentification (TOTP + codes de secours). */}
+        <TwoFactorSettings />
 
         <div className="card-naturo space-y-4">
           <div className="flex items-center gap-2">

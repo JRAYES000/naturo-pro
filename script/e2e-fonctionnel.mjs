@@ -3,6 +3,8 @@
  * Crée une praticienne neuve et exerce le produit comme un vrai utilisateur.
  * Aucune donnée existante n'est touchée ; le compte de test est supprimé à la fin.
  */
+import { createHmac } from "node:crypto";
+
 const B = process.env.BASE || "http://localhost:3000";
 
 let cookie = "";
@@ -429,6 +431,50 @@ section("Statistiques et emails");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+section("Double authentification");
+{
+  // Code TOTP (RFC 6238) calculé comme une application d'authentification.
+  const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const base32 = (s) => {
+    let bits = 0, val = 0;
+    const out = [];
+    for (const ch of s.replace(/\s/g, "").toUpperCase()) {
+      val = (val << 5) | B32.indexOf(ch);
+      bits += 5;
+      if (bits >= 8) { out.push((val >>> (bits - 8)) & 0xff); bits -= 8; }
+    }
+    return Buffer.from(out);
+  };
+  const totp = (secret) => {
+    const msg = Buffer.alloc(8);
+    msg.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
+    const h = createHmac("sha1", base32(secret)).update(msg).digest();
+    const o = h[h.length - 1] & 15;
+    return String((((h[o] & 127) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1e6).padStart(6, "0");
+  };
+
+  const prep = await api("POST", "/api/auth/2fa/setup");
+  note(prep.status === 200 && String(prep.data?.otpauthUri).startsWith("otpauth://totp/"), "enrôlement : secret et URI otpauth");
+  const act = await api("POST", "/api/auth/2fa/enable", { code: totp(prep.data?.secret || "") });
+  const secours = act.data?.backupCodes || [];
+  note(act.status === 200 && secours.length === 10, "activation et codes de secours", `${secours.length} codes`);
+
+  await api("POST", "/api/auth/logout");
+  const etape1 = await api("POST", "/api/auth/login", { email: EMAIL, password: MDP });
+  note(etape1.status === 200 && etape1.data?.twoFactorRequired === true && !etape1.data?.token, "mot de passe seul : pas de session, code demandé");
+  const sansSession = await api("GET", "/api/auth/me");
+  note(sansSession.status === 401, "aucune session avant le second facteur");
+  const faux = await api("POST", "/api/auth/2fa/verify", { challenge: etape1.data?.challenge, code: "000000" });
+  note(faux.status === 401, "code faux refusé");
+  const etape2 = await api("POST", "/api/auth/2fa/verify", { challenge: etape1.data?.challenge, code: secours[0] });
+  note(etape2.status === 200 && etape2.data?.usedBackupCode === true && etape2.data?.backupCodesLeft === 9, "connexion avec un code de secours");
+  const reutilise = await api("POST", "/api/auth/2fa/verify", { challenge: etape1.data?.challenge, code: secours[0] });
+  note(reutilise.status === 401, "code de secours à usage unique");
+  const etat = await api("GET", "/api/auth/2fa");
+  note(etat.data?.enabled === true && etat.data?.backupCodesLeft === 9, "état : activée, 9 codes restants");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 section("RGPD");
 {
   const exp = await api("GET", "/api/auth/me/export");
@@ -436,7 +482,7 @@ section("RGPD");
   note(exp.status === 200 && j?.counts, "export complet des données");
   note(j?.clients?.length >= 1 && j?.appointments?.length >= 1 && j?.invoices?.length >= 1, "export non vide",
     `${j?.counts?.clients} clients, ${j?.counts?.appointments} RDV, ${j?.counts?.invoices} factures`);
-  note(!JSON.stringify(j?.profile || {}).includes("passwordHash"), "aucun secret dans l'export");
+  note(!/passwordHash|totpSecret|totpBackupCodes/.test(JSON.stringify(j?.profile || {})), "aucun secret dans l'export");
 
   const sansMdp = await api("DELETE", "/api/auth/me", { password: "mauvais", confirm: true });
   note(sansMdp.status === 403, "suppression refusée avec un mauvais mot de passe");
@@ -454,6 +500,8 @@ section("Cloisonnement entre praticiennes");
 
   const cli = await api("GET", `/api/clients/${clientId}`);
   note(cli.status === 404, "fiche cliente d'une autre praticienne inaccessible");
+  const suiviAutre = await api("GET", `/api/clients/${clientId}/followups`);
+  note(suiviAutre.status === 404, "journal de suivi d'une autre praticienne inaccessible");
   const rdv = await api("GET", `/api/appointments/${apptId}`);
   note(rdv.status === 404, "RDV d'une autre praticienne inaccessible");
   const fac = await api("GET", `/api/invoices/${invoiceId}`);

@@ -36,6 +36,7 @@ import { registerInternalRoutes } from "./internal";
 import { registerPublicRoutes } from "./public";
 import { registerPublicDocumentRoutes } from "./public-documents";
 import { registerBroadcastRoutes } from "./broadcasts";
+import { registerTwoFactorRoutes } from "./two-factor";
 import { registerAuthRoutes } from "./auth";
 import { registerAnamneseRoutes } from "./anamnese";
 import { registerProgrammeRoutes } from "./programmes";
@@ -147,6 +148,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Câblage des domaines (l'ordre = ordre de matching Express, à préserver) ──
   registerAuthRoutes(app, ctx);
+  registerTwoFactorRoutes(app);
   registerGoogleRoutes(app);
   registerInternalRoutes(app);
   registerProfileRoutes(app);

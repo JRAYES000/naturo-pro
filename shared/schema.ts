@@ -110,6 +110,12 @@ export const users = sqliteTable("users", {
   onboardingChecklistHiddenAt: integer("onboarding_checklist_hidden_at"),
   // Lot 5 (NaturoBot N10) — bannière d'intro Discussion vs Studio, vue une fois.
   naturobotIntroSeenAt: integer("naturobot_intro_seen_at"),
+  // Lot 2c — double authentification (TOTP) : secret chiffré (en attente tant que
+  // totpEnabledAt est vide), dernier pas accepté (anti-rejeu), codes de secours hachés.
+  totpSecret: text("totp_secret"),
+  totpEnabledAt: integer("totp_enabled_at"),
+  totpLastCounter: integer("totp_last_counter"),
+  totpBackupCodes: text("totp_backup_codes"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),

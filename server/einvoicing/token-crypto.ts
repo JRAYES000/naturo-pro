@@ -10,28 +10,29 @@ import crypto from "node:crypto";
 
 const DEV_KEY_MATERIAL = "naturo-pro-dev-secret";
 
-function key(): Buffer {
+// `purpose` sépare les clés par usage (jetons de la plateforme, secrets TOTP…).
+function key(purpose = "einvoicing-tokens"): Buffer {
   const material = process.env.SESSION_SECRET
     || (process.env.NODE_ENV === "production" ? "" : DEV_KEY_MATERIAL);
   if (!material) throw new Error("SESSION_SECRET absent : chiffrement des jetons impossible.");
-  return Buffer.from(crypto.hkdfSync("sha256", material, "naturo-pro", "einvoicing-tokens", 32));
+  return Buffer.from(crypto.hkdfSync("sha256", material, "naturo-pro", purpose, 32));
 }
 
 /** Chiffre une chaîne : « v1.<iv>.<tag>.<données> » en base64url. */
-export function sealToken(plain: string): string {
+export function sealToken(plain: string, purpose?: string): string {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key(), iv);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key(purpose), iv);
   const data = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
   return ["v1", iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), data.toString("base64url")].join(".");
 }
 
 /** Déchiffre ; null si la valeur est absente, altérée ou chiffrée avec une autre clé. */
-export function openToken(sealed: string | null | undefined): string | null {
+export function openToken(sealed: string | null | undefined, purpose?: string): string | null {
   if (!sealed) return null;
   const [v, iv, tag, data] = sealed.split(".");
   if (v !== "v1" || !iv || !tag || !data) return null;
   try {
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64url"));
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key(purpose), Buffer.from(iv, "base64url"));
     decipher.setAuthTag(Buffer.from(tag, "base64url"));
     return Buffer.concat([decipher.update(Buffer.from(data, "base64url")), decipher.final()]).toString("utf8");
   } catch {

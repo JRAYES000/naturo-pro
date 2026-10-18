@@ -106,6 +106,12 @@ export const users = mysqlTable("users", {
   onboardingChecklistHiddenAt: bigint("onboarding_checklist_hidden_at", { mode: "number" }),
   // Lot 5 (NaturoBot N10) — bannière d'intro Discussion vs Studio, vue une fois.
   naturobotIntroSeenAt: bigint("naturobot_intro_seen_at", { mode: "number" }),
+  // Lot 2c — double authentification (TOTP) : secret chiffré (en attente tant que
+  // totpEnabledAt est vide), dernier pas accepté (anti-rejeu), codes de secours hachés.
+  totpSecret: varchar("totp_secret", { length: 255 }),
+  totpEnabledAt: bigint("totp_enabled_at", { mode: "number" }),
+  totpLastCounter: bigint("totp_last_counter", { mode: "number" }),
+  totpBackupCodes: text("totp_backup_codes"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),

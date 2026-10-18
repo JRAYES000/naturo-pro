@@ -71,6 +71,13 @@
       "when": 1792355699780,
       "tag": "0009_closed_bucky",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1792356785567,
+      "tag": "0010_bright_screwball",
+      "breakpoints": true
     }
   ]
 }

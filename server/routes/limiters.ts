@@ -18,6 +18,15 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Trop de tentatives, réessayez dans quelques minutes." },
 });
+// Lot 2c — second facteur (code à 6 chiffres) : budget distinct de la connexion par
+// mot de passe, doublé d'une limite par compte dans routes/two-factor.ts.
+export const twoFactorLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Trop de tentatives, réessayez dans quelques minutes." },
+});
 export const bookingLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,

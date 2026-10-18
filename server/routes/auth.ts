@@ -34,6 +34,7 @@ import {
 } from "../email";
 import { slugify, publicUser } from "./helpers/tokens";
 import { recordEvent } from "../analytics";
+import { signChallenge } from "../totp";
 import type { RouteContext } from "./_context";
 
 export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
@@ -302,6 +303,11 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     const user = await storage.getUserByEmail(email);
     if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({ message: "Identifiants incorrects" });
+    }
+    // Lot 2c — compte protégé par la double authentification : aucune session avant
+    // le second facteur. Le défi signé (10 min) s'échange sur /api/auth/2fa/verify.
+    if ((user as any).totpEnabledAt) {
+      return res.json({ twoFactorRequired: true, challenge: signChallenge(user.id) });
     }
     // Horodatage d'activité — alimente la purge des comptes gratuits inactifs
     // 12 mois (action 11, décision 6).

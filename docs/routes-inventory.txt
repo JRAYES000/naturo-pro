@@ -1,5 +1,5 @@
 # Inventaire des routes Express — généré par script/routes-inventory.ts
-# 189 routes — trié par (path, method), file-agnostic.
+# 195 routes — trié par (path, method), file-agnostic.
 # Le diff de ce fichier doit rester STRICTEMENT VIDE à travers le split de routes.ts.
 
 GET     /api/admin/analytics                             [requireAuth, requireAdmin]  (anonymous)
@@ -37,6 +37,12 @@ POST    /api/appointments/:id/note                       [requireAuth]  (anonymo
 POST    /api/appointments/:id/refuse                     [requireAuth]  (anonymous)
 POST    /api/appointments/:id/send-reminder              [requireAuth]  (anonymous)
 GET     /api/appointments/pending                        [requireAuth]  (anonymous)
+GET     /api/auth/2fa                                    [requireAuth]  (anonymous)
+POST    /api/auth/2fa/backup-codes                       [requireAuth, twoFactorLimiter]  (anonymous)
+POST    /api/auth/2fa/disable                            [requireAuth, twoFactorLimiter]  (anonymous)
+POST    /api/auth/2fa/enable                             [requireAuth, twoFactorLimiter]  (anonymous)
+POST    /api/auth/2fa/setup                              [requireAuth]  (anonymous)
+POST    /api/auth/2fa/verify                             [twoFactorLimiter]  (anonymous)
 POST    /api/auth/forgot-password                        [authLimiter]  (anonymous)
 GET     /api/auth/google                                 []  (anonymous)
 GET     /api/auth/google/callback                        []  (anonymous)
