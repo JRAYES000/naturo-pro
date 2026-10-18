@@ -141,6 +141,13 @@ section("Clients");
   const u = await api("PATCH", `/api/clients/${clientId}`, { phone: "0600000001" });
   note(u.status === 200 && u.data?.phone === "0600000001", "modification de la fiche");
 
+  // Traitements en cours, avec la recherche dans la base publique des médicaments.
+  const traitement = await api("PATCH", `/api/clients/${clientId}`, { currentTreatments: "DOLIPRANE 1000 mg, comprimé" });
+  note(traitement.status === 200 && traitement.data?.currentTreatments === "DOLIPRANE 1000 mg, comprimé", "traitements en cours enregistrés");
+  const medic = await api("GET", "/api/medications?q=doliprane");
+  note(medic.status === 200 && Array.isArray(medic.data?.results) && medic.data?.source?.label === "BDPM (ANSM)", "recherche dans la base des médicaments",
+    `${medic.data?.results?.length ?? 0} résultat(s)`);
+
   // Lot 2b — journal de suivi et archivage.
   const suivi = await api("POST", `/api/clients/${clientId}/followups`, { kind: "appel", content: "Appel de suivi" });
   note(suivi.status === 201 && suivi.data?.kind === "appel", "journal de suivi : entrée ajoutée");

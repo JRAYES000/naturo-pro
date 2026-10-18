@@ -59,6 +59,8 @@ export const clientBroadcasts = activeSchema.clientBroadcasts;
 // Lot 3a — espace cliente et observance des programmes
 export const clientPortalTokens = activeSchema.clientPortalTokens;
 export const programCheckins = activeSchema.programCheckins;
+// Base publique des médicaments (BDPM)
+export const medications = activeSchema.medications;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -112,5 +114,5 @@ export type {
   AiSavedReply, InsertAiSavedReply,
   BlockedDate, InsertBlockedDate,
   EInvoicingConnection,
-  ClientFollowup, ClientBroadcast, ClientPortalToken, ProgramCheckin,
+  ClientFollowup, ClientBroadcast, ClientPortalToken, ProgramCheckin, Medication,
 } from "./schema";

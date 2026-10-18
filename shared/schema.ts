@@ -307,6 +307,8 @@ export const clients = sqliteTable("clients", {
   optOutToken: text("opt_out_token"),
   // Lot 3a — dernière visite de la cliente dans son espace.
   portalLastSeenAt: integer("portal_last_seen_at"),
+  // Traitements médicamenteux en cours (saisie aidée par la BDPM).
+  currentTreatments: text("current_treatments"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
@@ -384,6 +386,22 @@ export const programCheckins = sqliteTable("program_checkins", {
 }));
 
 export type ProgramCheckin = typeof programCheckins.$inferSelect;
+
+// Base de données publique des médicaments (BDPM, ANSM, Licence ouverte) : copie
+// locale du fichier des spécialités, rafraîchie chaque mois. Donnée de référence
+// commune, sans user_id. `search` : nom en minuscules sans accents.
+export const medications = sqliteTable("medications", {
+  cis: text("cis").primaryKey(),
+  name: text("name").notNull(),
+  search: text("search").notNull(),
+  form: text("form"),
+  routes: text("routes"),
+  holder: text("holder"),
+  commercialized: integer("commercialized", { mode: "boolean" }).notNull().default(true),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export type Medication = typeof medications.$inferSelect;
 
 // Appointments
 export const appointments = sqliteTable("appointments", {

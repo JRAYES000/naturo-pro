@@ -41,6 +41,7 @@ const TABLE_PAIRS: Array<[string, any, any]> = [
   ["clientBroadcasts",     sqlite.clientBroadcasts,     mysql.clientBroadcasts],
   ["clientPortalTokens",   sqlite.clientPortalTokens,   mysql.clientPortalTokens],
   ["programCheckins",      sqlite.programCheckins,      mysql.programCheckins],
+  ["medications",          sqlite.medications,          mysql.medications],
   ["programs",             sqlite.programs,             mysql.programs],
   ["anamnesisTemplates",   sqlite.anamnesisTemplates,   mysql.anamnesisTemplates],
   ["anamnesisResponses",   sqlite.anamnesisResponses,   mysql.anamnesisResponses],

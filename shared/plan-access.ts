@@ -57,6 +57,7 @@ export const CLIENT_HEALTH_FIELDS = [
   "city",
   "allergies",
   "antecedents",
+  "currentTreatments",
   "lifestyleNotes",
   "penseBete",
   "heightCm",

@@ -1,5 +1,5 @@
 # Inventaire des routes Express — généré par script/routes-inventory.ts
-# 215 routes — trié par (path, method), file-agnostic.
+# 217 routes — trié par (path, method), file-agnostic.
 # Le diff de ce fichier doit rester STRICTEMENT VIDE à travers le split de routes.ts.
 
 GET     /api/admin/analytics                             [requireAuth, requireAdmin]  (anonymous)
@@ -8,6 +8,7 @@ POST    /api/admin/assistant/documents                   [requireAuth, requireAd
 DELETE  /api/admin/assistant/documents/:id               [requireAuth, requireAdmin]  (anonymous)
 GET     /api/admin/assistant/instructions                [requireAuth, requireAdmin]  (anonymous)
 PUT     /api/admin/assistant/instructions                [requireAuth, requireAdmin]  (anonymous)
+POST    /api/admin/bdpm/refresh                          [requireAuth, requireAdmin]  (anonymous)
 GET     /api/admin/me                                    [requireAuth]  (anonymous)
 GET     /api/admin/users                                 [requireAuth, requireAdmin]  (anonymous)
 GET     /api/admin/users/:id                             [requireAuth, requireAdmin]  (anonymous)
@@ -153,6 +154,7 @@ GET     /api/invoices/:id/pdf                            [requireAuth]  (anonymo
 POST    /api/invoices/:id/send                           [requireAuth]  (anonymous)
 POST    /api/invoices/:id/share-link                     [requireAuth]  (anonymous)
 POST    /api/invoices/from-appointment/:id               [requireAuth]  (anonymous)
+GET     /api/medications                                 [requireAuth]  (anonymous)
 PATCH   /api/notes/:id                                   [requireAuth]  (anonymous)
 GET     /api/notes/:id/compte-rendu.pdf                  [requireAuth]  (anonymous)
 POST    /api/notes/:id/compte-rendu/envoyer              [requireAuth]  (anonymous)

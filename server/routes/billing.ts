@@ -23,6 +23,7 @@ import {
   getSubscriptionConfig, createSubscriptionCheckoutSession, verifyStripeSignature,
 } from "../stripe-subscription";
 import { publicUser } from "./helpers/tokens";
+import { rewardReferral } from "../referral-reward";
 
 const trackSchema = z.object({
   event: z.literal("subscribe_click"),
@@ -98,6 +99,8 @@ export function registerBillingRoutes(app: Express): void {
         } as any);
         recordEvent(user.id, "subscription_started", { sessionId: obj.id, subscriptionId: obj.subscription ?? null });
         console.log(`[billing] user=${user.id} → plan=active (session ${obj.id})`);
+        // Parrainage : un mois offert à la filleule et à sa marraine (une seule fois).
+        void rewardReferral(user.id).catch((e) => console.error("[billing][parrainage]", e?.message || e));
       } else if (event.type === "customer.subscription.deleted") {
         const byMeta = Number(obj.metadata?.userId);
         let user = Number.isFinite(byMeta) ? await storage.getUserById(byMeta) : undefined;

@@ -63,6 +63,38 @@ export async function createSubscriptionCheckoutSession(opts: {
 }
 
 /**
+ * Lot 3c — crédit sur le solde client Stripe (montant négatif) : il s'impute sur
+ * la prochaine facture d'abonnement. Sert au mois offert du parrainage.
+ */
+export async function createCustomerCredit(opts: {
+  secretKey: string;
+  customerId: string;
+  amountCents: number;
+  description: string;
+}): Promise<{ id: string } | { error: string }> {
+  const params = new URLSearchParams();
+  params.set("amount", String(-Math.abs(opts.amountCents)));
+  params.set("currency", "eur");
+  params.set("description", opts.description);
+  try {
+    const res = await fetch(`${STRIPE_API}/customers/${encodeURIComponent(opts.customerId)}/balance_transactions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.secretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const data: any = await res.json();
+    if (!res.ok) return { error: data?.error?.message || `Stripe HTTP ${res.status}` };
+    return { id: String(data.id) };
+  } catch (e: any) {
+    return { error: e?.message || "Échec requête Stripe" };
+  }
+}
+
+/**
  * Vérifie la signature Stripe d'un webhook (en-tête `stripe-signature`,
  * format `t=<timestamp>,v1=<hmac>`). HMAC-SHA256 de `${t}.${payload}` avec le
  * secret whsec_…, comparaison à temps constant, tolérance de rejeu 5 minutes.

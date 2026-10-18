@@ -33,7 +33,7 @@ export function registerReferralRoutes(app: Express): void {
     res.json({
       code,
       link: `${appUrl}/inscription?parrain=${code}`,
-      referrals: filleules.map((u: any) => ({ name: shortName(u.name), createdAt: u.createdAt, status: referralStatus(u) })),
+      referrals: filleules.map((u: any) => ({ name: shortName(u.name), createdAt: u.createdAt, status: referralStatus(u), rewarded: !!u.referralRewardedAt })),
     });
   });
 

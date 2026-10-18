@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 interface ReferralData {
   code: string;
   link: string;
-  referrals: Array<{ name: string; createdAt: number; status: string }>;
+  referrals: Array<{ name: string; createdAt: number; status: string; rewarded?: boolean }>;
 }
 
 export function ReferralCard() {
@@ -38,7 +38,8 @@ export function ReferralCard() {
         <h2 className="font-bold">Parrainage</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Recommandez Naturo Pro à une consœur : transmettez-lui votre lien d'inscription, son compte vous sera rattaché.
+        Recommandez Naturo Pro à une consœur avec votre lien d'inscription. Quand elle s'abonne, vous recevez
+        chacune un mois offert : déduit de la prochaine facture pour une abonnée, ajouté à l'accès complet sinon.
       </p>
       <div className="flex gap-2">
         <Input readOnly value={data.link} onFocus={(e) => e.currentTarget.select()} className="font-mono text-sm" aria-label="Votre lien de parrainage" data-testid="input-referral-link" />
@@ -51,7 +52,7 @@ export function ReferralCard() {
           {data.referrals.map((r, i) => (
             <li key={i} className="flex justify-between gap-3">
               <span>{r.name} · inscrite le {new Date(r.createdAt).toLocaleDateString("fr-FR")}</span>
-              <span className="text-muted-foreground">{r.status}</span>
+              <span className="text-muted-foreground">{r.status}{r.rewarded ? " · mois offert" : ""}</span>
             </li>
           ))}
         </ul>

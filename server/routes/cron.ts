@@ -17,6 +17,7 @@ import { syncAllStatuses } from "../einvoicing/service";
 import { sendBookingExpiredEmail } from "./helpers/email-sending";
 import { zonedParts, zonedTimeToUtc } from "../timezone";
 import { sendSmsRemindersForUser } from "./integrations";
+import { refreshBdpmIfStale } from "../bdpm";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   sendFollowupsForUser, getLocalHour, getLocalDayKey, TZ,
@@ -130,6 +131,14 @@ export function startCrons(): void {
       if (n) console.log(`[sessions] ${n} session(s) expirée(s) purgée(s)`);
     } catch (e: any) {
       console.error("[sessions]", e?.message || e);
+    }
+    // Base publique des médicaments : rechargée si elle date de plus d'un mois.
+    if (isProd || process.env.ENABLE_BDPM_REFRESH === "1") {
+      try {
+        await refreshBdpmIfStale();
+      } catch (e: any) {
+        console.error("[bdpm]", e?.message || e);
+      }
     }
     try {
       await storage.purgeExpiredPortalTokens();

@@ -308,6 +308,8 @@ export const clients = mysqlTable("clients", {
   optOutToken: varchar("opt_out_token", { length: 64 }),
   // Lot 3a — dernière visite de la cliente dans son espace.
   portalLastSeenAt: bigint("portal_last_seen_at", { mode: "number" }),
+  // Traitements médicamenteux en cours (saisie aidée par la BDPM).
+  currentTreatments: text("current_treatments"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
@@ -385,6 +387,22 @@ export const programCheckins = mysqlTable("program_checkins", {
 }));
 
 export type ProgramCheckin = typeof programCheckins.$inferSelect;
+
+// Base de données publique des médicaments (BDPM, ANSM, Licence ouverte) : copie
+// locale du fichier des spécialités, rafraîchie chaque mois. Donnée de référence
+// commune, sans user_id. `search` : nom en minuscules sans accents.
+export const medications = mysqlTable("medications", {
+  cis: varchar("cis", { length: 16 }).primaryKey(),
+  name: varchar("name", { length: 300 }).notNull(),
+  search: varchar("search", { length: 300 }).notNull(),
+  form: varchar("form", { length: 255 }),
+  routes: varchar("routes", { length: 255 }),
+  holder: varchar("holder", { length: 255 }),
+  commercialized: boolean("commercialized").notNull().default(true),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+export type Medication = typeof medications.$inferSelect;
 
 // ─── Appointments ─────────────────────────────────────────────────────────────
 export const appointments = mysqlTable("appointments", {

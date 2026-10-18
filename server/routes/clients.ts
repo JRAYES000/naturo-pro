@@ -40,6 +40,8 @@ const patchClientSchema = z.object({
   city: z.string().max(255).nullable().optional(),
   allergies: z.string().nullable().optional(),
   antecedents: z.string().nullable().optional(),
+  // Traitements médicamenteux en cours (saisie aidée par la BDPM).
+  currentTreatments: z.string().max(5000).nullable().optional(),
   lifestyleNotes: z.string().nullable().optional(),
   penseBete: z.string().nullable().optional(),
   // Lot 4 — B2B + morphologie

@@ -25,6 +25,7 @@ import { CompanyLookup } from "@/components/CompanyLookup";
 import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program, Package, ClientFollowup } from "@shared/schema";
 import { FollowupForm, FOLLOWUP_META } from "@/components/FollowupForm";
 import { NotesImportDialog } from "@/components/NotesImportDialog";
+import { MedicationSearch } from "@/components/MedicationSearch";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
 import { computeImc, imcLabel, ageFromDateOfBirth, poidsIdealCreff } from "@/lib/imc";
 
@@ -252,6 +253,7 @@ export default function ClientDetail() {
           postalCode: (draft as any).postalCode || null,
           city: (draft as any).city || null,
           allergies: draft.allergies, antecedents: draft.antecedents,
+          currentTreatments: (draft as any).currentTreatments || null,
           lifestyleNotes: draft.lifestyleNotes, penseBete: draft.penseBete,
           heightCm: (draft as any).heightCm || null,
           weightKg: (draft as any).weightKg || null,
@@ -639,6 +641,13 @@ export default function ClientDetail() {
                   })()}
                   <div><Label>Allergies</Label><Textarea rows={2} value={draft.allergies || ""} onChange={e => setDraft({ ...draft, allergies: e.target.value })} data-testid="input-allergies" /></div>
                   <div><Label>Antécédents</Label><Textarea rows={3} value={draft.antecedents || ""} onChange={e => setDraft({ ...draft, antecedents: e.target.value })} data-testid="input-antecedents" /></div>
+                  <div className="space-y-2">
+                    <Label htmlFor="input-treatments">Traitements en cours</Label>
+                    <Textarea id="input-treatments" rows={3} value={(draft as any).currentTreatments || ""}
+                      onChange={e => setDraft({ ...draft, currentTreatments: e.target.value } as any)}
+                      placeholder="Un médicament par ligne, avec la posologie si besoin" data-testid="input-treatments" />
+                    <MedicationSearch onPick={(nom) => setDraft((d: any) => ({ ...d, currentTreatments: [String(d.currentTreatments || "").trim(), nom].filter(Boolean).join("\n") }))} />
+                  </div>
                   <div><Label>Hygiène de vie</Label><Textarea rows={3} value={draft.lifestyleNotes || ""} onChange={e => setDraft({ ...draft, lifestyleNotes: e.target.value })} data-testid="input-lifestyle" /></div>
                   <div><Label>Pense-bête (privé)</Label><Textarea rows={2} value={draft.penseBete || ""} onChange={e => setDraft({ ...draft, penseBete: e.target.value })} data-testid="input-pensebete" /></div>
                 </>

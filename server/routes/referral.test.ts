@@ -5,6 +5,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { shortName, referralStatus } from "./referral";
+import { rewardReferral, REFERRAL_REWARD_CENTS } from "../referral-reward";
 import { storage } from "../storage";
 
 test("nom abrégé de la marraine et statut des filleules", () => {
@@ -41,4 +42,52 @@ test("code personnel : 8 caractères sans ambiguïté, stable ; filleules rattac
   const autre = await mk("c");
   assert.notEqual(await storage.ensureReferralCode(autre.id), code, "codes distincts");
   assert.deepEqual((await storage.listReferredUsers(marraine.id)).map((u) => u.id), [filleule.id]);
+});
+
+test("récompense : un mois offert à chacune, une seule fois (crédit Stripe ou accès prolongé)", async () => {
+  const now = Date.now();
+  const J = 86400000;
+  const mk = async (suffix: string, extra: Record<string, unknown>) => {
+    const u = await storage.createUser({
+      email: `recomp-${suffix}-${now}@example.invalid`, passwordHash: "x", googleId: null, name: `Recomp ${suffix}`, slug: `recomp-${suffix}-${now}`,
+      bio: "", photoUrl: null, phone: null, specialties: "[]", address: null, city: null, createdAt: now, ...extra,
+    } as any);
+    ids.push(u.id);
+    return u;
+  };
+  const avant = process.env.STRIPE_SUBSCRIPTION_SECRET_KEY;
+  process.env.STRIPE_SUBSCRIPTION_SECRET_KEY = "sk_test_parrainage";
+  try {
+    const credits: any[] = [];
+    const credit = async (o: any) => { credits.push(o); return { id: "cbtxn_1" }; };
+
+    // Marraine en essai : prolongée de 30 jours à partir de la fin de son essai.
+    const marraine = await mk("m", { plan: "trial", trialEndsAt: now + 10 * J });
+    const filleule = await mk("f", { plan: "active", stripeCustomerId: "cus_filleule", referredByUserId: marraine.id });
+    const r = await rewardReferral(filleule.id, { credit, now, sendMail: false });
+    assert.equal(r?.filleule.mode, "credit");
+    assert.equal(r?.marraine?.mode, "trial");
+    assert.equal(credits.length, 1);
+    assert.equal(credits[0].customerId, "cus_filleule");
+    assert.equal(credits[0].amountCents, REFERRAL_REWARD_CENTS);
+    assert.equal((await storage.getUserById(marraine.id) as any).trialEndsAt, now + 40 * J);
+    assert.equal(await rewardReferral(filleule.id, { credit, now, sendMail: false }), null, "webhook rejoué : rien de plus");
+    assert.equal(credits.length, 1);
+
+    // Marraine sur le socle gratuit : 30 jours d'accès complet rouverts.
+    const libre = await mk("l", { plan: "free", trialEndsAt: now - 90 * J });
+    const f2 = await mk("f2", { plan: "active", stripeCustomerId: "cus_f2", referredByUserId: libre.id });
+    const r2 = await rewardReferral(f2.id, { credit, now, sendMail: false });
+    assert.equal(r2?.marraine?.mode, "trial");
+    const apres: any = await storage.getUserById(libre.id);
+    assert.equal(apres.plan, "trial");
+    assert.equal(apres.trialEndsAt, now + 30 * J);
+
+    // Sans marraine : rien.
+    const seule = await mk("s", { plan: "active", stripeCustomerId: "cus_s" });
+    assert.equal(await rewardReferral(seule.id, { credit, now, sendMail: false }), null);
+  } finally {
+    if (avant === undefined) delete process.env.STRIPE_SUBSCRIPTION_SECRET_KEY;
+    else process.env.STRIPE_SUBSCRIPTION_SECRET_KEY = avant;
+  }
 });

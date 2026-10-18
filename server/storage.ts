@@ -22,7 +22,7 @@ import {
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
   analyticsEvents, aiSavedReplies, blockedDates, einvoicingConnections,
-  clientFollowups, clientBroadcasts, clientPortalTokens, programCheckins,
+  clientFollowups, clientBroadcasts, clientPortalTokens, programCheckins, medications,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -35,7 +35,7 @@ import type {
   Package, InsertPackage, AiChatMessage, AiChatUsage,
   AssistantSettings, KbDocument, KbChunk, ContentPost, AnalyticsEvent,
   AiSavedReply, BlockedDate, EInvoicingConnection, ClientFollowup, ClientBroadcast,
-  ClientPortalToken, ProgramCheckin,
+  ClientPortalToken, ProgramCheckin, Medication,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull, inArray } from "drizzle-orm";
@@ -541,6 +541,53 @@ export class DatabaseStorage implements IStorage {
     return rows.filter((u: any) => !!u.googleCalendarToken) as User[];
   }
 
+  // ── Base publique des médicaments (BDPM) ───────────────────────────────────
+
+  async countMedications(): Promise<number> {
+    const rows = await db.select({ c: sql<number>`count(*)` }).from(medications);
+    return Number(rows[0]?.c ?? 0);
+  }
+
+  async lastMedicationsUpdate(): Promise<number | null> {
+    const rows = await db.select({ m: sql<number>`max(${medications.updatedAt})` }).from(medications);
+    return rows[0]?.m ? Number(rows[0].m) : null;
+  }
+
+  /**
+   * Recherche par mots (tous présents, sans accents) dans les noms ; les noms qui
+   * commencent par le premier mot d'abord, puis les spécialités commercialisées.
+   * `normalizedWords` : déjà en minuscules sans accents (bdpm.normalizeSearch).
+   */
+  async searchMedications(normalizedWords: string[], limit = 15): Promise<Medication[]> {
+    const words = normalizedWords.map((w) => w.replace(/[%_\\]/g, "")).filter(Boolean).slice(0, 4);
+    if (!words.length) return [];
+    return db.select().from(medications)
+      .where(and(...words.map((w) => like(medications.search, `%${w}%`))))
+      .orderBy(sql`case when ${medications.search} like ${words[0] + "%"} then 0 else 1 end`, desc(medications.commercialized), medications.name)
+      .limit(limit);
+  }
+
+  /**
+   * Remplace la copie locale par une nouvelle version du fichier : mise à jour par
+   * lots (insertion ou remplacement selon le code CIS), puis suppression des
+   * spécialités absentes du nouveau fichier.
+   */
+  async replaceMedications(rows: Array<Omit<Medication, "updatedAt">>, now: number): Promise<void> {
+    const cols = ["name", "search", "form", "routes", "holder", "commercialized", "updated_at"];
+    for (let i = 0; i < rows.length; i += 500) {
+      const batch = rows.slice(i, i + 500).map((r) => ({ ...r, updatedAt: now }));
+      const q: any = db.insert(medications).values(batch as any);
+      if (DB_DRIVER === "mysql") {
+        const key = (c: string) => (c === "updated_at" ? "updatedAt" : c);
+        await q.onDuplicateKeyUpdate({ set: Object.fromEntries(cols.map((c) => [key(c), sql.raw(`VALUES(\`${c}\`)`)])) });
+      } else {
+        const key = (c: string) => (c === "updated_at" ? "updatedAt" : c);
+        await q.onConflictDoUpdate({ target: medications.cis, set: Object.fromEntries(cols.map((c) => [key(c), sql.raw(`excluded.${c}`)])) });
+      }
+    }
+    await db.delete(medications).where(sql`${medications.updatedAt} < ${now}`);
+  }
+
   // ── Lot 3c — parrainage ────────────────────────────────────────────────────
 
   async getUserByReferralCode(code: string): Promise<User | undefined> {
@@ -567,6 +614,17 @@ export class DatabaseStorage implements IStorage {
       }
     }
     throw new Error("Code de parrainage impossible à générer");
+  }
+
+  /**
+   * Réserve la récompense d'une filleule : la mise à jour conditionnelle (encore
+   * vide) garantit qu'un webhook rejoué ne récompense pas deux fois.
+   */
+  async claimReferralReward(userId: number, now = Date.now()): Promise<boolean> {
+    await db.update(users).set({ referralRewardedAt: now } as any)
+      .where(and(eq(users.id, userId), isNull(users.referralRewardedAt)));
+    const after = await this.getUserById(userId);
+    return (after as any)?.referralRewardedAt === now;
   }
 
   async listReferredUsers(userId: number): Promise<User[]> {
