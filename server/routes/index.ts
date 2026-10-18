@@ -40,6 +40,7 @@ import { registerTwoFactorRoutes } from "./two-factor";
 import { registerPortalRoutes } from "./portal";
 import { registerIntegrationRoutes } from "./integrations";
 import { registerNotesImportRoutes } from "./notes-import";
+import { registerReferralRoutes } from "./referral";
 import { registerAuthRoutes } from "./auth";
 import { registerAnamneseRoutes } from "./anamnese";
 import { registerProgrammeRoutes } from "./programmes";
@@ -165,6 +166,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerPortalRoutes(app);
   registerIntegrationRoutes(app);
   registerNotesImportRoutes(app);
+  registerReferralRoutes(app);
   registerInvoiceRoutes(app);
   registerEInvoicingRoutes(app);
   registerAdminRoutes(app);

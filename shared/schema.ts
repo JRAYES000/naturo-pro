@@ -124,9 +124,14 @@ export const users = sqliteTable("users", {
   smsRemindersEnabled: integer("sms_reminders_enabled", { mode: "boolean" }).notNull().default(false),
   brevoLastSyncAt: integer("brevo_last_sync_at"),
   brevoLastSyncCount: integer("brevo_last_sync_count"),
+  // Lot 3c — parrainage : code personnel, marraine, récompense accordée.
+  referralCode: text("referral_code"),
+  referredByUserId: integer("referred_by_user_id"),
+  referralRewardedAt: integer("referral_rewarded_at"),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
+  uk_users_referral_code: uniqueIndex("uk_users_referral_code").on(t.referralCode),
 }));
 
 // Invoices

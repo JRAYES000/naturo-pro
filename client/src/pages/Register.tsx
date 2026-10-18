@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,8 +18,20 @@ const schema = z.object({
   password: z.string().min(6, "6 caractères minimum"),
 });
 
+/** Lot 3c — code de parrainage : /inscription?parrain=CODE (converti en /#/inscription?parrain=CODE). */
+function referralCodeFromUrl(): string | null {
+  const q = window.location.hash.split("?")[1] || window.location.search.slice(1);
+  const code = new URLSearchParams(q).get("parrain");
+  return code && /^[A-Za-z0-9]{4,16}$/.test(code) ? code.toUpperCase() : null;
+}
+
 export default function Register() {
   const [, navigate] = useLocation();
+  const [referralCode] = useState(referralCodeFromUrl);
+  const { data: marraine } = useQuery<{ name: string } | null>({
+    queryKey: ["/api/public/referral", referralCode],
+    enabled: !!referralCode,
+  });
   const { toast } = useToast();
   const { refetch } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -31,7 +44,7 @@ export default function Register() {
   async function onSubmit(values: z.infer<typeof schema>) {
     setLoading(true);
     try {
-      await apiRequest("POST", "/api/auth/register", values);
+      await apiRequest("POST", "/api/auth/register", { ...values, ...(referralCode ? { referralCode } : {}) });
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       await refetch();
       toast({ title: "Bienvenue", description: "Un email de confirmation vous a été envoyé." });
@@ -48,6 +61,9 @@ export default function Register() {
           <Link href="/" className="inline-block mb-6"><Logo /></Link>
           <h1 className="text-3xl font-bold mb-2 text-heading">Créer mon compte</h1>
           <p className="text-muted-foreground">C'est gratuit, et ça ne prend qu'une minute.</p>
+          {marraine?.name && (
+            <p className="mt-2 text-sm font-semibold text-primary" data-testid="text-referred-by">Recommandée par {marraine.name}</p>
+          )}
         </div>
         <div className="card-naturo">
           <Form {...form}>

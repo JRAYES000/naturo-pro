@@ -47,12 +47,15 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
     email: z.string().email(),
     password: z.string().min(6),
     name: z.string().min(2),
+    // Lot 3c — lien de parrainage d'une consœur (facultatif, ignoré s'il est inconnu).
+    referralCode: z.string().trim().max(32).optional(),
   });
 
   app.post("/api/auth/register", authLimiter, async (req, res) => {
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
-    const { email, password, name } = parsed.data;
+    const { email, password, name, referralCode } = parsed.data;
+    const marraine = referralCode ? await storage.getUserByReferralCode(referralCode) : undefined;
     const existing = await storage.getUserByEmail(email);
     if (existing) return res.status(409).json({ message: "Un compte existe déjà avec cet email." });
 
@@ -91,7 +94,9 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       trialEndsAt,
       emailVerifyToken: verifyToken,
       emailVerifyExpiresAt: verifyExpiresAt,
+      referredByUserId: marraine && marraine.email.toLowerCase() !== email.toLowerCase() ? marraine.id : null,
     } as any);
+    if (marraine) recordEvent(user.id, "signup_referral", { referrerId: marraine.id });
 
     // Pré-remplit 3 prestations par défaut pour démarrer rapidement (best effort :
     // un échec ne bloque pas l'inscription). Durée 1 h, tarif 50 €, lieu au défaut.

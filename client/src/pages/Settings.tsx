@@ -19,6 +19,7 @@ import { CompanyLookup } from "@/components/CompanyLookup";
 import { EInvoicingStatus } from "@/components/EInvoicingStatus";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { BrevoSettings } from "@/components/BrevoSettings";
+import { ReferralCard } from "@/components/ReferralCard";
 
 const LEGAL_FORMS: Array<[string, string]> = [
   ["EI", "Entreprise individuelle (EI, micro-entreprise)"],
@@ -220,6 +221,9 @@ export default function Settings() {
           <div><Label>Nom</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-name" /></div>
           <div><Label>Email</Label><Input value={draft.email || ""} disabled data-testid="input-email" /></div>
         </div>
+
+        {/* Lot 3c — parrainage entre praticiennes. */}
+        <ReferralCard />
 
         {/* Lot 2c — double authentification (TOTP + codes de secours). */}
         <TwoFactorSettings />

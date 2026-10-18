@@ -575,9 +575,16 @@ section("RGPD");
 // ─────────────────────────────────────────────────────────────────────────────
 section("Cloisonnement entre praticiennes");
 {
+  // Lot 3c — la seconde praticienne s'inscrit par le lien de parrainage de la première.
+  const parrainage = await api("GET", "/api/referral");
+  note(/^[A-HJ-NP-Z2-9]{8}$/.test(parrainage.data?.code || "") && String(parrainage.data?.link).includes(`parrain=${parrainage.data?.code}`),
+    "parrainage : code et lien personnels");
+  const marraine = await fetch(`${B}/api/public/referral/${parrainage.data?.code}`).then((r) => r.json());
+  note(marraine?.name === "Camille D.", "parrainage : marraine affichée à l'inscription", marraine?.name);
+
   const cookieA = cookie;
   cookie = "";
-  const b = await api("POST", "/api/auth/register", { email: `intrus-${tag}@example.invalid`, password: MDP, name: "Intrus Test" });
+  const b = await api("POST", "/api/auth/register", { email: `intrus-${tag}@example.invalid`, password: MDP, name: "Intrus Test", referralCode: parrainage.data?.code });
   const intrusId = b.data?.user?.id;
 
   const cli = await api("GET", `/api/clients/${clientId}`);
@@ -596,6 +603,12 @@ section("Cloisonnement entre praticiennes");
   note(modif.status === 404, "fiche cliente d'une autre praticienne non modifiable");
   const adm = await api("GET", "/api/admin/users");
   note(adm.status === 403, "espace admin refusé à une praticienne");
+
+  const cookieB = cookie;
+  cookie = cookieA;
+  const filleules = await api("GET", "/api/referral");
+  note(filleules.data?.referrals?.length === 1 && filleules.data.referrals[0].name === "Intrus T.", "parrainage : filleule rattachée");
+  cookie = cookieB;
 
   await api("DELETE", "/api/auth/me", { password: MDP, confirm: true });
   cookie = cookieA;

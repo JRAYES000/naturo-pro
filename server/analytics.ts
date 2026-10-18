@@ -21,6 +21,8 @@ export const ANALYTICS_EVENTS = [
   "compte_rendu_envoye",
   "programme_ia_genere",
   "relance_envoyee",
+  // Lot 3c — inscription par le lien de parrainage d'une consœur
+  "signup_referral",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

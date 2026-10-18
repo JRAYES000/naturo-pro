@@ -120,9 +120,14 @@ export const users = mysqlTable("users", {
   smsRemindersEnabled: boolean("sms_reminders_enabled").notNull().default(false),
   brevoLastSyncAt: bigint("brevo_last_sync_at", { mode: "number" }),
   brevoLastSyncCount: int("brevo_last_sync_count"),
+  // Lot 3c — parrainage : code personnel, marraine, récompense accordée.
+  referralCode: varchar("referral_code", { length: 16 }),
+  referredByUserId: int("referred_by_user_id"),
+  referralRewardedAt: bigint("referral_rewarded_at", { mode: "number" }),
 }, (t) => ({
   idx_email_verify_token: index("idx_email_verify_token").on(t.emailVerifyToken),
   idx_password_reset_token: index("idx_password_reset_token").on(t.passwordResetToken),
+  uk_users_referral_code: uniqueIndex("uk_users_referral_code").on(t.referralCode),
 }));
 
 // ─── Invoices ──────────────────────────────────────────────────────────────────

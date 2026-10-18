@@ -541,6 +541,38 @@ export class DatabaseStorage implements IStorage {
     return rows.filter((u: any) => !!u.googleCalendarToken) as User[];
   }
 
+  // ── Lot 3c — parrainage ────────────────────────────────────────────────────
+
+  async getUserByReferralCode(code: string): Promise<User | undefined> {
+    if (!code) return undefined;
+    return first(db.select().from(users).where(eq(users.referralCode, code.trim().toUpperCase())));
+  }
+
+  /** Code de parrainage personnel, créé au premier besoin (8 caractères sans ambiguïté). */
+  async ensureReferralCode(userId: number): Promise<string> {
+    const u = await this.getUserById(userId);
+    if (!u) throw new Error(`Utilisateur ${userId} introuvable`);
+    if ((u as any).referralCode) return (u as any).referralCode;
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    for (let essai = 0; essai < 8; essai++) {
+      const bytes = randomBytes(8);
+      let code = "";
+      for (let i = 0; i < bytes.length; i++) code += alphabet[bytes[i] % alphabet.length];
+      try {
+        await db.update(users).set({ referralCode: code } as any).where(and(eq(users.id, userId), isNull(users.referralCode)));
+        const after = await this.getUserById(userId);
+        if ((after as any)?.referralCode) return (after as any).referralCode;
+      } catch (e: any) {
+        if (!/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(`${e?.code || ""} ${e?.message || e}`)) throw e;
+      }
+    }
+    throw new Error("Code de parrainage impossible à générer");
+  }
+
+  async listReferredUsers(userId: number): Promise<User[]> {
+    return db.select().from(users).where(eq(users.referredByUserId, userId)).orderBy(desc(users.createdAt));
+  }
+
   /** Lot 3b — praticiennes ayant activé les rappels SMS par leur compte Brevo. */
   async listUsersWithSmsReminders(): Promise<User[]> {
     const rows = await db.select().from(users);
