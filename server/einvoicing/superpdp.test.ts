@@ -105,7 +105,10 @@ test("jetons chiffrés : aller-retour, altération détectée", () => {
   assert.notEqual(sealed, "jeton-très-secret");
   assert.equal(openToken(sealed), "jeton-très-secret");
   const parts = sealed.split(".");
-  parts[3] = parts[3].slice(0, -2) + (parts[3].endsWith("A") ? "B" : "A") + parts[3].slice(-1);
+  // Inverse un bit du chiffré (remplacer un caractère base64 pouvait le laisser identique).
+  const chiffre = Buffer.from(parts[3], "base64url");
+  chiffre[0] ^= 0x01;
+  parts[3] = chiffre.toString("base64url");
   assert.equal(openToken(parts.join(".")), null);
   assert.equal(openToken(null), null);
 });
