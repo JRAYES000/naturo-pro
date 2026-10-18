@@ -29,6 +29,7 @@ import { storage } from "../../storage";
 import { listRecentPaidSessions } from "../../stripe";
 import { syncApptToGoogle } from "./google-sync";
 import { sendBookingConfirmationEmail, sendNewBookingNotificationEmail } from "./email-sending";
+import { isInvoiceSession, reglerFactureDepuisSession } from "./stripe-invoice";
 
 export type ResultatSessionPayee =
   | { statut: "cree"; appointmentId: number }
@@ -116,8 +117,8 @@ export async function creerRdvDepuisSessionPayee(
  */
 export async function reconcilierPaiementsStripe(
   fenetreMs = 48 * 3600 * 1000,
-): Promise<{ examines: number; crees: number; conflits: number }> {
-  const bilan = { examines: 0, crees: 0, conflits: 0 };
+): Promise<{ examines: number; crees: number; conflits: number; factures: number }> {
+  const bilan = { examines: 0, crees: 0, conflits: 0, factures: 0 };
   const depuis = Date.now() - fenetreMs;
 
   let praticiens: any[] = [];
@@ -132,6 +133,15 @@ export async function reconcilierPaiementsStripe(
     try {
       for (const session of await listRecentPaidSessions(u.stripeSecretKey, depuis)) {
         bilan.examines++;
+        // Lot 2b — paiement d'une facture par son lien public (pas un acompte de RDV).
+        if (isInvoiceSession(session)) {
+          const paidAt = Number(session.created) ? Number(session.created) * 1000 : Date.now();
+          if ((await reglerFactureDepuisSession(u, session, paidAt)) === "reglee") {
+            bilan.factures++;
+            console.warn(`[stripe-reconcile] facture réglée en ligne rattrapée — praticien=${u.id} session=${session.id}`);
+          }
+          continue;
+        }
         const r = await creerRdvDepuisSessionPayee(u, session);
         if (r.statut === "cree") {
           bilan.crees++;

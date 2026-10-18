@@ -887,7 +887,7 @@ function ShareDialog({ open, templateId, clients, onClose }: {
                     <SelectValue placeholder="Aucune — lien générique" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map(c => (
+                    {clients.filter(c => !c.archivedAt || String(c.id) === clientId).map(c => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.firstName} {c.lastName}
                       </SelectItem>

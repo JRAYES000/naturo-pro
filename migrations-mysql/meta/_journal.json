@@ -64,6 +64,13 @@
       "when": 1792354207111,
       "tag": "0008_glorious_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1792355699780,
+      "tag": "0009_closed_bucky",
+      "breakpoints": true
     }
   ]
 }

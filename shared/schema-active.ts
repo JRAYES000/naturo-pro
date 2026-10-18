@@ -53,6 +53,9 @@ export const aiSavedReplies = activeSchema.aiSavedReplies;
 export const blockedDates = activeSchema.blockedDates;
 // Réforme facturation 2026, lot 1B — connexion à la plateforme agréée
 export const einvoicingConnections = activeSchema.einvoicingConnections;
+// Lot 2b — journal de suivi et messages groupés aux clientes
+export const clientFollowups = activeSchema.clientFollowups;
+export const clientBroadcasts = activeSchema.clientBroadcasts;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -106,4 +109,5 @@ export type {
   AiSavedReply, InsertAiSavedReply,
   BlockedDate, InsertBlockedDate,
   EInvoicingConnection,
+  ClientFollowup, ClientBroadcast,
 } from "./schema";

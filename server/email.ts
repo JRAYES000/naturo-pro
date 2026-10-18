@@ -71,13 +71,14 @@ export async function sendEmail(
   html: string,
   text?: string,
   attachments?: EmailAttachment[],
+  headers?: Record<string, string>,
 ): Promise<SendResult> {
-  const res = await sendEmailOnce(cfg, to, subject, html, text, attachments);
+  const res = await sendEmailOnce(cfg, to, subject, html, text, attachments, headers);
   if (res.ok) return res;
   const fallback = unverifiedDomainFallback(cfg, res.error, getSystemEmailConfig());
   if (!fallback) return res;
   console.warn(`[email] domaine de ${cfg.fromAddress} non vérifié chez Resend — envoi par la config système`);
-  return sendEmailOnce(fallback, to, subject, html, text, attachments);
+  return sendEmailOnce(fallback, to, subject, html, text, attachments, headers);
 }
 
 async function sendEmailOnce(
@@ -87,6 +88,7 @@ async function sendEmailOnce(
   html: string,
   text?: string,
   attachments?: EmailAttachment[],
+  headers?: Record<string, string>,
 ): Promise<SendResult> {
   if (!cfg.apiKey || !cfg.fromAddress) {
     return { ok: false, error: "Configuration email incomplète" };
@@ -98,6 +100,7 @@ async function sendEmailOnce(
       : cfg.fromAddress;
     const payload: any = { from, to, subject, html, text };
     if (cfg.replyTo) payload.replyTo = cfg.replyTo;
+    if (headers && Object.keys(headers).length) payload.headers = headers;
     if (attachments && attachments.length > 0) {
       payload.attachments = attachments.map((a) => ({
         filename: a.filename,

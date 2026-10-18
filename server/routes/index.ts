@@ -34,6 +34,8 @@ import { registerAdminRoutes } from "./admin";
 import { registerGoogleRoutes } from "./google";
 import { registerInternalRoutes } from "./internal";
 import { registerPublicRoutes } from "./public";
+import { registerPublicDocumentRoutes } from "./public-documents";
+import { registerBroadcastRoutes } from "./broadcasts";
 import { registerAuthRoutes } from "./auth";
 import { registerAnamneseRoutes } from "./anamnese";
 import { registerProgrammeRoutes } from "./programmes";
@@ -153,6 +155,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerClientRoutes(app);
   registerAppointmentRoutes(app);
   registerPublicRoutes(app, ctx);
+  registerPublicDocumentRoutes(app);
+  registerBroadcastRoutes(app);
   registerInvoiceRoutes(app);
   registerEInvoicingRoutes(app);
   registerAdminRoutes(app);

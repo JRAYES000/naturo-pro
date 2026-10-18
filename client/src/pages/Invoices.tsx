@@ -81,7 +81,7 @@ function MobileInvoiceCard({
           </Link>
           <DocTypeBadge inv={inv} />
         </span>
-        <StatusBadge domain="invoice" status={inv.status} />
+        <StatusBadge domain={(inv as any).docType === "devis" ? "quote" : "invoice"} status={inv.status} />
       </div>
       <div className="mt-1 text-sm text-muted-foreground">
         {(inv as any).clientCompanyName || clientName || "—"} · {isDraftNumber(inv.number) ? "non émise" : formatDateShort(inv.issueDate)}
@@ -296,6 +296,9 @@ function InvoicesPage() {
               <SelectItem value="sent">Envoyée</SelectItem>
               <SelectItem value="paid">Payée</SelectItem>
               <SelectItem value="cancelled">Annulée</SelectItem>
+              <SelectItem value="accepted">Devis accepté</SelectItem>
+              <SelectItem value="refused">Devis refusé</SelectItem>
+              <SelectItem value="expired">Devis expiré</SelectItem>
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -377,7 +380,7 @@ function InvoicesPage() {
                       </td>
                       <td className="text-right font-bold">{formatPrice(signed(inv))}</td>
                       <td>
-                        <StatusBadge domain="invoice" status={inv.status} />
+                        <StatusBadge domain={(inv as any).docType === "devis" ? "quote" : "invoice"} status={inv.status} />
                       </td>
                       <td>
                         <div className="flex items-center gap-1">

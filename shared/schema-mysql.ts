@@ -164,9 +164,20 @@ export const invoices = mysqlTable("invoices", {
   einvoiceStatusAt: bigint("einvoice_status_at", { mode: "number" }),
   einvoicePaidReportedAt: bigint("einvoice_paid_reported_at", { mode: "number" }), // statut « Encaissée » (fr:212) transmis
   einvoiceError: text("einvoice_error"),
+  // Lot 2b — lien public du document (consultation, acceptation d'un devis,
+  // paiement en ligne d'une facture) et session Stripe qui l'a réglée.
+  publicToken: varchar("public_token", { length: 64 }),
+  onlinePaymentSessionId: varchar("online_payment_session_id", { length: 255 }),
+  // Devis : décision de la cliente (en ligne ou saisie par la praticienne) et
+  // facture créée à partir du devis accepté.
+  quoteDecidedAt: bigint("quote_decided_at", { mode: "number" }),
+  quoteSignerName: varchar("quote_signer_name", { length: 255 }),
+  quoteDecisionNote: text("quote_decision_note"),
+  convertedInvoiceId: int("converted_invoice_id"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 }, (t) => ({
+  uk_invoices_public_token: uniqueIndex("uk_invoices_public_token").on(t.publicToken),
   // Unicité du numéro de facture par praticien : la numérotation séquentielle
   // sans doublon est une obligation légale (art. 242 nonies A du CGI). C'est cette
   // contrainte — et non le compteur — qui garantit l'unicité en cas de création
@@ -271,10 +282,50 @@ export const clients = mysqlTable("clients", {
   // Lot 4 — morphologie (IMC / poids idéal calculés côté client).
   heightCm: int("height_cm"),
   weightKg: int("weight_kg"),
+  // Lot 2b — archivage (fiche masquée des listes, historique conservé) et
+  // désinscription des messages groupés (jeton du lien de désinscription).
+  archivedAt: bigint("archived_at", { mode: "number" }),
+  emailOptOutAt: bigint("email_opt_out_at", { mode: "number" }),
+  optOutToken: varchar("opt_out_token", { length: 64 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
+  uk_clients_opt_out_token: uniqueIndex("uk_clients_opt_out_token").on(t.optOutToken),
 }));
+
+// Lot 2b — journal de suivi daté d'une cliente (appel, email, message, rencontre, note).
+export const clientFollowups = mysqlTable("client_followups", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  clientId: int("client_id").notNull(),
+  kind: varchar("kind", { length: 20 }).notNull().default("note"), // appel | email | message | rencontre | note
+  content: text("content").notNull(),
+  occurredAt: bigint("occurred_at", { mode: "number" }).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  idx_followups_user: index("idx_followups_user").on(t.userId),
+  idx_followups_client: index("idx_followups_client").on(t.clientId),
+}));
+
+export type ClientFollowup = typeof clientFollowups.$inferSelect;
+
+// Lot 2b — message groupé envoyé à toutes les clientes (historique et quota).
+export const clientBroadcasts = mysqlTable("client_broadcasts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  body: text("body").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("sending"), // sending | sent | failed
+  recipientCount: int("recipient_count").notNull().default(0),
+  sentCount: int("sent_count").notNull().default(0),
+  failedCount: int("failed_count").notNull().default(0),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  finishedAt: bigint("finished_at", { mode: "number" }),
+}, (t) => ({
+  idx_broadcasts_user: index("idx_broadcasts_user").on(t.userId),
+}));
+
+export type ClientBroadcast = typeof clientBroadcasts.$inferSelect;
 
 // ─── Appointments ─────────────────────────────────────────────────────────────
 export const appointments = mysqlTable("appointments", {

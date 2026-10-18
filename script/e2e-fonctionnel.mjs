@@ -139,6 +139,16 @@ section("Clients");
   const u = await api("PATCH", `/api/clients/${clientId}`, { phone: "0600000001" });
   note(u.status === 200 && u.data?.phone === "0600000001", "modification de la fiche");
 
+  // Lot 2b — journal de suivi et archivage.
+  const suivi = await api("POST", `/api/clients/${clientId}/followups`, { kind: "appel", content: "Appel de suivi" });
+  note(suivi.status === 201 && suivi.data?.kind === "appel", "journal de suivi : entrée ajoutée");
+  const journal = await api("GET", `/api/clients/${clientId}/followups`);
+  note(journal.data?.length === 1, "journal de suivi : lecture");
+  const arch = await api("POST", `/api/clients/${clientId}/archive`, { archived: true });
+  note(arch.status === 200 && !!arch.data?.archivedAt, "archivage d'une fiche");
+  const desarch = await api("POST", `/api/clients/${clientId}/archive`, { archived: false });
+  note(desarch.status === 200 && desarch.data?.archivedAt === null, "désarchivage d'une fiche");
+
   const doc = await api("POST", `/api/clients/${clientId}/documents`, {
     filename: "analyse-sanguine.pdf", mimeType: "application/pdf",
     dataBase64: Buffer.from("%PDF-1.4 faux document de test").toString("base64"),
@@ -314,6 +324,30 @@ section("Facturation");
 
   const avoir = await api("POST", `/api/invoices/${f2.data?.id}/avoir`);
   note(avoir.status === 201 && avoir.data?.docType === "avoir" && avoir.data?.creditedInvoiceId === f2.data?.id, "avoir lié à sa facture");
+
+  // Lot 2b — devis accepté en ligne puis converti ; lien public d'une facture émise.
+  const devis = await api("POST", "/api/invoices", {
+    docType: "devis", clientId, dueDate: Date.now() + 30 * 86400000,
+    items: [{ description: "Programme 3 mois", quantity: 1, unitPriceCents: 24000 }],
+  });
+  const lien = await api("POST", `/api/invoices/${devis.data?.id}/share-link`);
+  const jeton = (lien.data?.url || "").split("/").pop();
+  note(lien.status === 200 && /^[a-f0-9]{32}$/.test(jeton), "lien public d'un devis");
+  const pageDevis = await api("GET", `/api/public/doc/${jeton}`);
+  note(pageDevis.status === 200 && String(pageDevis.data).includes("Accepter le devis"), "page publique du devis");
+  const accord = await fetch(`${B}/api/public/doc/${jeton}/accept`, {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "signerName=Sophie+Martin&consent=1", redirect: "manual",
+  });
+  const devisApres = await api("GET", `/api/invoices/${devis.data?.id}`);
+  note(accord.status === 303 && devisApres.data?.status === "accepted" && devisApres.data?.quoteSignerName === "Sophie Martin",
+    "devis accepté en ligne (bon pour accord)");
+  const conv = await api("POST", `/api/invoices/${devis.data?.id}/convert`);
+  note(conv.status === 201 && conv.data?.docType === "invoice" && conv.data?.status === "draft" && conv.data?.id !== devis.data?.id,
+    "devis converti en nouveau brouillon de facture");
+  const lienFacture = await api("POST", `/api/invoices/${invoiceId}/share-link`);
+  const pageFacture = await api("GET", `/api/public/doc/${(lienFacture.data?.url || "").split("/").pop()}`);
+  note(pageFacture.status === 200 && String(pageFacture.data).includes(e1.data?.number), "page publique d'une facture émise");
 
   const paye = await api("PATCH", `/api/invoices/${invoiceId}`, { status: "paid", paymentMethod: "transfer", paidAt: Date.now() });
   note(paye.status === 200 && paye.data?.status === "paid", "passage en payée");

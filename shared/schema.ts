@@ -163,9 +163,20 @@ export const invoices = sqliteTable("invoices", {
   einvoiceStatusAt: integer("einvoice_status_at"),
   einvoicePaidReportedAt: integer("einvoice_paid_reported_at"), // statut « Encaissée » (fr:212) transmis
   einvoiceError: text("einvoice_error"),
+  // Lot 2b — lien public du document (consultation, acceptation d'un devis,
+  // paiement en ligne d'une facture) et session Stripe qui l'a réglée.
+  publicToken: text("public_token"),
+  onlinePaymentSessionId: text("online_payment_session_id"),
+  // Devis : décision de la cliente (en ligne ou saisie par la praticienne) et
+  // facture créée à partir du devis accepté.
+  quoteDecidedAt: integer("quote_decided_at"),
+  quoteSignerName: text("quote_signer_name"),
+  quoteDecisionNote: text("quote_decision_note"),
+  convertedInvoiceId: integer("converted_invoice_id"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (t) => ({
+  uk_invoices_public_token: uniqueIndex("uk_invoices_public_token").on(t.publicToken),
   // Unicité du numéro de facture par praticien : la numérotation séquentielle
   // sans doublon est une obligation légale (art. 242 nonies A du CGI). C'est cette
   // contrainte — et non le compteur — qui garantit l'unicité en cas de création
@@ -270,10 +281,50 @@ export const clients = sqliteTable("clients", {
   // Lot 4 — morphologie (IMC / poids idéal calculés côté client).
   heightCm: integer("height_cm"),
   weightKg: integer("weight_kg"),
+  // Lot 2b — archivage (fiche masquée des listes, historique conservé) et
+  // désinscription des messages groupés (jeton du lien de désinscription).
+  archivedAt: integer("archived_at"),
+  emailOptOutAt: integer("email_opt_out_at"),
+  optOutToken: text("opt_out_token"),
   createdAt: integer("created_at").notNull(),
 }, (t) => ({
   idx_clients_user: index("idx_clients_user").on(t.userId),
+  uk_clients_opt_out_token: uniqueIndex("uk_clients_opt_out_token").on(t.optOutToken),
 }));
+
+// Lot 2b — journal de suivi daté d'une cliente (appel, email, message, rencontre, note).
+export const clientFollowups = sqliteTable("client_followups", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  clientId: integer("client_id").notNull(),
+  kind: text("kind").notNull().default("note"), // appel | email | message | rencontre | note
+  content: text("content").notNull(),
+  occurredAt: integer("occurred_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (t) => ({
+  idx_followups_user: index("idx_followups_user").on(t.userId),
+  idx_followups_client: index("idx_followups_client").on(t.clientId),
+}));
+
+export type ClientFollowup = typeof clientFollowups.$inferSelect;
+
+// Lot 2b — message groupé envoyé à toutes les clientes (historique et quota).
+export const clientBroadcasts = sqliteTable("client_broadcasts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("sending"), // sending | sent | failed
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentCount: integer("sent_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+  finishedAt: integer("finished_at"),
+}, (t) => ({
+  idx_broadcasts_user: index("idx_broadcasts_user").on(t.userId),
+}));
+
+export type ClientBroadcast = typeof clientBroadcasts.$inferSelect;
 
 // Appointments
 export const appointments = sqliteTable("appointments", {

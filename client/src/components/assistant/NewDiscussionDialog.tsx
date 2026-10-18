@@ -50,7 +50,7 @@ export function NewDiscussionDialog({
             <Label>Cliente</Label>
             <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full border border-border rounded-lg h-10 px-3 mt-1" data-testid="select-client">
               <option value="">Choisir…</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
+              {clients.filter((c) => !c.archivedAt).map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
             </select>
           </div>
         ) : (

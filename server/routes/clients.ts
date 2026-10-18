@@ -50,7 +50,17 @@ const patchClientSchema = z.object({
   companyVatNumber: z.string().max(32).nullable().optional(),
   heightCm: z.number().int().min(0).max(300).nullable().optional(),
   weightKg: z.number().int().min(0).max(500).nullable().optional(),
+  // Lot 2b — désinscription des messages groupés (demandée de vive voix, par exemple).
+  emailOptOut: z.boolean().optional(),
 }).strict();
+
+// Lot 2b — journal de suivi daté.
+export const FOLLOWUP_KINDS = ["appel", "email", "message", "rencontre", "note"] as const;
+const followupSchema = z.object({
+  kind: z.enum(FOLLOWUP_KINDS).default("note"),
+  content: z.string().trim().min(1, "Contenu vide").max(5000),
+  occurredAt: z.number().int().positive().optional(),
+});
 
 export function registerClientRoutes(app: Express): void {
   // Import CSV de coordonnées (Lot 3) — la vraie barrière d'entrée depuis
@@ -126,8 +136,49 @@ export function registerClientRoutes(app: Express): void {
     const full = await fullAccessFor(req);
     const parsed = patchClientSchema.safeParse(stripClientHealthFields(req.body ?? {}, full));
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.errors });
-    const updated = await storage.updateClient(id, parsed.data as any);
+    const { emailOptOut, ...rest } = parsed.data;
+    const patch: Record<string, unknown> = { ...rest };
+    if (emailOptOut !== undefined) patch.emailOptOutAt = emailOptOut ? (c.emailOptOutAt || Date.now()) : null;
+    const updated = await storage.updateClient(id, patch as any);
     res.json(sanitizeClientForPlan(updated as any, full));
+  });
+
+  // Lot 2b — archivage : la fiche quitte la liste et les messages groupés, mais garde
+  // tout son historique (rendez-vous, factures, notes) ; elle se désarchive à tout moment.
+  app.post("/api/clients/:id/archive", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const c = await storage.getClient(id);
+    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    const parsed = z.object({ archived: z.boolean() }).safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ message: "Données invalides" });
+    const updated = await storage.updateClient(id, { archivedAt: parsed.data.archived ? Date.now() : null } as any);
+    res.json(sanitizeClientForPlan(updated as any, await fullAccessFor(req)));
+  });
+
+  // Lot 2b — journal de suivi : appels, emails, messages, rencontres, notes datées.
+  app.get("/api/clients/:id/followups", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const c = await storage.getClient(id);
+    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    res.json(await storage.listClientFollowups(id));
+  });
+  app.post("/api/clients/:id/followups", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const c = await storage.getClient(id);
+    if (!c || c.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    const parsed = followupSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message || "Données invalides" });
+    const created = await storage.createClientFollowup({
+      userId: req.userId!, clientId: id, kind: parsed.data.kind, content: parsed.data.content,
+      occurredAt: parsed.data.occurredAt ?? Date.now(),
+    });
+    res.status(201).json(created);
+  });
+  app.delete("/api/clients/:id/followups/:fid", requireAuth, async (req: AuthedRequest, res) => {
+    const f = await storage.getClientFollowup(Number(req.params.fid));
+    if (!f || f.userId !== req.userId || f.clientId !== Number(req.params.id)) return res.status(404).json({ message: "Introuvable" });
+    await storage.deleteClientFollowup(f.id);
+    res.json({ ok: true });
   });
   app.delete("/api/clients/:id", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);

@@ -15,6 +15,7 @@ import { purgeInactiveFreeAccounts } from "./helpers/purge";
 import { superPdpConfig } from "../einvoicing/superpdp";
 import { syncAllStatuses } from "../einvoicing/service";
 import { sendBookingExpiredEmail } from "./helpers/email-sending";
+import { zonedParts, zonedTimeToUtc } from "../timezone";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   sendFollowupsForUser, getLocalHour, getLocalDayKey, TZ,
@@ -60,6 +61,18 @@ export async function expirePendingBookings(now = Date.now()): Promise<number> {
   return n;
 }
 
+/**
+ * Lot 2b — un devis envoyé est valable jusqu'au jour inclus de sa date de validité
+ * (heure de Paris) : passé ce jour, il devient « expiré ». Exporté pour les tests.
+ */
+export async function expireQuotes(now = Date.now()): Promise<number> {
+  const p = zonedParts(now);
+  const debutDuJour = zonedTimeToUtc(p.year, p.month, p.day, 0, 0);
+  const n = await storage.expireSentQuotes(debutDuJour - 1);
+  if (n) console.log(`[devis] ${n} devis expiré(s)`);
+  return n;
+}
+
 export function startCrons(): void {
   const isProd = process.env.NODE_ENV === "production";
 
@@ -101,6 +114,8 @@ export function startCrons(): void {
   const PENDING_MS = 30 * 60 * 1000;
   if (isProd || process.env.ENABLE_EMAIL_CRON === "1") {
     setInterval(() => { void expirePendingBookings(); }, PENDING_MS);
+    // Devis dont la validité est dépassée (même cadence, idempotent).
+    setInterval(() => { void expireQuotes().catch((e) => console.error("[devis]", e?.message || e)); }, PENDING_MS);
   }
 
   // ─── Purge quotidienne des sessions expirées ───────────────────────────────
@@ -135,8 +150,8 @@ export function startCrons(): void {
     const passe = async () => {
       try {
         const bilan = await reconcilierPaiementsStripe();
-        if (bilan.crees || bilan.conflits) {
-          console.log(`[stripe-reconcile] examinées=${bilan.examines} créées=${bilan.crees} conflits=${bilan.conflits}`);
+        if (bilan.crees || bilan.conflits || bilan.factures) {
+          console.log(`[stripe-reconcile] examinées=${bilan.examines} créées=${bilan.crees} conflits=${bilan.conflits} factures=${bilan.factures}`);
         }
       } catch (e: any) {
         console.error("[stripe-reconcile]", e?.message || e);

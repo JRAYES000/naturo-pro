@@ -204,7 +204,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">— Aucune cliente —</SelectItem>
-            {clients.map(c => (
+            {clients.filter(c => !c.archivedAt || String(c.id) === clientId).map(c => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.firstName} {c.lastName}
               </SelectItem>

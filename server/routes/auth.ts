@@ -330,12 +330,14 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
   app.get("/api/auth/me/export", requireAuth, async (req: AuthedRequest, res) => {
     const user = await storage.getUserById(req.userId!);
     if (!user) return res.status(401).json({ message: "Non authentifié" });
-    const [categories, allClients, allAppointments, allNotes, allInvoices] = await Promise.all([
+    const [categories, allClients, allAppointments, allNotes, allInvoices, followups, broadcasts] = await Promise.all([
       storage.listCategories(user.id),
       storage.listClients(user.id),
       storage.listAllAppointments(user.id),
       storage.listNotesForUser(user.id),
       storage.listInvoices(user.id),
+      storage.listUserFollowups(user.id),
+      storage.listBroadcasts(user.id, 10_000),
     ]);
     // Pour chaque facture, on récupère ses items.
     const invoicesWithItems = await Promise.all(
@@ -352,12 +354,16 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
       appointments: allAppointments,
       notes: allNotes,
       invoices: invoicesWithItems,
+      followups,
+      broadcasts,
       counts: {
         categories: categories.length,
         clients: allClients.length,
         appointments: allAppointments.length,
         notes: allNotes.length,
         invoices: invoicesWithItems.length,
+        followups: followups.length,
+        broadcasts: broadcasts.length,
       },
     };
     const filename = `naturo-pro-export-${user.slug}-${Date.now()}.json`;

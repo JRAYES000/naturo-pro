@@ -384,7 +384,7 @@ function PackageDialog({ pkg, clients, onClose, onSave, isPending }: PackageDial
                 <SelectValue placeholder="Sélectionner une cliente…" />
               </SelectTrigger>
               <SelectContent>
-                {clients.map((c) => (
+                {clients.filter((c) => !c.archivedAt).map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     {c.firstName} {c.lastName}
                   </SelectItem>

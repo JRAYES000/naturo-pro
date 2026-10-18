@@ -22,6 +22,7 @@ import {
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
   analyticsEvents, aiSavedReplies, blockedDates, einvoicingConnections,
+  clientFollowups, clientBroadcasts,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -33,7 +34,7 @@ import type {
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage, AiChatMessage, AiChatUsage,
   AssistantSettings, KbDocument, KbChunk, ContentPost, AnalyticsEvent,
-  AiSavedReply, BlockedDate, EInvoicingConnection,
+  AiSavedReply, BlockedDate, EInvoicingConnection, ClientFollowup, ClientBroadcast,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull, inArray } from "drizzle-orm";
@@ -258,6 +259,8 @@ export const USER_SCOPED_TABLES = [
   aiSavedReplies,
   blockedDates,
   einvoicingConnections,
+  clientFollowups,
+  clientBroadcasts,
 ] as const;
 
 /**
@@ -807,6 +810,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(anamnesisResponses).where(eq(anamnesisResponses.clientId, id));
     await db.delete(programs).where(eq(programs.clientId, id));
     await db.delete(packages).where(eq(packages.clientId, id));
+    await db.delete(clientFollowups).where(eq(clientFollowups.clientId, id));
     // Lot 5 (QC Client) — les RDV FUTURS du client supprimé sont annulés, pas
     // laissés « confirmed » et anonymes sur le calendrier (RDV fantômes).
     await db.update(appointments)
@@ -1776,6 +1780,89 @@ export class DatabaseStorage implements IStorage {
   /** Facture d'une praticienne retrouvée par son identifiant chez la plateforme. */
   async getInvoiceByEInvoiceId(userId: number, externalId: string): Promise<Invoice | undefined> {
     return first(db.select().from(invoices).where(and(eq(invoices.userId, userId), eq(invoices.einvoiceExternalId, externalId))));
+  }
+
+  // ── Lot 2b — lien public des documents (devis à accepter, facture à régler) ──
+
+  async getInvoiceByPublicToken(token: string): Promise<Invoice | undefined> {
+    if (!token) return undefined;
+    return first(db.select().from(invoices).where(eq(invoices.publicToken, token)));
+  }
+
+  /** Jeton du lien public, créé au premier besoin (32 caractères hexadécimaux). */
+  async ensureInvoicePublicToken(id: number): Promise<string> {
+    const inv = await this.getInvoice(id);
+    if (!inv) throw new Error(`Facture ${id} introuvable`);
+    if (inv.publicToken) return inv.publicToken;
+    const token = randomBytes(16).toString("hex");
+    await db.update(invoices).set({ publicToken: token } as any).where(and(eq(invoices.id, id), isNull(invoices.publicToken)));
+    // Deux appels simultanés : seul le premier écrit, les deux relisent le même jeton.
+    return (await this.getInvoice(id))?.publicToken || token;
+  }
+
+  /** Devis envoyés dont la date de validité est dépassée → « expiré ». */
+  async expireSentQuotes(before: number): Promise<number> {
+    const rows: Invoice[] = await db.select().from(invoices).where(and(
+      eq(invoices.docType, "devis"), eq(invoices.status, "sent"), lte(invoices.dueDate, before),
+    ));
+    for (const r of rows) await db.update(invoices).set({ status: "expired", updatedAt: Date.now() } as any).where(eq(invoices.id, r.id));
+    return rows.length;
+  }
+
+  // ── Lot 2b — journal de suivi d'une cliente ─────────────────────────────────
+
+  async listClientFollowups(clientId: number): Promise<ClientFollowup[]> {
+    return db.select().from(clientFollowups).where(eq(clientFollowups.clientId, clientId))
+      .orderBy(desc(clientFollowups.occurredAt), desc(clientFollowups.id));
+  }
+
+  async createClientFollowup(data: { userId: number; clientId: number; kind: string; content: string; occurredAt: number }): Promise<ClientFollowup> {
+    return dbInsertReturning<ClientFollowup>(clientFollowups, { ...data, createdAt: Date.now() });
+  }
+
+  /** Tout le journal de suivi d'une praticienne (export RGPD). */
+  async listUserFollowups(userId: number): Promise<ClientFollowup[]> {
+    return db.select().from(clientFollowups).where(eq(clientFollowups.userId, userId)).orderBy(clientFollowups.occurredAt);
+  }
+
+  async getClientFollowup(id: number): Promise<ClientFollowup | undefined> {
+    return first(db.select().from(clientFollowups).where(eq(clientFollowups.id, id)));
+  }
+
+  async deleteClientFollowup(id: number): Promise<void> {
+    await db.delete(clientFollowups).where(eq(clientFollowups.id, id));
+  }
+
+  // ── Lot 2b — messages groupés et désinscription ─────────────────────────────
+
+  async createBroadcast(data: { userId: number; subject: string; body: string; recipientCount: number }): Promise<ClientBroadcast> {
+    return dbInsertReturning<ClientBroadcast>(clientBroadcasts, {
+      ...data, status: "sending", sentCount: 0, failedCount: 0, createdAt: Date.now(), finishedAt: null,
+    });
+  }
+
+  async updateBroadcast(id: number, patch: Partial<ClientBroadcast>): Promise<ClientBroadcast | undefined> {
+    return dbUpdateReturning<ClientBroadcast>(clientBroadcasts, id, patch);
+  }
+
+  async listBroadcasts(userId: number, limit = 20): Promise<ClientBroadcast[]> {
+    return db.select().from(clientBroadcasts).where(eq(clientBroadcasts.userId, userId))
+      .orderBy(desc(clientBroadcasts.createdAt)).limit(limit);
+  }
+
+  async getClientByOptOutToken(token: string): Promise<Client | undefined> {
+    if (!token) return undefined;
+    return first(db.select().from(clients).where(eq(clients.optOutToken, token)));
+  }
+
+  /** Jeton du lien de désinscription d'une cliente, créé au premier envoi groupé. */
+  async ensureClientOptOutToken(clientId: number): Promise<string> {
+    const c = await this.getClient(clientId);
+    if (!c) throw new Error(`Cliente ${clientId} introuvable`);
+    if (c.optOutToken) return c.optOutToken;
+    const token = randomBytes(16).toString("hex");
+    await db.update(clients).set({ optOutToken: token } as any).where(and(eq(clients.id, clientId), isNull(clients.optOutToken)));
+    return (await this.getClient(clientId))?.optOutToken || token;
   }
 
   /** Lot 4 — total d'appels IA sur un mois ('YYYY-MM') + aujourd'hui, pour l'indicateur d'usage. */

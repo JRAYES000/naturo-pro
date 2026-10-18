@@ -222,6 +222,9 @@ export function renderInvoiceEmail(opts: {
   fromEmail?: string | null;
   isDevis?: boolean;
   isAvoir?: boolean;
+  /** Lot 2b — lien public : accepter le devis ou régler la facture en ligne. */
+  actionUrl?: string | null;
+  actionLabel?: string | null;
 }): { subject: string; html: string; text: string } {
   const docLabel = opts.isDevis ? "Devis" : opts.isAvoir ? "Avoir" : "Facture";
   const article = opts.isDevis ? "le devis" : opts.isAvoir ? "l'avoir" : "la facture";
@@ -235,6 +238,7 @@ export function renderInvoiceEmail(opts: {
   p { font-size:15px; line-height:1.55; margin:0 0 12px; }
   .info { background:#f7faf9; border-left:3px solid #1b4332; padding:14px 16px; border-radius:6px; margin:16px 0; font-size:14px; }
   .footer { font-size:12px; color:#6b7a76; text-align:center; margin-top:24px; }
+  .btn { display:inline-block; background:#186749; color:#fff !important; text-decoration:none; font-weight:700; padding:12px 20px; border-radius:10px; }
 </style></head><body>
 <div class="wrap"><div class="card">
   <h1>Bonjour ${escapeHtml(opts.clientFirstName || "")},</h1>
@@ -242,6 +246,7 @@ export function renderInvoiceEmail(opts: {
   <div class="info">
     <p><strong>Montant total :</strong> ${formatPriceCents(Math.abs(opts.totalCents))}</p>
   </div>
+  ${opts.actionUrl ? `<p style="margin:20px 0"><a class="btn" href="${escapeHtml(opts.actionUrl)}">${escapeHtml(opts.actionLabel || "Voir le document")}</a></p>` : ""}
   ${opts.notes ? `<p>${escapeHtml(opts.notes)}</p>` : ""}
   <p>Bien cordialement,<br>${escapeHtml(opts.practitionerName)}</p>
 </div>
@@ -252,6 +257,7 @@ export function renderInvoiceEmail(opts: {
     ``,
     `Veuillez trouver ci-joint ${article} ${opts.invoiceNumber}.`,
     `Montant total : ${formatPriceCents(Math.abs(opts.totalCents))}`,
+    opts.actionUrl ? `\n${opts.actionLabel || "Voir le document"} : ${opts.actionUrl}` : "",
     opts.notes ? `\n${opts.notes}` : "",
     ``,
     `Bien cordialement,`,

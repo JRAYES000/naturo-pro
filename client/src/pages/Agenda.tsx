@@ -507,7 +507,7 @@ function ClientCombobox({ clients, value, onChange }: {
                 <Check className={`h-4 w-4 ${!value ? "opacity-100" : "opacity-0"}`} />
                 — Aucun (nouveau) —
               </CommandItem>
-              {clients.map((c) => (
+              {clients.filter((c) => !c.archivedAt || String(c.id) === String(value)).map((c) => (
                 <CommandItem
                   key={c.id}
                   value={`${c.firstName} ${c.lastName} ${c.email || ""}`}

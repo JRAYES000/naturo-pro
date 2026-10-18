@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Mail, Phone, ArrowRight, Users, Upload, Loader2 } from "lucide-react";
+import { Plus, Search, Mail, Phone, ArrowRight, Users, Upload, Loader2, Send, Archive } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CompanyLookup } from "@/components/CompanyLookup";
+import { BroadcastDialog } from "@/components/BroadcastDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -23,6 +24,10 @@ export default function Clients() {
   const [creating, setCreating] = useState(false);
   // Lot 5 (action P21) — tri de la liste (nom / dernier RDV / fiche récente).
   const [sortBy, setSortBy] = useState<"name" | "lastAppt" | "recent">("name");
+  // Lot 2b — fiches archivées (masquées par défaut) et message groupé.
+  const [showArchived, setShowArchived] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const { user } = useAuth();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const { data: list, isLoading } = useQuery<Client[]>({
@@ -33,7 +38,9 @@ export default function Clients() {
     queryKey: ["/api/clients-last-appointment"],
   });
   const lastApptByClient = new Map(lastAppts.map((r) => [r.clientId, r.lastApptAt]));
-  const sorted = [...(list || [])].sort((a, b) => {
+  const archivedCount = (list || []).filter((c) => (c as any).archivedAt).length;
+  const visible = (list || []).filter((c) => !!(c as any).archivedAt === showArchived);
+  const sorted = [...visible].sort((a, b) => {
     if (sortBy === "lastAppt") return (lastApptByClient.get(b.id) || 0) - (lastApptByClient.get(a.id) || 0);
     if (sortBy === "recent") return b.createdAt - a.createdAt;
     return `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "fr");
@@ -89,6 +96,11 @@ export default function Clients() {
                 {importMut.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
                 Importer CSV
               </Button>
+              {user?.hasFullAccess && (
+                <Button variant="outline" onClick={() => setBroadcasting(true)} className="rounded-lg font-bold" data-testid="button-broadcast">
+                  <Send className="h-4 w-4 mr-1" /> Écrire à toutes
+                </Button>
+              )}
               <Button onClick={() => setCreating(true)} className="rounded-lg font-bold" data-testid="button-new-client">
                 <Plus className="h-4 w-4 mr-1" /> Nouveau client
               </Button>
@@ -117,11 +129,24 @@ export default function Clients() {
               <SelectItem value="recent">Tri : fiche la plus récente</SelectItem>
             </SelectContent>
           </Select>
+          {(archivedCount > 0 || showArchived) && (
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              onClick={() => setShowArchived(!showArchived)}
+              className="rounded-md font-bold whitespace-nowrap"
+              aria-pressed={showArchived}
+              data-testid="button-toggle-archived"
+            >
+              <Archive className="h-4 w-4 mr-1" /> {showArchived ? "Voir les actives" : `Archivées (${archivedCount})`}
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
           <Loading variant="cards" count={6} label="Chargement des clients…" />
-        ) : (list || []).length === 0 ? (
+        ) : showArchived && sorted.length === 0 ? (
+          <EmptyState icon={Archive} title="Aucune fiche archivée" description="Une fiche archivée quitte la liste et les messages groupés, sans rien perdre de son historique." testid="empty-archived" />
+        ) : sorted.length === 0 ? (
           <EmptyState
             icon={Users}
             title={`Aucun client ${search ? "trouvé" : "pour le moment"}`}
@@ -149,6 +174,7 @@ export default function Clients() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold truncate">{c.firstName} {c.lastName}</p>
                         {c.dateOfBirth && <p className="text-xs text-muted-foreground">Né(e) le {new Date(c.dateOfBirth).toLocaleDateString("fr-FR")}</p>}
+                        {(c as any).archivedAt && <p className="text-xs text-muted-foreground">Archivée le {new Date((c as any).archivedAt).toLocaleDateString("fr-FR")}</p>}
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -172,6 +198,7 @@ export default function Clients() {
       </div>
 
       <NewClientDialog open={creating} onClose={() => setCreating(false)} existing={list || []} />
+      <BroadcastDialog open={broadcasting} onClose={() => setBroadcasting(false)} />
     </AppLayout>
   );
 }

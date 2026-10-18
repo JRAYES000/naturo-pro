@@ -32,6 +32,7 @@ import { sirenFrom, siretFrom, normalizeVatNumber } from "../einvoicing/identifi
 import { createInvoiceFromAppointment, clientBillingFields } from "./helpers/invoices";
 import { reportPaymentIfTransmitted } from "../einvoicing/service";
 import { getEmailConfigForUser } from "./helpers/email-sending";
+import { publicDocumentUrl, invoicePayable } from "../public-documents";
 import type { Invoice } from "@shared/schema-active";
 
 function parseSnapshot(inv: Invoice): PractitionerSnapshot {
@@ -81,11 +82,15 @@ export function registerInvoiceRoutes(app: Express): void {
       if (user) seller = buildPractitionerSnapshot(user);
     }
     const doc = buildInvoiceDocument(inv, items, seller, credited);
+    const converted = inv.convertedInvoiceId ? await storage.getInvoice(inv.convertedInvoiceId) : null;
     res.json({
       ...inv,
       items,
       credited: credited ? { id: credited.id, number: credited.number, issueDate: credited.issueDate } : null,
       compliance: checkInvoice(doc, seller),
+      // Lot 2b — lien public (devis à accepter, facture à régler) et facture issue du devis.
+      publicUrl: inv.publicToken ? publicDocumentUrl(inv.publicToken) : null,
+      convertedInvoice: converted && converted.userId === inv.userId ? { id: converted.id, number: converted.number, status: converted.status } : null,
     });
   });
 
@@ -342,23 +347,75 @@ export function registerInvoiceRoutes(app: Express): void {
     res.status(201).json({ ...avoir, items });
   });
 
-  // POST /api/invoices/:id/convert — devis → brouillon de facture (numéro à l'émission)
+  // POST /api/invoices/:id/convert — devis → NOUVEAU brouillon de facture (numéro à
+  // l'émission). Le devis est conservé (accepté, relié à la facture) : un devis signé
+  // est une pièce à garder, il n'est plus transformé en place.
   app.post("/api/invoices/:id/convert", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const devis = await storage.getInvoice(id);
+    if (!devis || devis.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if (devis.docType !== "devis") return res.status(400).json({ message: "Seul un devis peut être converti en facture." });
+    if (devis.status === "refused" || devis.status === "cancelled") {
+      return res.status(409).json({ message: "Ce devis est refusé ou annulé : il ne se convertit pas en facture." });
+    }
+    if (devis.convertedInvoiceId) {
+      const existante = await storage.getInvoice(devis.convertedInvoiceId);
+      if (existante && existante.userId === req.userId) {
+        return res.json({ ...existante, items: await storage.getInvoiceItems(existante.id), alreadyConverted: true });
+      }
+    }
+    const user = await storage.getUserById(req.userId!);
+    if (!user) return res.status(401).json({ message: "Non authentifié" });
+    const now = Date.now();
+    const sourceItems = await storage.getInvoiceItems(id);
+    const facture = await storage.createInvoice({
+      userId: req.userId!, status: "draft", docType: "invoice", number: provisionalNumber(now),
+      issueDate: now, dueDate: null, serviceDate: devis.serviceDate ?? null,
+      appointmentId: devis.appointmentId ?? null, clientId: devis.clientId ?? null,
+      clientFirstName: devis.clientFirstName, clientLastName: devis.clientLastName, clientEmail: devis.clientEmail,
+      clientAddress: devis.clientAddress, clientPostalCode: devis.clientPostalCode, clientCity: devis.clientCity,
+      clientCountry: devis.clientCountry ?? null, clientType: devis.clientType ?? "particulier",
+      clientCompanyName: devis.clientCompanyName ?? null, clientSiren: devis.clientSiren ?? null,
+      clientSiret: devis.clientSiret ?? null, clientVatNumber: devis.clientVatNumber ?? null,
+      subtotalCents: devis.subtotalCents, vatCents: devis.vatCents, totalCents: devis.totalCents,
+      vatRate: devis.vatRate, vatEnabled: devis.vatEnabled,
+      paymentMethod: null, paidAt: null, sentAt: null,
+      notes: `Selon devis ${devis.number}.`,
+      practitionerSnapshot: JSON.stringify(buildPractitionerSnapshot(user)),
+      createdAt: now, updatedAt: now,
+    } as any);
+    await storage.replaceInvoiceItems(facture.id, sourceItems.map((it, i) => ({
+      invoiceId: facture.id, position: i, description: it.description, quantity: it.quantity,
+      unitPriceCents: it.unitPriceCents, totalCents: it.totalCents, kind: it.kind || "service",
+    })) as any);
+    await storage.updateInvoice(id, {
+      convertedInvoiceId: facture.id,
+      ...(devis.status === "accepted" ? {} : { status: "accepted", quoteDecidedAt: now }),
+    } as any);
+    res.status(201).json({ ...facture, items: await storage.getInvoiceItems(facture.id) });
+  });
+
+  // POST /api/invoices/:id/share-link — lien public du document (créé au premier appel) :
+  // la cliente y accepte le devis ou règle la facture en ligne.
+  app.post("/api/invoices/:id/share-link", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    if (inv.docType !== "devis") return res.status(400).json({ message: "Seul un devis peut être converti en facture." });
-    const now = Date.now();
-    const updated = await storage.updateInvoice(id, {
-      docType: "invoice", status: "draft", number: provisionalNumber(now), issueDate: now, sentAt: null,
-    } as any);
-    const items = await storage.getInvoiceItems(id);
-    res.json({ ...updated, items });
+    if (inv.docType !== "devis" && inv.status === "draft") {
+      return res.status(409).json({ message: "Émettez d'abord ce document : un brouillon n'a pas de lien public." });
+    }
+    const user = await storage.getUserById(req.userId!);
+    const token = await storage.ensureInvoicePublicToken(id);
+    res.json({
+      url: publicDocumentUrl(token),
+      payable: invoicePayable(inv) && !!(user as any)?.stripeSecretKey,
+    });
   });
 
   // PATCH /api/invoices/:id  (contenu du brouillon, statut, paiement, notes)
   const invoicePatchSchema = z.object({
-    status: z.enum(["draft", "issued", "sent", "paid", "cancelled"]).optional(),
+    // accepted / refused / expired : statuts propres au devis (lot 2b).
+    status: z.enum(["draft", "issued", "sent", "paid", "cancelled", "accepted", "refused", "expired"]).optional(),
     paymentMethod: z.enum(["cash", "check", "transfer", "card"]).nullable().optional(),
     paidAt: z.number().nullable().optional(),
     dueDate: z.number().nullable().optional(),
@@ -374,6 +431,15 @@ export function registerInvoiceRoutes(app: Express): void {
     const parsed = invoicePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.flatten() });
     const data = parsed.data;
+
+    // Statuts du devis : réservés au devis, et un devis n'est jamais « émis » ni « payé ».
+    const quoteOnly = ["accepted", "refused", "expired"];
+    if (data.status && inv.docType !== "devis" && quoteOnly.includes(data.status)) {
+      return res.status(400).json({ message: "Ce statut ne s'applique qu'à un devis." });
+    }
+    if (data.status && inv.docType === "devis" && (data.status === "issued" || data.status === "paid")) {
+      return res.status(400).json({ message: "Un devis ne s'émet pas et ne se règle pas : convertissez-le en facture." });
+    }
 
     // ── Immuabilité d'une facture ÉMISE ────────────────────────────────────
     // Une facture émise ne se modifie plus : le PDF détenu par la cliente ferait foi
@@ -427,6 +493,14 @@ export function registerInvoiceRoutes(app: Express): void {
       updated = await issueDraft(fresh, req.userId!, data.status as "issued" | "sent" | "paid", tracking);
     } else {
       if (data.status !== undefined) tracking.status = data.status;
+      // Devis : décision saisie par la praticienne (accord oral, email…) ou devis rouvert.
+      if (inv.docType === "devis" && data.status && data.status !== inv.status) {
+        if (data.status === "accepted" || data.status === "refused") {
+          Object.assign(tracking, { quoteDecidedAt: Date.now(), quoteSignerName: null, quoteDecisionNote: null });
+        } else if (data.status === "sent") {
+          Object.assign(tracking, { quoteDecidedAt: null, quoteSignerName: null, quoteDecisionNote: null });
+        }
+      }
       // Auto-set paidAt si le statut passe à « payé » sans date
       if (data.status === "paid" && !inv.paidAt && data.paidAt === undefined) tracking.paidAt = Date.now();
       updated = Object.keys(tracking).length ? await storage.updateInvoice(id, tracking as any) : await storage.getInvoice(id);
@@ -516,8 +590,16 @@ export function registerInvoiceRoutes(app: Express): void {
         inv = (await issueDraft(inv, req.userId!, "issued"))!;
       }
       const items = await storage.getInvoiceItems(id);
-      const snapshot = parseSnapshot(inv);
+      const snapshot = inv.docType === "devis" && inv.status === "draft" && user ? buildPractitionerSnapshot(user) : parseSnapshot(inv);
       const pdf = await generateInvoicePdf(inv, items, snapshot, await creditedOf(inv));
+      // Lot 2b — lien public : un devis s'accepte en ligne ; une facture se règle par
+      // carte si la praticienne a branché Stripe.
+      let action: { url: string; label: string } | null = null;
+      if (inv.docType === "devis" && inv.status !== "cancelled") {
+        action = { url: publicDocumentUrl(await storage.ensureInvoicePublicToken(id)), label: "Consulter et accepter le devis" };
+      } else if (invoicePayable(inv) && (user as any)?.stripeSecretKey) {
+        action = { url: publicDocumentUrl(await storage.ensureInvoicePublicToken(id)), label: "Régler en ligne" };
+      }
       const email = renderInvoiceEmail({
         invoiceNumber: inv.number,
         clientFirstName: inv.clientFirstName || "",
@@ -526,6 +608,8 @@ export function registerInvoiceRoutes(app: Express): void {
         notes: inv.notes,
         isDevis: inv.docType === "devis",
         isAvoir: inv.docType === "avoir",
+        actionUrl: action?.url ?? null,
+        actionLabel: action?.label ?? null,
       });
       const r = await sendEmail(cfg, inv.clientEmail!, email.subject, email.html, email.text, [{
         filename: `${inv.number}.pdf`,

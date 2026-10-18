@@ -1,6 +1,6 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles, Mail, Phone, CalendarPlus, NotebookPen, ClipboardList, Check, X } from "lucide-react";
+import { Calendar, FileText, Save, Trash2, Upload, Download, File, Users, Sparkles, Mail, Phone, CalendarPlus, NotebookPen, ClipboardList, Check, X, Archive, ArchiveRestore, MessageSquare, Handshake, StickyNote } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loading } from "@/components/Loading";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -21,7 +22,8 @@ import { FeatureGateInline } from "@/components/FeatureGate";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CompanyLookup } from "@/components/CompanyLookup";
-import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program, Package } from "@shared/schema";
+import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program, Package, ClientFollowup } from "@shared/schema";
+import { FollowupForm, FOLLOWUP_META } from "@/components/FollowupForm";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
 import { computeImc, imcLabel, ageFromDateOfBirth, poidsIdealCreff } from "@/lib/imc";
 
@@ -199,13 +201,16 @@ export default function ClientDetail() {
     queryFn: async () => (await apiRequest("GET", `/api/packages?clientId=${cid}`)).json(),
   });
   const anamnesesRecues = anamneses.filter((a) => a.submittedAt).length;
+  // Lot 2b — journal de suivi daté (appels, emails, messages, rencontres, notes).
+  const { data: followups = [] } = useQuery<ClientFollowup[]>({ queryKey: ["/api/clients", cid, "followups"] });
 
   const lastApptAt = useMemo(() => (appts.length ? Math.max(...appts.map(a => a.startAt)) : null), [appts]);
 
   type TimelineItem =
     | { kind: "appt"; id: number; at: number; appt: Appointment }
     | { kind: "note"; id: number; at: number; note: ConsultationNote }
-    | { kind: "discussion"; id: number; at: number; discussion: AiDiscussion };
+    | { kind: "discussion"; id: number; at: number; discussion: AiDiscussion }
+    | { kind: "followup"; id: number; at: number; followup: ClientFollowup };
 
   const timeline = useMemo<TimelineItem[]>(() => {
     const apptItems: TimelineItem[] = appts.map(a => ({ kind: "appt", id: a.id, at: a.startAt, appt: a }));
@@ -213,8 +218,9 @@ export default function ClientDetail() {
     // Lot 5 (NaturoBot N5) — les échanges Naturobot liés au client remontent
     // dans la chronologie, au même titre qu'un RDV ou une note.
     const discItems: TimelineItem[] = clientDiscussions.map(d => ({ kind: "discussion", id: d.id, at: d.updatedAt, discussion: d }));
-    return [...apptItems, ...noteItems, ...discItems].sort((a, b) => b.at - a.at);
-  }, [appts, notes, clientDiscussions]);
+    const followItems: TimelineItem[] = followups.map(f => ({ kind: "followup", id: f.id, at: f.occurredAt, followup: f }));
+    return [...apptItems, ...noteItems, ...discItems, ...followItems].sort((a, b) => b.at - a.at);
+  }, [appts, notes, clientDiscussions, followups]);
 
   const [, navigate] = useLocation();
   const [draft, setDraft] = useState<Partial<Client>>({});
@@ -264,6 +270,27 @@ export default function ClientDetail() {
       toast({ title: "Client supprimé", variant: "success" });
       window.location.hash = "#/app/clients";
     },
+  });
+
+  const archiveMut = useMutation({
+    mutationFn: async (archived: boolean) => (await apiRequest("POST", `/api/clients/${cid}/archive`, { archived })).json(),
+    onSuccess: (_d, archived) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({ title: archived ? "Fiche archivée" : "Fiche désarchivée", description: archived ? "Elle quitte la liste et les messages groupés ; son historique reste intact." : undefined, variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const delFollowupMut = useMutation({
+    mutationFn: async (fid: number) => apiRequest("DELETE", `/api/clients/${cid}/followups/${fid}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/clients", cid, "followups"] }),
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const optOutMut = useMutation({
+    mutationFn: async (emailOptOut: boolean) => (await apiRequest("PATCH", `/api/clients/${cid}`, { emailOptOut })).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/clients", cid] }),
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
   const delDocMut = useMutation({
@@ -337,6 +364,11 @@ export default function ClientDetail() {
           subtitle={client.dateOfBirth ? `Né(e) le ${new Date(client.dateOfBirth).toLocaleDateString("fr-FR")}` : undefined}
           backTo={{ href: "/app/clients", label: "Clients" }}
           actions={
+            <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-lg" onClick={() => archiveMut.mutate(!(client as any).archivedAt)}
+              disabled={archiveMut.isPending} data-testid="button-archive-client">
+              {(client as any).archivedAt ? <><ArchiveRestore className="h-4 w-4 mr-1" /> Désarchiver</> : <><Archive className="h-4 w-4 mr-1" /> Archiver</>}
+            </Button>
             <Button variant="outline" size="sm" className="rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={async () => {
                 if (!(await confirm({ title: "Supprimer cette fiche client ?", description: "Notes, documents, anamnèses, programmes et forfaits de ce client seront définitivement supprimés. Ses rendez-vous passés sont conservés anonymisés dans l'agenda ; ses rendez-vous futurs sont annulés.", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
@@ -344,14 +376,22 @@ export default function ClientDetail() {
               }} data-testid="button-delete-client">
               <Trash2 className="h-4 w-4 mr-1" /> Supprimer
             </Button>
+            </div>
           }
         />
+
+        {(client as any).archivedAt && (
+          <div className="mb-4 text-sm bg-muted border rounded-lg px-4 py-3" data-testid="banner-archived">
+            Fiche archivée le {new Date((client as any).archivedAt).toLocaleDateString("fr-FR")} : elle n'apparaît plus dans la liste
+            ni dans les messages groupés. Son historique reste consultable ici.
+          </div>
+        )}
 
         <ClientSummaryCard client={client} cid={cid} apptsCount={appts.length} notesCount={notes.length} lastApptAt={lastApptAt} anamnesesRecues={anamnesesRecues} />
 
         <Tabs defaultValue="timeline">
           <TabsList
-            className="rounded-lg flex-nowrap overflow-x-auto sm:overflow-visible max-w-full [&::-webkit-scrollbar]:hidden"
+            className="rounded-lg flex-nowrap overflow-x-auto xl:overflow-visible max-w-full [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none" }}
             aria-label="Sections de la fiche client"
           >
@@ -366,6 +406,7 @@ export default function ClientDetail() {
           </TabsList>
 
           <TabsContent value="timeline">
+            <FollowupForm clientId={cid} />
             {timeline.length === 0 ? (
               <EmptyState
                 icon={Sparkles}
@@ -398,6 +439,33 @@ export default function ClientDetail() {
                             Durée : {durationLabel(Math.round((a.endAt - a.startAt) / 60000))}
                             {cat ? ` • ${formatPrice(cat.priceCents)}` : ""}
                           </p>
+                        </div>
+                      </li>
+                    );
+                  }
+                  if (item.kind === "followup") {
+                    const f = item.followup;
+                    const meta = FOLLOWUP_META[f.kind] || FOLLOWUP_META.note;
+                    const Icon = { appel: Phone, email: Mail, message: MessageSquare, rencontre: Handshake, note: StickyNote }[f.kind as "note"] || StickyNote;
+                    return (
+                      <li key={`followup-${f.id}`} className="card-naturo flex items-start gap-3" data-testid={`timeline-followup-${f.id}`}>
+                        <Icon className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold">{formatDay(f.occurredAt)} • {meta.label}</p>
+                            <button
+                              onClick={async () => {
+                                if (!(await confirm({ title: "Supprimer cette entrée du journal ?", confirmLabel: "Supprimer", cancelLabel: "Annuler", destructive: true }))) return;
+                                delFollowupMut.mutate(f.id);
+                              }}
+                              className="text-muted-foreground hover:text-destructive rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label="Supprimer l'entrée du journal"
+                              data-testid={`button-delete-followup-${f.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <p className="text-sm text-foreground whitespace-pre-line mt-0.5">{f.content}</p>
                         </div>
                       </li>
                     );
@@ -496,7 +564,20 @@ export default function ClientDetail() {
               <div className="grid sm:grid-cols-2 gap-3">
                 <div><Label>Prénom</Label><Input value={draft.firstName || ""} onChange={e => setDraft({ ...draft, firstName: e.target.value })} data-testid="input-firstName" /></div>
                 <div><Label>Nom</Label><Input value={draft.lastName || ""} onChange={e => setDraft({ ...draft, lastName: e.target.value })} data-testid="input-lastName" /></div>
-                <div><Label>Email</Label><Input type="email" value={draft.email || ""} onChange={e => setDraft({ ...draft, email: e.target.value })} data-testid="input-email" /></div>
+                <div>
+                  <Label>Email</Label><Input type="email" value={draft.email || ""} onChange={e => setDraft({ ...draft, email: e.target.value })} data-testid="input-email" />
+                  {/* Lot 2b — désinscription des messages groupés (lien de l'email ou demande orale). */}
+                  <label className="flex items-center gap-2 mt-2 text-xs text-muted-foreground cursor-pointer">
+                    <Checkbox
+                      checked={!!(client as any).emailOptOutAt}
+                      onCheckedChange={(v) => optOutMut.mutate(!!v)}
+                      data-testid="checkbox-email-opt-out"
+                    />
+                    {(client as any).emailOptOutAt
+                      ? `Désinscrite des messages groupés depuis le ${new Date((client as any).emailOptOutAt).toLocaleDateString("fr-FR")}`
+                      : "Ne pas inclure dans les messages groupés"}
+                  </label>
+                </div>
                 <div><Label>Téléphone</Label><Input value={draft.phone || ""} onChange={e => setDraft({ ...draft, phone: e.target.value })} data-testid="input-phone" /></div>
                 {fullAccess && (
                   <>

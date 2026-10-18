@@ -35,6 +35,10 @@ const TABLE_PAIRS: Array<[string, any, any]> = [
   ["kbChunks",             sqlite.kbChunks,             mysql.kbChunks],
   ["contentPosts",         sqlite.contentPosts,         mysql.contentPosts],
   ["stripeProcessedSessions", sqlite.stripeProcessedSessions, mysql.stripeProcessedSessions],
+  ["blockedDates",         sqlite.blockedDates,         mysql.blockedDates],
+  ["einvoicingConnections",sqlite.einvoicingConnections,mysql.einvoicingConnections],
+  ["clientFollowups",      sqlite.clientFollowups,      mysql.clientFollowups],
+  ["clientBroadcasts",     sqlite.clientBroadcasts,     mysql.clientBroadcasts],
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

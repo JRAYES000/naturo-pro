@@ -20,6 +20,20 @@ export const INVOICE_STATUS: Record<string, StatusMeta> = {
   sent: { label: "Envoyée", className: AMBER },
   paid: { label: "Payée", className: EMERALD },
   cancelled: { label: "Annulée", className: RED },
+  // Statuts propres au devis (repli si un devis passe par le domaine « invoice »).
+  accepted: { label: "Accepté", className: EMERALD },
+  refused: { label: "Refusé", className: RED },
+  expired: { label: "Expiré", className: NEUTRAL },
+};
+
+// Lot 2b — devis : accord ou refus de la cliente (en ligne ou saisi), expiration.
+export const QUOTE_STATUS: Record<string, StatusMeta> = {
+  draft: { label: "Brouillon", className: NEUTRAL },
+  sent: { label: "Envoyé", className: AMBER },
+  accepted: { label: "Accepté", className: EMERALD },
+  refused: { label: "Refusé", className: RED },
+  expired: { label: "Expiré", className: NEUTRAL },
+  cancelled: { label: "Annulé", className: RED },
 };
 
 export const APPOINTMENT_STATUS: Record<string, StatusMeta> = {
@@ -37,6 +51,7 @@ export const PROGRAM_STATUS: Record<string, StatusMeta> = {
 
 export const STATUS_DOMAINS = {
   invoice: INVOICE_STATUS,
+  quote: QUOTE_STATUS,
   appointment: APPOINTMENT_STATUS,
   program: PROGRAM_STATUS,
 } as const;

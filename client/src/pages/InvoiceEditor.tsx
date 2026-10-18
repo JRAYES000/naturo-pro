@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import {
   Trash2, Plus, Save, Download, Mail, Receipt, FileCode2, Stamp, CircleAlert, AlertTriangle, CheckCircle2, Send,
+  Link2, CreditCard,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Loading } from "@/components/Loading";
@@ -39,6 +40,8 @@ interface InvoiceWithItems extends Invoice {
   items: InvoiceItem[];
   credited?: { id: number; number: string; issueDate: number } | null;
   compliance?: ComplianceIssue[];
+  publicUrl?: string | null;
+  convertedInvoice?: { id: number; number: string; status: string } | null;
 }
 
 const CLIENT_KINDS: Array<[ClientKind, string]> = [
@@ -188,6 +191,9 @@ function InvoiceEditor() {
 
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
   const { data: einvoicing } = useQuery<EInvoicingStatusData>({ queryKey: ["/api/einvoicing/status"] });
+  // Paiement en ligne proposé seulement si la praticienne a branché Stripe.
+  const { data: profile } = useQuery<any>({ queryKey: ["/api/profile"] });
+  const stripeReady = !!profile?.user?.hasStripeSecretKey;
 
   const [clientId, setClientId] = useState<number | null>(null);
   const [clientType, setClientType] = useState<ClientKind>("particulier");
@@ -375,12 +381,39 @@ function InvoiceEditor() {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  // Devis → brouillon de facture : le numéro légal sera attribué à l'émission.
+  // Devis → nouveau brouillon de facture (le devis reste, accepté et relié) : le
+  // numéro légal sera attribué à l'émission.
   const convertMut = useMutation({
     mutationFn: async () => (await apiRequest("POST", `/api/invoices/${numericId}/convert`, {})).json(),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       invalidate();
-      toast({ title: "Devis converti en facture (brouillon)", description: "Relisez-la puis émettez-la.", variant: "success" });
+      toast({
+        title: data?.alreadyConverted ? "Facture déjà créée pour ce devis" : "Facture créée (brouillon)",
+        description: "Relisez-la puis émettez-la. Le devis est conservé.",
+        variant: "success",
+      });
+      if (data?.id) navigate(`/app/invoices/${data.id}`);
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  // Lien public : la cliente y consulte le document, accepte le devis ou règle la facture.
+  const shareMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/invoices/${numericId}/share-link`, {})).json(),
+    onSuccess: async (data: { url: string; payable: boolean }) => {
+      invalidate();
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(data.url);
+        copied = true;
+      } catch { /* presse-papiers indisponible : le lien reste affiché dans la carte */ }
+      toast({
+        title: copied ? "Lien copié" : "Lien créé",
+        description: isDevis
+          ? "La cliente peut y consulter le devis et l'accepter en ligne."
+          : data.payable ? "La cliente peut y consulter la facture et la régler par carte." : "La cliente peut y consulter et télécharger le document.",
+        variant: "success",
+      });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -484,7 +517,13 @@ function InvoiceEditor() {
     : isDraft && !isDevis
       ? (isAvoir ? "Avoir (brouillon)" : "Facture (brouillon)")
       : `${isAvoir ? "Avoir" : isDevis ? "Devis" : "Facture"} ${invoice?.number ?? ""}`;
-  const statusChoices = isDevis ? ["draft", "sent", "cancelled"] : ["issued", "sent", "paid", "cancelled"];
+  // Devis : accord ou refus saisi par la praticienne (accord oral, par email…) ; le
+  // statut courant (brouillon, expiré) reste affiché même s'il ne se choisit pas.
+  const QUOTE_CHOICES = ["sent", "accepted", "refused", "cancelled"];
+  const statusChoices = isDevis
+    ? (invoice?.status && !QUOTE_CHOICES.includes(invoice.status) ? [invoice.status, ...QUOTE_CHOICES] : QUOTE_CHOICES)
+    : ["issued", "sent", "paid", "cancelled"];
+  const canShare = !isNew && !!invoice && (isDevis ? invoice.status !== "cancelled" : isLocked);
   const busy = createMut.isPending || updateMut.isPending || issueMut.isPending;
 
   return (
@@ -499,15 +538,25 @@ function InvoiceEditor() {
           backTo={{ href: "/app/invoices", label: "Factures" }}
           actions={!isNew && invoice ? (
             <>
-              {isDevis && (
-                <Button
-                  onClick={() => convertMut.mutate()}
-                  disabled={convertMut.isPending}
-                  className="rounded-md font-bold"
-                  data-testid="button-convert-devis"
-                >
-                  {convertMut.isPending ? "Conversion…" : "Convertir en facture"}
-                </Button>
+              {isDevis && invoice.status !== "refused" && invoice.status !== "cancelled" && (
+                invoice.convertedInvoice ? (
+                  <Link
+                    href={`/app/invoices/${invoice.convertedInvoice.id}`}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-bold border border-input hover:bg-secondary"
+                    data-testid="link-converted-invoice"
+                  >
+                    <Receipt className="h-4 w-4" /> Voir la facture
+                  </Link>
+                ) : (
+                  <Button
+                    onClick={() => convertMut.mutate()}
+                    disabled={convertMut.isPending}
+                    className="rounded-md font-bold"
+                    data-testid="button-convert-devis"
+                  >
+                    {convertMut.isPending ? "Conversion…" : "Convertir en facture"}
+                  </Button>
+                )
               )}
               {isDraft && !isDevis && (
                 <Button onClick={() => issue(false)} disabled={busy} className="rounded-md font-bold" data-testid="button-issue">
@@ -533,6 +582,18 @@ function InvoiceEditor() {
                 >
                   <FileCode2 className="h-4 w-4" /> XML
                 </a>
+              )}
+              {canShare && (
+                <Button
+                  variant="outline"
+                  onClick={() => shareMut.mutate()}
+                  disabled={shareMut.isPending}
+                  className="rounded-md font-bold"
+                  title={isDevis ? "Lien où la cliente accepte le devis en ligne" : "Lien où la cliente consulte la facture et la règle en ligne"}
+                  data-testid="button-share-link"
+                >
+                  <Link2 className="h-4 w-4 mr-1" /> Copier le lien
+                </Button>
               )}
               <Button
                 variant="outline"
@@ -570,9 +631,26 @@ function InvoiceEditor() {
         )}
 
         {isDevis && !isNew && (
-          <div className="mb-4 text-sm bg-sky-50 border border-sky-200 text-sky-800 rounded-lg px-4 py-3" data-testid="banner-devis">
-            Ce document est un <strong>devis</strong> (hors comptabilité, non compté dans le CA). Une fois accepté,
-            « Convertir en facture » le transforme en brouillon de facture.
+          <div className="mb-4 text-sm bg-sky-50 border border-sky-200 text-sky-800 rounded-lg px-4 py-3 space-y-1" data-testid="banner-devis">
+            <p>
+              Ce document est un <strong>devis</strong> (hors comptabilité, non compté dans le CA). Envoyez-le ou copiez son
+              lien : la cliente l'accepte en ligne. « Convertir en facture » crée ensuite le brouillon de facture, le devis reste.
+            </p>
+            {invoice?.status === "accepted" && (
+              <p className="font-semibold text-emerald-800" data-testid="text-quote-decision">
+                Accepté{invoice.quoteDecidedAt ? ` le ${formatDateLong(invoice.quoteDecidedAt)}` : ""}
+                {invoice.quoteSignerName ? ` en ligne par ${invoice.quoteSignerName} (bon pour accord)` : ""}.
+              </p>
+            )}
+            {invoice?.status === "refused" && (
+              <p className="font-semibold text-red-800" data-testid="text-quote-decision">
+                Refusé{invoice.quoteDecidedAt ? ` le ${formatDateLong(invoice.quoteDecidedAt)}` : ""}
+                {invoice.quoteDecisionNote ? ` : « ${invoice.quoteDecisionNote} »` : "."}
+              </p>
+            )}
+            {invoice?.status === "expired" && (
+              <p className="font-semibold" data-testid="text-quote-decision">Expiré : sa date de validité est passée.</p>
+            )}
           </div>
         )}
 
@@ -589,8 +667,10 @@ function InvoiceEditor() {
         {isLocked && (
           <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
             <span className="flex-1">
-              Ce document est {invoice?.status === "paid" ? "réglé" : "émis"} : le client et les lignes ne sont plus modifiables
-              (le PDF transmis doit rester fidèle). L'échéance, les notes et le règlement restent modifiables.
+              {isDevis
+                ? "Ce devis a été transmis : la cliente et les lignes ne sont plus modifiables (elle doit voir le même document). Pour changer son contenu, créez un nouveau devis."
+                : <>Ce document est {invoice?.status === "paid" ? "réglé" : "émis"} : le client et les lignes ne sont plus modifiables
+                  (le PDF transmis doit rester fidèle). L'échéance, les notes et le règlement restent modifiables.</>}
             </span>
             {!isDevis && !isAvoir && (
               <Button
@@ -621,7 +701,7 @@ function InvoiceEditor() {
                   >
                     <SelectTrigger data-testid="select-client"><SelectValue placeholder="Choisir…" /></SelectTrigger>
                     <SelectContent>
-                      {clients.map((c: any) => (
+                      {clients.filter((c: any) => !c.archivedAt || c.id === clientId).map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)}>
                           {c.clientType && c.clientType !== "particulier" && c.companyName ? `${c.companyName} — ` : ""}
                           {c.firstName} {c.lastName}
@@ -837,6 +917,20 @@ function InvoiceEditor() {
               />
             )}
 
+            {invoice?.publicUrl && (
+              <div className="card-naturo" data-testid="card-public-link">
+                <h3 className="mb-2 text-heading">Lien en ligne</h3>
+                <Input readOnly value={invoice.publicUrl} onFocus={(e) => e.currentTarget.select()} className="text-xs" aria-label="Lien en ligne du document" data-testid="input-public-url" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isDevis
+                    ? "La cliente y consulte le devis et l'accepte en ligne."
+                    : stripeReady && (invoice.status === "issued" || invoice.status === "sent")
+                      ? "La cliente y consulte la facture et la règle par carte."
+                      : "La cliente y consulte et télécharge le document."}
+                </p>
+              </div>
+            )}
+
             <div className="card-naturo">
               <h3 className="mb-3 text-heading">Dates</h3>
               <div className="space-y-3">
@@ -891,15 +985,28 @@ function InvoiceEditor() {
                           }`}
                           data-testid={`button-status-${s}`}
                         >
-                          {isAvoir && s === "paid" ? "Remboursé" : <StatusBadge domain="invoice" status={s} />}
+                          {isAvoir && s === "paid" ? "Remboursé" : <StatusBadge domain={isDevis ? "quote" : "invoice"} status={s} />}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
+                {!isDevis && (
                 <div className="card-naturo">
                   <h3 className="mb-3 text-heading">{isAvoir ? "Remboursement" : "Règlement"}</h3>
+                  {invoice?.onlinePaymentSessionId && (
+                    <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-800" data-testid="text-paid-online">
+                      <CreditCard className="h-4 w-4" /> Réglée en ligne par carte (Stripe).
+                    </p>
+                  )}
+                  {!isAvoir && isLocked && (invoice?.status === "issued" || invoice?.status === "sent") && (
+                    <p className="mb-3 text-xs text-muted-foreground" data-testid="text-online-payment-hint">
+                      {stripeReady
+                        ? "« Copier le lien » ou l'envoi par email permettent à la cliente de régler par carte : la facture passe seule en « Payée »."
+                        : "Pour proposer le règlement par carte, ajoutez votre clé Stripe dans Réglages."}
+                    </p>
+                  )}
                   <div className="space-y-3">
                     <div>
                       <Label>Mode de paiement</Label>
@@ -920,6 +1027,7 @@ function InvoiceEditor() {
                     </div>
                   </div>
                 </div>
+                )}
               </>
             )}
 
