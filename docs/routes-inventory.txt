@@ -1,5 +1,5 @@
 # Inventaire des routes Express — généré par script/routes-inventory.ts
-# 163 routes — trié par (path, method), file-agnostic.
+# 170 routes — trié par (path, method), file-agnostic.
 # Le diff de ce fichier doit rester STRICTEMENT VIDE à travers le split de routes.ts.
 
 GET     /api/admin/analytics                             [requireAuth, requireAdmin]  (anonymous)
@@ -94,7 +94,13 @@ GET     /api/discussions/:id/messages                    [requireAuth]  (anonymo
 POST    /api/discussions/:id/messages                    [requireAuth]  (anonymous)
 DELETE  /api/documents/:id                               [requireAuth]  (anonymous)
 GET     /api/documents/:id/download                      [requireAuth]  (anonymous)
+GET     /api/einvoicing/received                         [requireAuth]  (anonymous)
+GET     /api/einvoicing/received/:id/file                [requireAuth]  (anonymous)
 GET     /api/einvoicing/status                           [requireAuth]  (anonymous)
+GET     /api/einvoicing/superpdp/callback                []  (anonymous)
+GET     /api/einvoicing/superpdp/connect                 [requireAuth]  (anonymous)
+POST    /api/einvoicing/superpdp/disconnect              [requireAuth]  (anonymous)
+POST    /api/einvoicing/sync                             [requireAuth]  (anonymous)
 GET     /api/email-templates                             [requireAuth]  (anonymous)
 GET     /api/email-templates/:kind                       [requireAuth]  (anonymous)
 PUT     /api/email-templates/:kind                       [requireAuth]  (anonymous)
@@ -114,6 +120,7 @@ GET     /api/invoices/:id                                [requireAuth]  (anonymo
 PATCH   /api/invoices/:id                                [requireAuth]  (anonymous)
 POST    /api/invoices/:id/avoir                          [requireAuth]  (anonymous)
 POST    /api/invoices/:id/convert                        [requireAuth]  (anonymous)
+POST    /api/invoices/:id/einvoice                       [requireAuth]  (anonymous)
 GET     /api/invoices/:id/facturx.xml                    [requireAuth]  (anonymous)
 POST    /api/invoices/:id/issue                          [requireAuth]  (anonymous)
 GET     /api/invoices/:id/pdf                            [requireAuth]  (anonymous)

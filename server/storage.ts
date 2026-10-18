@@ -21,7 +21,7 @@ import {
   anamnesisTemplates, anamnesisResponses, programs, clientDocuments, naturalSolutions,
   packages, aiChatMessages, aiDiscussions, aiChatUsage,
   assistantSettings, kbDocuments, kbChunks, contentPosts, stripeProcessedSessions,
-  analyticsEvents, aiSavedReplies, blockedDates,
+  analyticsEvents, aiSavedReplies, blockedDates, einvoicingConnections,
 } from "@shared/schema-active";
 import type {
   User, InsertUser, AppointmentCategory, InsertCategory, AvailabilitySlot,
@@ -33,7 +33,7 @@ import type {
   NaturalSolution, InsertNaturalSolution,
   Package, InsertPackage, AiChatMessage, AiChatUsage,
   AssistantSettings, KbDocument, KbChunk, ContentPost, AnalyticsEvent,
-  AiSavedReply, BlockedDate,
+  AiSavedReply, BlockedDate, EInvoicingConnection,
 } from "@shared/schema-active";
 import type { AiDiscussion } from "@shared/schema";
 import { eq, and, gte, lte, desc, like, or, sql, isNull, inArray } from "drizzle-orm";
@@ -257,6 +257,7 @@ export const USER_SCOPED_TABLES = [
   analyticsEvents,
   aiSavedReplies,
   blockedDates,
+  einvoicingConnections,
 ] as const;
 
 /**
@@ -1732,6 +1733,37 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBlockedDate(id: number): Promise<void> {
     await db.delete(blockedDates).where(eq(blockedDates.id, id));
+  }
+
+  // ── Réforme facturation 2026, lot 1B — compte chez la plateforme agréée ────
+
+  async getEInvoicingConnection(userId: number): Promise<EInvoicingConnection | undefined> {
+    return first(db.select().from(einvoicingConnections).where(eq(einvoicingConnections.userId, userId)));
+  }
+
+  async listEInvoicingConnections(): Promise<EInvoicingConnection[]> {
+    return db.select().from(einvoicingConnections);
+  }
+
+  /** Une connexion par praticienne : reconnecter remplace l'ancienne. */
+  async saveEInvoicingConnection(userId: number, data: Partial<EInvoicingConnection>): Promise<EInvoicingConnection> {
+    await db.delete(einvoicingConnections).where(eq(einvoicingConnections.userId, userId));
+    return dbInsertReturning<EInvoicingConnection>(einvoicingConnections, {
+      provider: "superpdp", ...data, userId, connectedAt: Date.now(),
+    } as any);
+  }
+
+  async updateEInvoicingConnection(id: number, patch: Partial<EInvoicingConnection>): Promise<EInvoicingConnection | undefined> {
+    return dbUpdateReturning<EInvoicingConnection>(einvoicingConnections, id, patch);
+  }
+
+  async deleteEInvoicingConnection(userId: number): Promise<void> {
+    await db.delete(einvoicingConnections).where(eq(einvoicingConnections.userId, userId));
+  }
+
+  /** Facture d'une praticienne retrouvée par son identifiant chez la plateforme. */
+  async getInvoiceByEInvoiceId(userId: number, externalId: string): Promise<Invoice | undefined> {
+    return first(db.select().from(invoices).where(and(eq(invoices.userId, userId), eq(invoices.einvoiceExternalId, externalId))));
   }
 
   /** Lot 4 — total d'appels IA sur un mois ('YYYY-MM') + aujourd'hui, pour l'indicateur d'usage. */

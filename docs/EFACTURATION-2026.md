@@ -53,23 +53,35 @@ python -I script/facturx-validate.py .facturx-samples
 Contrôlé aussi le 18/10/2026 avec le schématron CEN EN 16931 1.3.17. **Non vérifié avec
 veraPDF** (validation PDF/A complète) : seule la structure PDF/A-3b est contrôlée.
 
-## Lot 1B — raccordement à la plateforme agréée (à faire)
+## Lot 1B — raccordement à la plateforme agréée Super PDP
 
 Plateforme retenue : **Super PDP** (immatriculée le 22/12/2025), API documentée sur
 `https://www.superpdp.tech/openapi/` (spécification `https://api.superpdp.tech/openapi/superpdp.json`,
 plus l'API normalisée AFNOR XP Z12-013 flux et annuaire).
 
-- Chaque praticienne connecte **son** compte Super PDP (OAuth 2.1, flux « authorization code »,
-  pré-remplissage `login_hint` + `superpdp_company_number`) ; Super PDP gère la vérification
-  d'identité, l'accord formel et l'inscription à l'annuaire.
-- Émission : `POST /v1.beta/invoices` accepte le PDF Factur-X tel quel (`external_id` = id de la
-  facture, `processing_rule` B2B/B2C). Les factures B2C alimentent l'e-reporting automatiquement.
-- Statuts : `GET /v1.beta/invoice_events` (pas de webhook) ; « Encaissée » : `POST
-  /v1.beta/invoice_events` avec `fr:212`.
-- Réception : `GET /v1.beta/invoices?direction=in` + `/download`.
-- Régime de TVA (fréquence de l'e-reporting) : `PATCH /v1.beta/companies`.
-- Prérequis de Julien : compte développeur Super PDP et application OAuth (URL de retour
-  `https://app.ecole-naturo.fr/api/einvoicing/superpdp/callback`).
+| Fonction | Où |
+|---|---|
+| Connexion du compte de la praticienne : OAuth 2.1 + PKCE (vérificateur en cookie HttpOnly chiffré), pré-remplissage email + SIREN | `GET /api/einvoicing/superpdp/connect` et `/callback` |
+| Jetons chiffrés en base (AES-256-GCM, clé dérivée de `SESSION_SECRET`), rafraîchis sur 401 | `einvoicing/token-crypto.ts`, table `einvoicing_connections` |
+| Régime de TVA aligné chez Super PDP (fréquence de l'e-reporting) | `PATCH /v1.beta/companies` à la connexion |
+| Dépôt du Factur-X d'une facture B2B émise (`external_id = naturo-<user>-<facture>`) | `POST /api/invoices/:id/einvoice` |
+| Statuts du cycle de vie (pas de webhook : relève par curseur toutes les 30 min + bouton) | `einvoicing/service.ts`, `routes/cron.ts` |
+| « Encaissée » (fr:212) envoyé quand une facture transmise passe en payée (sauf option débits) | `PATCH /api/invoices/:id` |
+| Factures fournisseurs reçues + téléchargement | `/app/invoices/received`, `GET /api/einvoicing/received` |
+
+Vérifié le 18/10/2026 contre un faux serveur reproduisant l'API (OAuth, dépôt, statuts,
+encaissement, réception). **Pas encore contre le bac à sable réel.**
+
+**Activation** (tant que ces variables manquent, l'app affiche « raccordement en préparation ») :
+
+1. Chez Super PDP : compte, puis application OAuth « confidentielle » avec l'URL de retour
+   `https://app.ecole-naturo.fr/api/einvoicing/superpdp/callback` (bac à sable d'abord).
+2. Dans le `.env` de production : `SUPERPDP_CLIENT_ID`, `SUPERPDP_CLIENT_SECRET` (et
+   `SUPERPDP_BASE_URL` seulement si Super PDP en fournit une autre que `https://api.superpdp.tech`).
+3. Redémarrage (`touch tmp/restart.txt`), puis connexion d'un compte de test depuis les réglages.
+
+Reste à faire : e-reporting B2C (dépôt des factures aux particuliers, `processing_rule=B2C`,
+avant le 01/09/2027) et consultation de l'annuaire avant envoi (`french_directory/entries`).
 
 ## Sources
 

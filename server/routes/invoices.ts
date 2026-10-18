@@ -30,6 +30,7 @@ import {
 import { checkInvoice } from "../einvoicing/compliance";
 import { sirenFrom, siretFrom, normalizeVatNumber } from "../einvoicing/identifiers";
 import { createInvoiceFromAppointment, clientBillingFields } from "./helpers/invoices";
+import { reportPaymentIfTransmitted } from "../einvoicing/service";
 import { getEmailConfigForUser } from "./helpers/email-sending";
 import type { Invoice } from "@shared/schema-active";
 
@@ -431,6 +432,12 @@ export function registerInvoiceRoutes(app: Express): void {
       updated = Object.keys(tracking).length ? await storage.updateInvoice(id, tracking as any) : await storage.getInvoice(id);
     }
     if (!updated) return res.status(404).json({ message: "Introuvable" });
+    if (updated.status === "paid" && updated.einvoiceExternalId && !updated.einvoicePaidReportedAt) {
+      // Statut « Encaissée » transmis à la plateforme agréée ; un échec n'empêche pas
+      // d'enregistrer le règlement (nouvel essai au prochain enregistrement).
+      await reportPaymentIfTransmitted(updated).catch((e) => console.error("[einvoicing] encaissement :", e?.message || e));
+      updated = (await storage.getInvoice(id)) ?? updated;
+    }
     const items = await storage.getInvoiceItems(id);
     res.json({ ...updated, items });
   });

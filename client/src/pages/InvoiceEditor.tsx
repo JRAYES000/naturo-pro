@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import {
-  Trash2, Plus, Save, Download, Mail, Receipt, FileCode2, Stamp, CircleAlert, AlertTriangle, CheckCircle2,
+  Trash2, Plus, Save, Download, Mail, Receipt, FileCode2, Stamp, CircleAlert, AlertTriangle, CheckCircle2, Send,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Loading } from "@/components/Loading";
@@ -21,6 +21,7 @@ import type { Client, Invoice, InvoiceItem } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
 import { CompanyLookup } from "@/components/CompanyLookup";
+import type { EInvoicingStatusData } from "@/components/EInvoicingStatus";
 
 type LineKind = "service" | "goods";
 type ClientKind = "particulier" | "entreprise" | "association" | "public";
@@ -118,6 +119,56 @@ function ComplianceCard({ issues }: { issues: ComplianceIssue[] }) {
   );
 }
 
+/** Transmission d'une facture B2B émise par la plateforme agréée (Super PDP). */
+function EInvoiceCard({ invoice, platformConnected, canTransmit }: {
+  invoice: InvoiceWithItems;
+  platformConnected: boolean;
+  canTransmit: boolean;
+}) {
+  const { toast } = useToast();
+  const inv = invoice as any;
+  const transmitMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", `/api/invoices/${invoice.id}/einvoice`, {})).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoice.id] });
+      toast({ title: "Facture transmise", description: "Déposée chez Super PDP. Les statuts suivants arriveront ici.", variant: "success" });
+    },
+    onError: (e: any) => toast({ title: "Transmission impossible", description: e.message, variant: "destructive" }),
+  });
+  const failed = inv.einvoiceError;
+  const canSend = canTransmit && (!inv.einvoiceExternalId || inv.einvoiceStatus === "api:invalid");
+  if (!inv.einvoiceStatus && !canSend) return null;
+  return (
+    <div className="card-naturo space-y-2" data-testid="card-einvoice">
+      <h3 className="text-heading">Facture électronique</h3>
+      {inv.einvoiceStatus ? (
+        <p className="text-sm flex gap-2" data-testid="text-einvoice-status">
+          {failed
+            ? <CircleAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            : <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />}
+          <span>
+            {inv.einvoiceStatusLabel || inv.einvoiceStatus}
+            {inv.einvoiceStatusAt ? ` — ${new Date(inv.einvoiceStatusAt).toLocaleString("fr-FR")}` : ""}
+            {inv.einvoicePaidReportedAt ? " · encaissement transmis" : ""}
+          </span>
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Cliente professionnelle : vous pouvez déposer cette facture sur la plateforme agréée. Elle sera acheminée vers la
+          plateforme de votre cliente (obligatoire à partir du 1er septembre 2027).
+        </p>
+      )}
+      {failed && <p className="text-xs text-destructive">{failed}</p>}
+      {canSend && platformConnected && (
+        <Button onClick={() => transmitMut.mutate()} disabled={transmitMut.isPending} className="w-full rounded-md font-bold" data-testid="button-einvoice-transmit">
+          <Send className="h-4 w-4 mr-1" /> {transmitMut.isPending ? "Transmission…" : "Transmettre via Super PDP"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function InvoiceEditor() {
   const [, params] = useRoute("/app/invoices/:id");
   const [, navigate] = useLocation();
@@ -136,6 +187,7 @@ function InvoiceEditor() {
   });
 
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
+  const { data: einvoicing } = useQuery<EInvoicingStatusData>({ queryKey: ["/api/einvoicing/status"] });
 
   const [clientId, setClientId] = useState<number | null>(null);
   const [clientType, setClientType] = useState<ClientKind>("particulier");
@@ -776,6 +828,14 @@ function InvoiceEditor() {
           {/* Colonne droite : conformité, dates, statut, règlement */}
           <div className="space-y-4">
             {!isNew && invoice?.compliance && !isDevis && <ComplianceCard issues={invoice.compliance} />}
+
+            {isLocked && !isDevis && invoice && (
+              <EInvoiceCard
+                invoice={invoice}
+                platformConnected={!!einvoicing?.platform.connected}
+                canTransmit={!!einvoicing?.platform.connected && clientType === "entreprise"}
+              />
+            )}
 
             <div className="card-naturo">
               <h3 className="mb-3 text-heading">Dates</h3>

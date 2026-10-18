@@ -9,12 +9,22 @@
  */
 
 import type { Express } from "express";
+import crypto from "node:crypto";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { storage } from "../storage";
 import { buildPractitionerSnapshot } from "../invoices";
 import { checkSeller, type ComplianceIssue } from "../einvoicing/compliance";
 import { effectiveVatRegime, signedTotalCents } from "../einvoicing/document";
-import { digitsOnly } from "../einvoicing/identifiers";
+import { digitsOnly, sirenFrom } from "../einvoicing/identifiers";
+import { signState, verifyState } from "../google";
+import { sealToken, openToken } from "../einvoicing/token-crypto";
+import {
+  superPdpConfig, pkcePair, authorizeUrl, exchangeCode, SuperPdpClient,
+} from "../einvoicing/superpdp";
+import { clientFor, syncStatuses, transmitInvoice, EInvoicingError } from "../einvoicing/service";
+
+const PKCE_COOKIE = "spdp_pkce";
+const PKCE_COOKIE_PATH = "/api/einvoicing/superpdp";
 
 /** Seuils 2026 de la franchise en base pour les prestations de services (art. 293 B CGI). */
 export const FRANCHISE_SERVICES_THRESHOLD_CENTS = 3_750_000;
@@ -122,15 +132,149 @@ export function registerEInvoicingRoutes(app: Express): void {
       };
     }
 
+    const conn = await storage.getEInvoicingConnection(req.userId!);
     res.json({
       regime,
       vatOnDebits: !!snap.vatOnDebits,
       readiness,
       franchise,
       // Lot 1B : raccordement à la plateforme agréée (Super PDP).
-      platform: { connected: false, name: null },
+      platform: {
+        available: !!superPdpConfig(),
+        connected: !!conn,
+        name: conn ? "Super PDP" : null,
+        env: conn?.env ?? null,
+        companyName: conn?.companyName ?? null,
+        companyNumber: conn?.companyNumber ?? null,
+        lastSyncAt: conn?.lastSyncAt ?? null,
+        lastError: conn?.lastError ?? null,
+      },
       milestones: REFORM_MILESTONES,
     });
+  });
+
+  // ── Connexion OAuth 2.1 au compte Super PDP de la praticienne ──────────────
+  // Le vérificateur PKCE reste côté navigateur dans un cookie HttpOnly chiffré :
+  // il ne transite jamais par la plateforme, contrairement au state.
+  app.get("/api/einvoicing/superpdp/connect", requireAuth, async (req: AuthedRequest, res) => {
+    const cfg = superPdpConfig();
+    if (!cfg) return res.redirect("/?einvoicing=indisponible#/app/settings");
+    const user = await storage.getUserById(req.userId!);
+    if (!user) return res.status(401).end();
+    const { verifier, challenge } = pkcePair();
+    const nonce = crypto.randomBytes(12).toString("base64url");
+    const state = signState({ userId: user.id, n: nonce });
+    if (!state) return res.redirect("/?einvoicing=erreur#/app/settings");
+    res.cookie(PKCE_COOKIE, sealToken(JSON.stringify({ v: verifier, n: nonce })), {
+      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
+      maxAge: 10 * 60 * 1000, path: PKCE_COOKIE_PATH,
+    });
+    res.redirect(authorizeUrl(cfg, {
+      state, challenge, email: user.email, siren: sirenFrom((user as any).billingSiret),
+    }));
+  });
+
+  app.get("/api/einvoicing/superpdp/callback", async (req: AuthedRequest, res) => {
+    const fail = (why: string) => res.redirect(`/?einvoicing=erreur&raison=${encodeURIComponent(why)}#/app/settings`);
+    const cfg = superPdpConfig();
+    if (!cfg) return fail("plateforme non configurée");
+    if (req.query.error) return fail(String(req.query.error_description || req.query.error));
+    const payload = verifyState(String(req.query.state || ""));
+    const sealed = openToken(req.cookies?.[PKCE_COOKIE]);
+    res.clearCookie(PKCE_COOKIE, { path: PKCE_COOKIE_PATH });
+    if (!payload || !sealed) return fail("session de connexion expirée, recommencez");
+    const { v: verifier, n: nonce } = JSON.parse(sealed);
+    if (nonce !== payload.n) return fail("état de connexion invalide");
+    // La session de l'app doit être celle qui a lancé la connexion.
+    if (req.userId && req.userId !== payload.userId) return fail("compte différent");
+    try {
+      const tokens = await exchangeCode(cfg, String(req.query.code || ""), verifier);
+      const client = new SuperPdpClient(cfg, tokens, async () => undefined);
+      const company = await client.me();
+      const conn = await storage.saveEInvoicingConnection(payload.userId, {
+        env: company.env,
+        companyId: company.id,
+        companyName: company.formal_name,
+        companyNumber: company.number,
+        accessToken: sealToken(tokens.accessToken),
+        refreshToken: tokens.refreshToken ? sealToken(tokens.refreshToken) : null,
+        expiresAt: tokens.expiresAt,
+      } as any);
+      // Aligne le régime de TVA (fréquence de l'e-reporting) sur celui des réglages.
+      const user = await storage.getUserById(payload.userId);
+      if (user) {
+        const snap = buildPractitionerSnapshot(user);
+        await clientFor(conn).setVatRegime(effectiveVatRegime(snap), !!snap.vatOnDebits)
+          .catch((e) => console.warn("[einvoicing] régime de TVA non aligné :", e?.message || e));
+      }
+      res.redirect("/?einvoicing=connecte#/app/settings");
+    } catch (e: any) {
+      console.error("[einvoicing] callback :", e?.message || e);
+      fail("échec de la connexion à Super PDP");
+    }
+  });
+
+  app.post("/api/einvoicing/superpdp/disconnect", requireAuth, async (req: AuthedRequest, res) => {
+    await storage.deleteEInvoicingConnection(req.userId!);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/einvoicing/sync", requireAuth, async (req: AuthedRequest, res) => {
+    const conn = await storage.getEInvoicingConnection(req.userId!);
+    if (!conn) return res.status(409).json({ message: "Aucune plateforme connectée." });
+    try {
+      res.json(await syncStatuses(conn));
+    } catch (e: any) {
+      res.status(e instanceof EInvoicingError ? e.status : 502).json({ message: e?.message || "Synchronisation impossible" });
+    }
+  });
+
+  // Factures fournisseurs reçues (obligation de réception depuis le 01/09/2026).
+  app.get("/api/einvoicing/received", requireAuth, async (req: AuthedRequest, res) => {
+    const conn = await storage.getEInvoicingConnection(req.userId!);
+    if (!conn) return res.json({ connected: false, invoices: [] });
+    try {
+      const list = await clientFor(conn).listReceived(50);
+      res.json({
+        connected: true,
+        invoices: list.map((i: any) => ({
+          id: i.id,
+          receivedAt: i.created_at,
+          number: i.en_invoice?.number ?? null,
+          issueDate: i.en_invoice?.issue_date ?? null,
+          sellerName: i.en_invoice?.seller?.name ?? null,
+          total: i.en_invoice?.totals?.amount_due_for_payment ?? i.en_invoice?.totals?.total_with_vat ?? null,
+          currency: i.en_invoice?.currency_code ?? "EUR",
+          status: i.events?.length ? i.events[i.events.length - 1].status_code : null,
+        })),
+      });
+    } catch (e: any) {
+      res.status(e instanceof EInvoicingError ? e.status : 502).json({ message: e?.message || "Plateforme injoignable" });
+    }
+  });
+
+  app.get("/api/einvoicing/received/:id/file", requireAuth, async (req: AuthedRequest, res) => {
+    const conn = await storage.getEInvoicingConnection(req.userId!);
+    if (!conn) return res.status(409).json({ message: "Aucune plateforme connectée." });
+    try {
+      const { buffer, contentType } = await clientFor(conn).download(Number(req.params.id));
+      const ext = contentType.includes("pdf") ? "pdf" : "xml";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="facture-recue-${Number(req.params.id)}.${ext}"`);
+      res.send(buffer);
+    } catch (e: any) {
+      res.status(e instanceof EInvoicingError ? e.status : 502).json({ message: e?.message || "Téléchargement impossible" });
+    }
+  });
+
+  // Transmission d'une facture émise à la plateforme (B2B).
+  app.post("/api/invoices/:id/einvoice", requireAuth, async (req: AuthedRequest, res) => {
+    try {
+      const inv = await transmitInvoice(req.userId!, Number(req.params.id));
+      res.json(inv);
+    } catch (e: any) {
+      res.status(e instanceof EInvoicingError ? e.status : 502).json({ message: e?.message || "Transmission impossible" });
+    }
   });
 
   app.get("/api/company-lookup", requireAuth, async (req: AuthedRequest, res) => {

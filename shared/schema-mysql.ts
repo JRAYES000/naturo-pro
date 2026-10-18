@@ -150,6 +150,14 @@ export const invoices = mysqlTable("invoices", {
   clientCountry: varchar("client_country", { length: 100 }),
   creditedInvoiceId: int("credited_invoice_id"),                       // avoir → facture d'origine (BT-25)
   issuedAt: bigint("issued_at", { mode: "number" }),                   // émission : numéro définitif attribué
+  // Transmission par la plateforme agréée (lot 1B, Super PDP).
+  einvoiceExternalId: varchar("einvoice_external_id", { length: 64 }), // id de la facture chez la plateforme
+  einvoiceStatus: varchar("einvoice_status", { length: 32 }),          // dernier statut (ex. fr:200, fr:213, api:invalid)
+  einvoiceStatusLabel: varchar("einvoice_status_label", { length: 255 }),
+  einvoiceSentAt: bigint("einvoice_sent_at", { mode: "number" }),
+  einvoiceStatusAt: bigint("einvoice_status_at", { mode: "number" }),
+  einvoicePaidReportedAt: bigint("einvoice_paid_reported_at", { mode: "number" }), // statut « Encaissée » (fr:212) transmis
+  einvoiceError: text("einvoice_error"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 }, (t) => ({
@@ -643,3 +651,24 @@ export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
 
 // Public-facing user shape (no secrets)
 export type PublicUser = Omit<User, "passwordHash" | "googleCalendarToken" | "googleId">;
+
+// Réforme facturation 2026, lot 1B — compte de la praticienne chez la plateforme
+// agréée (Super PDP), connecté par OAuth 2.1. Jetons chiffrés (AES-256-GCM).
+export const einvoicingConnections = mysqlTable("einvoicing_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  provider: varchar("provider", { length: 32 }).notNull().default("superpdp"),
+  env: varchar("env", { length: 16 }),                         // sandbox | production
+  companyId: int("company_id"),
+  companyName: varchar("company_name", { length: 255 }),
+  companyNumber: varchar("company_number", { length: 32 }),    // SIREN
+  accessToken: text("access_token"),                           // chiffré
+  refreshToken: text("refresh_token"),                         // chiffré
+  expiresAt: bigint("expires_at", { mode: "number" }),
+  lastEventId: bigint("last_event_id", { mode: "number" }),    // curseur de synchronisation des statuts
+  lastSyncAt: bigint("last_sync_at", { mode: "number" }),
+  lastError: text("last_error"),
+  connectedAt: bigint("connected_at", { mode: "number" }).notNull(),
+}, (t) => ({
+  uk_einvoicing_conn_user: uniqueIndex("uk_einvoicing_conn_user").on(t.userId),
+}));

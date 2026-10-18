@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Plus, Receipt, Download, FileText, CheckCircle2 } from "lucide-react";
+import { Plus, Receipt, Download, FileText, CheckCircle2, Inbox, Send } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { HelpNote, HelpTip } from "@/components/HelpNote";
 import { StatBand, StatCell } from "@/components/StatBand";
@@ -19,6 +19,7 @@ import { formatPrice } from "@/lib/format";
 import type { Invoice } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
+import type { EInvoicingStatusData } from "@/components/EInvoicingStatus";
 
 function formatDateShort(ms: number | null | undefined) {
   if (!ms) return "—";
@@ -41,6 +42,17 @@ function docLabel(inv: Invoice) {
 /** Montant signé : un avoir vient en déduction. */
 function signed(inv: Invoice) {
   return (inv as any).docType === "avoir" ? -Math.abs(inv.totalCents || 0) : (inv.totalCents || 0);
+}
+
+/** Facture transmise par la plateforme agréée : icône, rouge si échec. */
+function EInvoiceMark({ inv }: { inv: Invoice }) {
+  const i = inv as any;
+  if (!i.einvoiceStatus) return null;
+  return (
+    <span title={`Facture électronique : ${i.einvoiceStatusLabel || i.einvoiceStatus}`} className={`ml-1.5 inline-flex align-middle ${i.einvoiceError ? "text-destructive" : "text-emerald-600"}`} data-testid={`icon-einvoice-${inv.id}`}>
+      <Send className="h-3.5 w-3.5" />
+    </span>
+  );
 }
 
 function DocTypeBadge({ inv }: { inv: Invoice }) {
@@ -120,6 +132,7 @@ function InvoicesPage() {
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
+  const { data: einvoicing } = useQuery<EInvoicingStatusData>({ queryKey: ["/api/einvoicing/status"] });
 
   const markPaidMut = useMutation({
     mutationFn: async (id: number) =>
@@ -202,6 +215,15 @@ function InvoicesPage() {
               >
                 <Download className="h-4 w-4" /> Factures émises
               </a>
+              {einvoicing?.platform.connected && (
+                <Link
+                  href="/app/invoices/received"
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-bold border border-input hover:bg-secondary"
+                  data-testid="button-received-invoices"
+                >
+                  <Inbox className="h-4 w-4" /> Factures reçues
+                </Link>
+              )}
               <Link href="/app/invoices/new">
                 <Button className="rounded-lg font-bold" data-testid="button-new-invoice">
                   <Plus className="h-4 w-4 mr-1" /> Nouvelle facture
@@ -347,6 +369,7 @@ function InvoicesPage() {
                           {docLabel(inv)}
                         </Link>
                         <DocTypeBadge inv={inv} />
+                        <EInvoiceMark inv={inv} />
                       </td>
                       <td className="text-muted-foreground">{isDraftNumber(inv.number) ? "—" : formatDateShort(inv.issueDate)}</td>
                       <td>

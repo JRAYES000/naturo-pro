@@ -51,6 +51,8 @@ export const analyticsEvents = activeSchema.analyticsEvents;
 // Lot 5 — bibliothèque de réponses IA + dates bloquées
 export const aiSavedReplies = activeSchema.aiSavedReplies;
 export const blockedDates = activeSchema.blockedDates;
+// Réforme facturation 2026, lot 1B — connexion à la plateforme agréée
+export const einvoicingConnections = activeSchema.einvoicingConnections;
 
 // Zod insert schemas
 export const insertUserSchema = activeSchema.insertUserSchema;
@@ -103,4 +105,5 @@ export type {
   AnalyticsEvent, InsertAnalyticsEvent,
   AiSavedReply, InsertAiSavedReply,
   BlockedDate, InsertBlockedDate,
+  EInvoicingConnection,
 } from "./schema";

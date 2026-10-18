@@ -12,6 +12,8 @@ import { isGoogleConfigured } from "../google";
 import { importFromGoogleForUser } from "./helpers/google-sync";
 import { reconcilierPaiementsStripe } from "./helpers/stripe-booking";
 import { purgeInactiveFreeAccounts } from "./helpers/purge";
+import { superPdpConfig } from "../einvoicing/superpdp";
+import { syncAllStatuses } from "../einvoicing/service";
 import {
   sendRemindersForUser, sendDailyRecapForUser, sendReviewRequestsForUser,
   sendFollowupsForUser, getLocalHour, getLocalDayKey, TZ,
@@ -60,6 +62,15 @@ export function startCrons(): void {
       } catch (e) { console.error("[google-poll]", e); }
     }, POLL_MS);
     console.log(`[google-poll] enabled, every ${POLL_MS / 60000} min`);
+  }
+
+  // ─── Facture électronique : statuts du cycle de vie (Super PDP) ─────────────
+  // Super PDP n'envoie pas de webhook : on relève les nouveaux événements par
+  // curseur (invoice_events.starting_after_id) pour chaque praticienne connectée.
+  const EINVOICING_SYNC_MS = 30 * 60 * 1000;
+  if ((isProd || process.env.ENABLE_EINVOICING_SYNC === "1") && superPdpConfig()) {
+    setInterval(() => { void syncAllStatuses(); }, EINVOICING_SYNC_MS);
+    console.log(`[einvoicing] synchronisation des statuts toutes les ${EINVOICING_SYNC_MS / 60000} min`);
   }
 
   // ─── Purge quotidienne des sessions expirées ───────────────────────────────

@@ -149,6 +149,14 @@ export const invoices = sqliteTable("invoices", {
   clientCountry: text("client_country"),
   creditedInvoiceId: integer("credited_invoice_id"),   // avoir → facture d'origine (BT-25)
   issuedAt: integer("issued_at"),                      // émission : numéro définitif attribué
+  // Transmission par la plateforme agréée (lot 1B, Super PDP).
+  einvoiceExternalId: text("einvoice_external_id"),    // id de la facture chez la plateforme
+  einvoiceStatus: text("einvoice_status"),             // dernier statut (ex. fr:200, fr:213, api:invalid)
+  einvoiceStatusLabel: text("einvoice_status_label"),
+  einvoiceSentAt: integer("einvoice_sent_at"),
+  einvoiceStatusAt: integer("einvoice_status_at"),
+  einvoicePaidReportedAt: integer("einvoice_paid_reported_at"), // statut « Encaissée » (fr:212) transmis
+  einvoiceError: text("einvoice_error"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (t) => ({
@@ -658,3 +666,26 @@ export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+
+// Réforme facturation 2026, lot 1B — compte de la praticienne chez la plateforme
+// agréée (Super PDP), connecté par OAuth 2.1. Jetons chiffrés (AES-256-GCM).
+export const einvoicingConnections = sqliteTable("einvoicing_connections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  provider: text("provider").notNull().default("superpdp"),
+  env: text("env"),                        // sandbox | production
+  companyId: integer("company_id"),
+  companyName: text("company_name"),
+  companyNumber: text("company_number"),   // SIREN
+  accessToken: text("access_token"),       // chiffré
+  refreshToken: text("refresh_token"),     // chiffré
+  expiresAt: integer("expires_at"),
+  lastEventId: integer("last_event_id"),   // curseur de synchronisation des statuts
+  lastSyncAt: integer("last_sync_at"),
+  lastError: text("last_error"),
+  connectedAt: integer("connected_at").notNull(),
+}, (t) => ({
+  uk_einvoicing_conn_user: uniqueIndex("uk_einvoicing_conn_user").on(t.userId),
+}));
+
+export type EInvoicingConnection = typeof einvoicingConnections.$inferSelect;

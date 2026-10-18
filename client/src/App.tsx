@@ -44,6 +44,7 @@ const PublicPageEditor = lazy(() => import("@/pages/PublicPageEditor"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Invoices = lazy(() => import("@/pages/Invoices"));
 const InvoiceEditor = lazy(() => import("@/pages/InvoiceEditor"));
+const ReceivedInvoices = lazy(() => import("@/pages/ReceivedInvoices"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
@@ -112,6 +113,8 @@ function AppRouter() {
       <Route path="/app/public-page" component={() => <ProtectedRoute><PublicPageEditor /></ProtectedRoute>} />
       <Route path="/app/settings" component={() => <ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/app/invoices" component={() => <ProtectedRoute><Invoices /></ProtectedRoute>} />
+      {/* Avant /app/invoices/:id, sinon « received » serait pris pour un identifiant */}
+      <Route path="/app/invoices/received" component={() => <ProtectedRoute><ReceivedInvoices /></ProtectedRoute>} />
       <Route path="/app/invoices/:id" component={() => <ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
       <Route path="/app/reminders" component={() => <ProtectedRoute><Reminders /></ProtectedRoute>} />
       <Route path="/app/email-templates" component={() => <ProtectedRoute><EmailTemplates /></ProtectedRoute>} />
