@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CompanyLookup } from "@/components/CompanyLookup";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -183,13 +184,19 @@ function NewClientDialog({ open, onClose, existing }: { open: boolean; onClose: 
   // le champ « Date de naissance » (donnée étendue, ignorée par le serveur en
   // gratuit) est masqué au lieu d'être silencieusement perdu à l'enregistrement.
   const fullAccess = !!user?.hasFullAccess;
-  const emptyForm = { firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", clientType: "particulier", companyName: "", companySiret: "" };
+  const emptyForm = { firstName: "", lastName: "", email: "", phone: "", dateOfBirth: "", clientType: "particulier", companyName: "", companySiret: "", companyVatNumber: "", address: "", postalCode: "", city: "" };
   const [data, setData] = useState(emptyForm);
+  const isPro = data.clientType !== "particulier";
   const createMut = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/clients", {
       ...data,
-      companyName: data.clientType === "entreprise" ? data.companyName || null : null,
-      companySiret: data.clientType === "entreprise" ? data.companySiret || null : null,
+      companyName: isPro ? data.companyName || null : null,
+      companySiret: isPro ? data.companySiret || null : null,
+      companyVatNumber: isPro ? data.companyVatNumber || null : null,
+      // Adresse d'un client pro : utile à la facture (mention obligatoire).
+      address: data.address || null,
+      postalCode: data.postalCode || null,
+      city: data.city || null,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
@@ -211,14 +218,43 @@ function NewClientDialog({ open, onClose, existing }: { open: boolean; onClose: 
               <SelectTrigger data-testid="select-new-client-type"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="particulier">Particulier</SelectItem>
-                <SelectItem value="entreprise">Entreprise</SelectItem>
+                <SelectItem value="entreprise">Entreprise ou professionnel</SelectItem>
+                <SelectItem value="association">Association</SelectItem>
+                <SelectItem value="public">Organisme public</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {data.clientType === "entreprise" && (
+          {isPro && (
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Raison sociale</Label><Input value={data.companyName} onChange={e => setData({ ...data, companyName: e.target.value })} data-testid="input-new-company-name" /></div>
-              <div><Label>SIRET</Label><Input value={data.companySiret} onChange={e => setData({ ...data, companySiret: e.target.value })} data-testid="input-new-company-siret" /></div>
+              <div className="col-span-2"><Label>Raison sociale</Label><Input value={data.companyName} onChange={e => setData({ ...data, companyName: e.target.value })} data-testid="input-new-company-name" /></div>
+              <div className="col-span-2">
+                <Label>SIREN ou SIRET</Label>
+                <div className="flex gap-2">
+                  <Input value={data.companySiret} onChange={e => setData({ ...data, companySiret: e.target.value })} data-testid="input-new-company-siret" />
+                  <CompanyLookup
+                    initialQuery={data.companySiret || data.companyName}
+                    testid="button-new-client-lookup"
+                    onPick={(r) => setData({
+                      ...data,
+                      clientType: data.clientType === "entreprise" ? r.clientKind : data.clientType,
+                      companyName: r.name,
+                      companySiret: r.siret || r.siren,
+                      companyVatNumber: r.vatNumber || data.companyVatNumber,
+                      address: r.address || data.address,
+                      postalCode: r.postalCode || data.postalCode,
+                      city: r.city || data.city,
+                    })}
+                  />
+                </div>
+              </div>
+              <div className="col-span-2"><Label>N° de TVA intracommunautaire</Label><Input value={data.companyVatNumber} onChange={e => setData({ ...data, companyVatNumber: e.target.value })} data-testid="input-new-company-vat" /></div>
+              {fullAccess && (
+                <>
+                  <div className="col-span-2"><Label>Adresse</Label><Input value={data.address} onChange={e => setData({ ...data, address: e.target.value })} data-testid="input-new-company-address" /></div>
+                  <div><Label>Code postal</Label><Input value={data.postalCode} onChange={e => setData({ ...data, postalCode: e.target.value })} data-testid="input-new-company-postal" /></div>
+                  <div><Label>Ville</Label><Input value={data.city} onChange={e => setData({ ...data, city: e.target.value })} data-testid="input-new-company-city" /></div>
+                </>
+              )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">

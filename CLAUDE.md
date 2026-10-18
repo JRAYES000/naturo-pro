@@ -39,6 +39,10 @@ en `success`.
 - IA : **OpenRouter uniquement**, malgré les noms `server/mistral.ts` et `mistral-embed`. ↗
 - Node 24, sans champ `engines` dans `package.json` ; `@types/node` encore en 20.x.
 - Fuseaux cabinet / visiteuse : lire `server/timezone.ts` avant d'y toucher (source de bugs).
+- **Facture électronique 2026** : `server/einvoicing/` (Factur-X EN 16931 en PDF/A-3, un seul
+  modèle pour PDF et XML). Numéro légal attribué à l'**émission** (brouillon = `BROUILLON-…`),
+  avoir = `docType "avoir"` à montants positifs. Règles, sources et lot 1B (Super PDP) :
+  `docs/EFACTURATION-2026.md`. La CI valide les Factur-X (XSD + schématrons BR-FR).
 
 ## Carte du code
 

@@ -11,6 +11,7 @@ import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { publicUser } from "./helpers/tokens";
 import { isIndexable, missingForIndexing } from "../seo-pages";
+import { normalizeVatNumber } from "../einvoicing/identifiers";
 
 export function registerProfileRoutes(app: Express): void {
   app.get("/api/profile", requireAuth, async (req: AuthedRequest, res) => {
@@ -57,6 +58,15 @@ export function registerProfileRoutes(app: Express): void {
     billingVatRate: z.number().int().min(0).max(10000).optional(),
     billingLegalMention: z.string().nullable().optional(),
     billingPaymentTerms: z.string().nullable().optional(),
+    // Réforme facturation 2026 — identité légale
+    billingLegalForm: z.enum(["EI", "EURL", "SASU", "SARL", "SAS", "SELARL", "ASSOCIATION", "AUTRE"]).nullable().optional(),
+    billingVatNumber: z.string().max(32).nullable().optional(),
+    billingVatRegime: z.enum(["franchise", "simplifie", "normal_mensuel", "normal_trimestriel"]).nullable().optional(),
+    billingVatOnDebits: z.boolean().optional(),
+    billingRcs: z.string().max(255).nullable().optional(),
+    billingShareCapital: z.string().max(64).nullable().optional(),
+    billingMediatorName: z.string().max(255).nullable().optional(),
+    billingMediatorUrl: z.string().max(255).nullable().optional(),
     autoInvoiceOnCompleted: z.boolean().optional(),
     // Avis Google
     googleReviewUrl: z.string().url().nullable().optional(),
@@ -77,6 +87,9 @@ export function registerProfileRoutes(app: Express): void {
     if (!parsed.success) return res.status(400).json({ message: "Invalide", errors: parsed.error.errors });
     const patch: any = { ...parsed.data };
     if (patch.specialties) patch.specialties = JSON.stringify(patch.specialties);
+    // Le régime de TVA commande l'assujettissement : la franchise n'applique aucune TVA.
+    if (patch.billingVatRegime) patch.billingVatEnabled = patch.billingVatRegime !== "franchise";
+    if (patch.billingVatNumber !== undefined) patch.billingVatNumber = normalizeVatNumber(patch.billingVatNumber);
     if (patch.slug) {
       const exists = await storage.getUserBySlug(patch.slug);
       if (exists && exists.id !== req.userId) return res.status(409).json({ message: "Slug déjà utilisé" });

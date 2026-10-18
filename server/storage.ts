@@ -41,7 +41,8 @@ import { db, DB_DRIVER } from "./db";
 import type { SeoProfile } from "./seo-pages";
 import { rankThemes } from "./social-content";
 // Fonction pure (formatage du numéro) — pas de cycle : invoices.ts n'importe pas storage.
-import { buildInvoiceNumber, invoiceNumberPrefix } from "./invoices";
+import { buildInvoiceNumber, invoiceNumberPrefix, getYearFromMs } from "./invoices";
+import { isProvisionalNumber } from "./einvoicing/document";
 
 // Re-export db so that routes.ts can import it directly (backwards-compat)
 export { db };
@@ -382,6 +383,7 @@ export interface IStorage {
   markStripeSessionProcessed(userId: number, sessionId: string, appointmentId: number | null): Promise<boolean>;
   nextInvoiceCounter(userId: number, year: number): Promise<number>;
   createInvoiceNumbered(year: number, data: Omit<InsertInvoice, "number"> & { createdAt: number; updatedAt: number }): Promise<Invoice>;
+  issueInvoice(id: number, userId: number, now: number, patch: Partial<Invoice>): Promise<Invoice | undefined>;
 
   // PHASE 3.5-C — Email templates
   getEmailTemplate(userId: number, kind: string): Promise<EmailTemplate | undefined>;
@@ -1240,6 +1242,42 @@ export class DatabaseStorage implements IStorage {
           const signature = `${e?.code || ""} ${e?.message || e}`;
           if (!/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(signature)) throw e;
           derniere = e;
+        }
+      }
+      throw derniere;
+    });
+  }
+
+  /**
+   * Émission d'une facture ou d'un avoir : le brouillon reçoit son numéro définitif
+   * dans la séquence légale FACT-, daté du jour de l'émission.
+   *
+   * Le numéro n'est plus pris à la création du brouillon : supprimer un brouillon ne
+   * laisse donc plus de trou dans la séquence, et l'ordre des numéros suit celui des
+   * dates d'émission (art. 242 nonies A de l'annexe II du CGI : séquence chronologique
+   * et continue). Mêmes protections que createInvoiceNumbered.
+   *
+   * Un brouillon créé avant cette règle porte déjà un numéro FACT- : il le garde.
+   */
+  async issueInvoice(id: number, userId: number, now: number, patch: Partial<Invoice>): Promise<Invoice | undefined> {
+    return serialiserParUser(userId, async () => {
+      const current = await this.getInvoice(id);
+      if (!current || current.userId !== userId) return undefined;
+      if (current.status !== "draft") return current; // déjà émise : idempotent
+      if (!isProvisionalNumber(current.number)) {
+        return this.updateInvoice(id, { ...patch, issuedAt: now } as any);
+      }
+      const year = getYearFromMs(now);
+      let derniere: unknown;
+      for (let tentative = 1; tentative <= 8; tentative++) {
+        const number = buildInvoiceNumber(year, await this.nextInvoiceCounter(userId, year));
+        try {
+          return await this.updateInvoice(id, { ...patch, number, issueDate: now, issuedAt: now } as any);
+        } catch (e: any) {
+          const signature = `${e?.code || ""} ${e?.message || e}`;
+          if (!/UNIQUE|ER_DUP_ENTRY|Duplicate entry|SQLITE_CONSTRAINT/i.test(signature)) throw e;
+          derniere = e;
+          console.warn(`[facture] numéro ${number} déjà pris à l'émission, nouvel essai (${tentative}/8)`);
         }
       }
       throw derniere;

@@ -2,7 +2,8 @@
  * server/routes/stats.ts — Statistiques & exports comptables (lecture seule)
  *
  * GET /api/stats/overview?from=&to=   — KPIs agrégés sur la période
- * GET /api/stats/recettes.csv?from=&to= — journal des recettes au format CSV
+ * GET /api/stats/recettes.csv?from=&to= — livre des recettes (encaissements) en CSV
+ * GET /api/stats/ventes.csv?from=&to=   — journal des factures émises en CSV
  *
  * Toutes les données sont calculées à partir des méthodes storage existantes :
  *   - storage.listInvoices      → CA encaissé, CA prévu, top prestations
@@ -15,6 +16,8 @@
 import type { Express } from "express";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { storage } from "../storage";
+import { signedTotalCents, isProvisionalNumber } from "../einvoicing/document";
+import { paymentMethodLabel } from "../invoices";
 
 /** Début du mois courant en ms (minuit UTC). */
 function startOfCurrentMonthMs(): number {
@@ -60,13 +63,14 @@ export function registerStatsRoutes(app: Express): void {
       const invoices = (await storage.listInvoices(req.userId!, { from, to }))
         .filter((i) => (i as any).docType !== "devis");
 
+      // Un avoir vient en déduction (montant positif en base, signé ici).
       const caEncaisseCents = invoices
         .filter((i) => i.status === "paid")
-        .reduce((s, i) => s + (i.totalCents || 0), 0);
+        .reduce((s, i) => s + signedTotalCents(i), 0);
 
       const caPrevuCents = invoices
-        .filter((i) => i.status === "sent" || i.status === "draft")
-        .reduce((s, i) => s + (i.totalCents || 0), 0);
+        .filter((i) => i.status === "issued" || i.status === "sent" || i.status === "draft")
+        .reduce((s, i) => s + signedTotalCents(i), 0);
 
       // RDV sur la période
       const appts = await storage.listAppointments(req.userId!, from, to);
@@ -141,7 +145,7 @@ export function registerStatsRoutes(app: Express): void {
       for (const inv of invoices) {
         if ((inv as any).docType === "devis") continue;
         const key = new Date(inv.issueDate).toISOString().slice(0, 7);
-        if (byMonth.has(key)) byMonth.set(key, (byMonth.get(key) || 0) + (inv.totalCents || 0));
+        if (byMonth.has(key)) byMonth.set(key, (byMonth.get(key) || 0) + signedTotalCents(inv));
       }
       res.json(Array.from(byMonth.entries()).map(([month, caCents]) => ({ month, caCents })));
     } catch (e: any) {
@@ -150,44 +154,84 @@ export function registerStatsRoutes(app: Express): void {
     }
   });
 
-  // ── GET /api/stats/recettes.csv ──────────────────────────────────────────
+  // ── GET /api/stats/recettes.csv — livre des recettes ─────────────────────
+  // Obligation du micro-entrepreneur : registre CHRONOLOGIQUE des encaissements
+  // (date d'encaissement, référence de la pièce, client, nature, mode de règlement,
+  // montant). Il se tient donc par date de PAIEMENT, pas d'émission : une facture
+  // de décembre réglée en janvier est une recette de janvier. Un avoir remboursé
+  // y figure en négatif.
   app.get("/api/stats/recettes.csv", requireAuth, async (req: AuthedRequest, res) => {
     const from = req.query.from ? Number(req.query.from) : startOfCurrentMonthMs();
     const to = req.query.to ? Number(req.query.to) : endOfCurrentMonthMs();
 
     try {
-      const invoices = (await storage.listInvoices(req.userId!, { from, to }))
-        .filter((i) => (i as any).docType !== "devis");
+      const encaissees = (await storage.listInvoices(req.userId!, { status: "paid" }))
+        .filter((i) => (i as any).docType !== "devis" && i.paidAt && i.paidAt >= from && i.paidAt <= to)
+        .sort((a, b) => (a.paidAt! - b.paidAt!) || a.id - b.id);
 
-      const STATUS_LABELS: Record<string, string> = {
-        draft: "Brouillon",
-        sent: "Envoyée",
-        paid: "Payée",
-        cancelled: "Annulée",
-      };
-
-      const header = ["Date", "Numéro", "Client", "Montant (€)", "Statut"];
-      const rows = invoices.map((inv) => {
-        const clientName = `${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.trim() || "";
-        const montant = inv.totalCents != null ? (inv.totalCents / 100).toFixed(2) : "0.00";
-        const statut = STATUS_LABELS[inv.status] || inv.status;
+      const NATURE: Record<string, string> = { services: "Prestation de services", goods: "Vente de biens", mixed: "Mixte" };
+      const header = ["Date d'encaissement", "Pièce", "Client", "Nature", "Mode de règlement", "Montant (€)"];
+      const rows = encaissees.map((inv) => {
+        const client = (inv as any).clientCompanyName
+          || `${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.trim();
+        const piece = `${(inv as any).docType === "avoir" ? "Avoir" : "Facture"} ${inv.number}`;
         return [
-          csvField(fmtDate(inv.issueDate)),
-          csvField(inv.number),
-          csvField(clientName),
-          csvField(montant),
-          csvField(statut),
+          csvField(fmtDate(inv.paidAt)),
+          csvField(piece),
+          csvField(client),
+          csvField(NATURE[(inv as any).operationCategory || "services"] || NATURE.services),
+          csvField(paymentMethodLabel(inv.paymentMethod)),
+          csvField((signedTotalCents(inv) / 100).toFixed(2)),
         ].join(",");
       });
 
       const csv = [header.map(csvField).join(","), ...rows].join("\r\n");
-
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", 'attachment; filename="recettes.csv"');
+      res.setHeader("Content-Disposition", 'attachment; filename="livre-des-recettes.csv"');
       // BOM UTF-8 pour ouverture correcte dans Excel / LibreOffice
-      res.send("﻿" + csv);
+      res.send("\uFEFF" + csv);
     } catch (e: any) {
       console.error("[stats/recettes.csv]", e?.message || e);
+      res.status(500).json({ message: "Erreur export CSV" });
+    }
+  });
+
+  // ── GET /api/stats/ventes.csv — journal des factures émises ──────────────
+  // Factures et avoirs ÉMIS sur la période (par date d'émission), pour le comptable.
+  app.get("/api/stats/ventes.csv", requireAuth, async (req: AuthedRequest, res) => {
+    const from = req.query.from ? Number(req.query.from) : startOfCurrentMonthMs();
+    const to = req.query.to ? Number(req.query.to) : endOfCurrentMonthMs();
+
+    try {
+      const emises = (await storage.listInvoices(req.userId!, { from, to }))
+        .filter((i) => (i as any).docType !== "devis" && i.status !== "draft" && !isProvisionalNumber(i.number))
+        .sort((a, b) => (a.issueDate - b.issueDate) || a.id - b.id);
+
+      const STATUS_LABELS: Record<string, string> = { issued: "Émise", sent: "Envoyée", paid: "Payée", cancelled: "Annulée" };
+      const header = ["Date d'émission", "Numéro", "Type", "Client", "SIREN client", "HT (€)", "TVA (€)", "TTC (€)", "Statut"];
+      const rows = emises.map((inv) => {
+        const sign = (inv as any).docType === "avoir" ? -1 : 1;
+        const client = (inv as any).clientCompanyName
+          || `${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.trim();
+        return [
+          csvField(fmtDate(inv.issueDate)),
+          csvField(inv.number),
+          csvField((inv as any).docType === "avoir" ? "Avoir" : "Facture"),
+          csvField(client),
+          csvField((inv as any).clientSiren || ""),
+          csvField(((sign * Math.abs(inv.subtotalCents || 0)) / 100).toFixed(2)),
+          csvField(((sign * Math.abs(inv.vatCents || 0)) / 100).toFixed(2)),
+          csvField(((sign * Math.abs(inv.totalCents || 0)) / 100).toFixed(2)),
+          csvField(STATUS_LABELS[inv.status] || inv.status),
+        ].join(",");
+      });
+
+      const csv = [header.map(csvField).join(","), ...rows].join("\r\n");
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", 'attachment; filename="factures-emises.csv"');
+      res.send("\uFEFF" + csv);
+    } catch (e: any) {
+      console.error("[stats/ventes.csv]", e?.message || e);
       res.status(500).json({ message: "Erreur export CSV" });
     }
   });

@@ -1,14 +1,16 @@
 /**
- * server/routes/invoices.ts — domaine Invoices (Phase 1 facturation)
+ * server/routes/invoices.ts — domaine Invoices (facturation)
  *
- * Extrait de server/routes.ts (Phase 4.0 — split par domaine). Handlers verbatim,
- * comportement strictement identique. CRUD facture + PDF + envoi email.
+ * CRUD facture + émission + PDF Factur-X + XML + envoi email.
  *
- * ⚠️ GET /api/invoices/:id/pdf stream du binaire (Content-Type application/pdf via
- * res.send(buffer)) — handler conservé tel quel, ne pas toucher au streaming.
+ * Réforme facturation électronique 2026 :
+ *  - un brouillon porte un numéro PROVISOIRE (BROUILLON-…) ; le numéro légal FACT-
+ *    n'est attribué qu'à l'émission (storage.issueInvoice) ;
+ *  - une facture ou un avoir émis se télécharge en Factur-X (PDF/A-3 + XML EN 16931) ;
+ *  - un avoir est un document à part entière (docType « avoir », montants positifs)
+ *    qui cite la facture qu'il corrige (creditedInvoiceId → BT-25/BT-26).
  *
- * Imports : lib ../invoices (calculs + génération PDF + rendu email), helpers
- * createInvoiceFromAppointment (pré-remplissage depuis RDV) et getEmailConfigForUser.
+ * ⚠️ GET /api/invoices/:id/pdf renvoie du binaire (application/pdf via res.send).
  */
 
 import type { Express } from "express";
@@ -18,15 +20,40 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { sendEmail } from "../email";
 import {
   computeInvoiceTotals, computeItemTotal, buildPractitionerSnapshot,
-  getYearFromMs, generateInvoicePdf, renderInvoiceEmail,
+  getYearFromMs, generateInvoicePdf, generateFacturxXml, renderInvoiceEmail,
   buildDevisNumber, nextDevisSeq,
   type PractitionerSnapshot,
 } from "../invoices";
-import { createInvoiceFromAppointment } from "./helpers/invoices";
+import {
+  buildInvoiceDocument, categoryFromKinds, provisionalNumber, CLIENT_KINDS,
+} from "../einvoicing/document";
+import { checkInvoice } from "../einvoicing/compliance";
+import { sirenFrom, siretFrom, normalizeVatNumber } from "../einvoicing/identifiers";
+import { createInvoiceFromAppointment, clientBillingFields } from "./helpers/invoices";
 import { getEmailConfigForUser } from "./helpers/email-sending";
+import type { Invoice } from "@shared/schema-active";
+
+function parseSnapshot(inv: Invoice): PractitionerSnapshot {
+  try {
+    return JSON.parse(inv.practitionerSnapshot || "{}");
+  } catch {
+    return {} as PractitionerSnapshot;
+  }
+}
+
+/** Facture corrigée par un avoir (numéro + date), si elle existe chez la même praticienne. */
+async function creditedOf(inv: Invoice): Promise<Invoice | null> {
+  if (!inv.creditedInvoiceId) return null;
+  const c = await storage.getInvoice(inv.creditedInvoiceId);
+  return c && c.userId === inv.userId ? c : null;
+}
+
+/** Normalise SIREN/SIRET saisis dans un même champ. */
+function companyIds(raw: string | null | undefined): { clientSiren: string | null; clientSiret: string | null } {
+  return { clientSiren: sirenFrom(raw), clientSiret: siretFrom(raw) };
+}
 
 export function registerInvoiceRoutes(app: Express): void {
-  // Helper interne : créer une facture à partir d'un RDV (utilisé par auto-hook + endpoint manuel)
   // GET /api/invoices?status=&from=&to=&clientId=
   app.get("/api/invoices", requireAuth, async (req: AuthedRequest, res) => {
     const opts: any = {};
@@ -38,41 +65,77 @@ export function registerInvoiceRoutes(app: Express): void {
     res.json(list);
   });
 
-  // GET /api/invoices/:id
+  // GET /api/invoices/:id — facture + lignes + contrôle de conformité
   app.get("/api/invoices/:id", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
     const items = await storage.getInvoiceItems(id);
-    res.json({ ...inv, items });
+    const credited = await creditedOf(inv);
+    // Brouillon : contrôle avec l'identité ACTUELLE de la praticienne (le snapshot
+    // sera rafraîchi à l'émission). Émise : avec l'identité figée dans la facture.
+    let seller: PractitionerSnapshot = parseSnapshot(inv);
+    if (inv.status === "draft") {
+      const user = await storage.getUserById(req.userId!);
+      if (user) seller = buildPractitionerSnapshot(user);
+    }
+    const doc = buildInvoiceDocument(inv, items, seller, credited);
+    res.json({
+      ...inv,
+      items,
+      credited: credited ? { id: credited.id, number: credited.number, issueDate: credited.issueDate } : null,
+      compliance: checkInvoice(doc, seller),
+    });
   });
 
-  // POST /api/invoices  (création manuelle libre)
   const invoiceItemSchema = z.object({
     description: z.string().min(1),
     // Entier : la colonne invoice_items.quantity est un INT. Le schéma acceptait un
     // décimal, que computeItemTotal tronquait ensuite en silence — saisir « 1,5 »
     // facturait 1 et « 0,5 » facturait 0,00 €, sans le moindre avertissement.
-    // On refuse explicitement plutôt que d'arrondir dans le dos de la praticienne.
     quantity: z.number().int().min(1).default(1),
     unitPriceCents: z.number().int().nonnegative().default(0),
+    kind: z.enum(["service", "goods"]).default("service"),
   });
-  const invoiceCreateSchema = z.object({
-    clientId: z.number().int().positive().nullable().optional(),
-    appointmentId: z.number().int().positive().nullable().optional(),
+  const clientFieldsSchema = {
     clientFirstName: z.string().optional(),
     clientLastName: z.string().optional(),
     clientEmail: z.string().optional(),
     clientAddress: z.string().nullable().optional(),
     clientPostalCode: z.string().nullable().optional(),
     clientCity: z.string().nullable().optional(),
+    clientCountry: z.string().nullable().optional(),
+    clientType: z.enum(CLIENT_KINDS as [string, ...string[]]).nullable().optional(),
+    clientCompanyName: z.string().nullable().optional(),
+    // SIREN ou SIRET : un seul champ de saisie, normalisé côté serveur.
+    clientCompanyId: z.string().nullable().optional(),
+    clientVatNumber: z.string().nullable().optional(),
+  };
+  const invoiceCreateSchema = z.object({
+    clientId: z.number().int().positive().nullable().optional(),
+    appointmentId: z.number().int().positive().nullable().optional(),
+    ...clientFieldsSchema,
     issueDate: z.number().optional(),
     dueDate: z.number().nullable().optional(),
+    serviceDate: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
     items: z.array(invoiceItemSchema).min(1),
-    // Lot 4 — devis : même structure, numérotation séparée, hors comptabilité.
+    // Devis : même structure, numérotation séparée, hors comptabilité.
     docType: z.enum(["invoice", "devis"]).optional(),
   });
+
+  const itemRows = (invoiceId: number, items: z.infer<typeof invoiceItemSchema>[]) =>
+    items.map((it, i) => ({
+      invoiceId,
+      position: i,
+      description: it.description,
+      quantity: it.quantity,
+      unitPriceCents: it.unitPriceCents,
+      totalCents: computeItemTotal(it.quantity, it.unitPriceCents),
+      kind: it.kind,
+    }));
+
+  // POST /api/invoices — brouillon de facture (numéro provisoire) ou devis
   app.post("/api/invoices", requireAuth, async (req: AuthedRequest, res) => {
     const parsed = invoiceCreateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.flatten() });
@@ -80,52 +143,43 @@ export function registerInvoiceRoutes(app: Express): void {
     const user = await storage.getUserById(req.userId!);
     if (!user) return res.status(401).json({ message: "Non authentifié" });
 
-    let clientFirstName = data.clientFirstName || "";
-    let clientLastName = data.clientLastName || "";
-    let clientEmail = data.clientEmail || "";
-    let clientAddress = data.clientAddress ?? null;
-    let clientPostalCode = data.clientPostalCode ?? null;
-    let clientCity = data.clientCity ?? null;
+    let client: Record<string, any> = {};
     if (data.clientId) {
       const c = await storage.getClient(data.clientId);
-      if (c && c.userId === req.userId) {
-        clientFirstName = clientFirstName || c.firstName || "";
-        clientLastName = clientLastName || c.lastName || "";
-        clientEmail = clientEmail || c.email || "";
-        clientAddress = clientAddress ?? ((c as any).address || null);
-        clientPostalCode = clientPostalCode ?? ((c as any).postalCode || null);
-        clientCity = clientCity ?? ((c as any).city || null);
-        // Lot 4 (action C5) — client entreprise : la facture porte la raison
-        // sociale et le SIRET, sans champ dédié en base (snapshot texte).
-        if ((c as any).clientType === "entreprise" && (c as any).companyName) {
-          if (!data.clientLastName) { clientLastName = (c as any).companyName; clientFirstName = data.clientFirstName || ""; }
-          if ((c as any).companySiret && !String(clientAddress || "").includes("SIRET")) {
-            clientAddress = [clientAddress, `SIRET : ${(c as any).companySiret}`].filter(Boolean).join("\n");
-          }
-        }
-      }
+      if (c && c.userId === req.userId) client = clientBillingFields(c);
     }
+    const pick = <T>(v: T | undefined, fallback: T) => (v !== undefined ? v : fallback);
+    const ids = data.clientCompanyId !== undefined
+      ? companyIds(data.clientCompanyId)
+      : { clientSiren: client.clientSiren ?? null, clientSiret: client.clientSiret ?? null };
 
     const vatEnabled = !!user.billingVatEnabled;
     const vatRate = user.billingVatRate ?? 2000;
     const totals = computeInvoiceTotals(data.items, vatEnabled, vatRate);
-    const issueDate = data.issueDate || Date.now();
+    const now = Date.now();
+    const issueDate = data.docType === "devis" ? (data.issueDate || now) : now;
     const year = getYearFromMs(issueDate);
-    const snapshot = buildPractitionerSnapshot(user);
 
     const base = {
       userId: req.userId!,
       status: "draft",
       issueDate,
       dueDate: data.dueDate ?? null,
+      serviceDate: data.serviceDate ?? null,
       appointmentId: data.appointmentId ?? null,
       clientId: data.clientId ?? null,
-      clientFirstName,
-      clientLastName,
-      clientEmail,
-      clientAddress,
-      clientPostalCode,
-      clientCity,
+      clientFirstName: pick(data.clientFirstName, client.clientFirstName ?? ""),
+      clientLastName: pick(data.clientLastName, client.clientLastName ?? ""),
+      clientEmail: pick(data.clientEmail, client.clientEmail ?? ""),
+      clientAddress: pick(data.clientAddress, client.clientAddress ?? null),
+      clientPostalCode: pick(data.clientPostalCode, client.clientPostalCode ?? null),
+      clientCity: pick(data.clientCity, client.clientCity ?? null),
+      clientCountry: pick(data.clientCountry, client.clientCountry ?? null),
+      clientType: pick(data.clientType, client.clientType ?? "particulier"),
+      clientCompanyName: pick(data.clientCompanyName, client.clientCompanyName ?? null),
+      clientSiren: ids.clientSiren,
+      clientSiret: ids.clientSiret,
+      clientVatNumber: normalizeVatNumber(pick(data.clientVatNumber, client.clientVatNumber ?? null)),
       subtotalCents: totals.subtotalCents,
       vatCents: totals.vatCents,
       totalCents: totals.totalCents,
@@ -135,9 +189,9 @@ export function registerInvoiceRoutes(app: Express): void {
       paidAt: null,
       sentAt: null,
       notes: data.notes ?? null,
-      practitionerSnapshot: JSON.stringify(snapshot),
-      createdAt: issueDate,
-      updatedAt: issueDate,
+      practitionerSnapshot: JSON.stringify(buildPractitionerSnapshot(user)),
+      createdAt: now,
+      updatedAt: now,
     };
 
     let inv;
@@ -159,25 +213,17 @@ export function registerInvoiceRoutes(app: Express): void {
       }
       if (!inv) throw derniere;
     } else {
-      // Numérotation + insertion dans le même appel : la contrainte UNIQUE(user_id,
-      // number) garantit l'unicité et createInvoiceNumbered retente sur collision.
-      inv = await storage.createInvoiceNumbered(year, base as any);
+      // Brouillon : numéro provisoire, hors séquence légale. Le numéro FACT- est
+      // attribué à l'émission (POST /api/invoices/:id/issue, envoi ou changement de statut).
+      inv = await storage.createInvoice({ ...base, docType: "invoice", number: provisionalNumber(now) } as any);
     }
 
-    await storage.replaceInvoiceItems(inv.id, data.items.map((it, i) => ({
-      invoiceId: inv.id,
-      position: i,
-      description: it.description,
-      quantity: it.quantity,
-      unitPriceCents: it.unitPriceCents,
-      totalCents: computeItemTotal(it.quantity, it.unitPriceCents),
-    })) as any);
-
+    await storage.replaceInvoiceItems(inv.id, itemRows(inv.id, data.items) as any);
     const items = await storage.getInvoiceItems(inv.id);
     res.status(201).json({ ...inv, items });
   });
 
-  // POST /api/invoices/from-appointment/:id  (création pré-remplie depuis un RDV)
+  // POST /api/invoices/from-appointment/:id  (brouillon pré-rempli depuis un RDV)
   app.post("/api/invoices/from-appointment/:id", requireAuth, async (req: AuthedRequest, res) => {
     const apptId = Number(req.params.id);
     const appt = await storage.getAppointment(apptId);
@@ -194,27 +240,66 @@ export function registerInvoiceRoutes(app: Express): void {
     res.status(201).json({ ...inv, items });
   });
 
-  // POST /api/invoices/:id/avoir  (Lot 5, QC Facture — note de crédit)
-  // Facture miroir à montants négatifs, numérotée dans la même séquence légale,
-  // liée à la facture d'origine via la note. Le message d'immutabilité renvoyait
-  // vers cette fonctionnalité sans qu'elle existe.
+  /**
+   * Émission d'un brouillon : numéro légal, date d'émission, identité de la praticienne
+   * figée à jour, catégorie d'opération et totaux recalculés avec le régime de TVA en
+   * vigueur (un avoir garde la TVA de la facture qu'il corrige).
+   */
+  async function issueDraft(inv: Invoice, userId: number, status: "issued" | "sent" | "paid", extra: Record<string, unknown> = {}) {
+    const user = await storage.getUserById(userId);
+    if (!user) throw new Error("Praticienne introuvable");
+    const items = await storage.getInvoiceItems(inv.id);
+    const patch: Record<string, unknown> = {
+      ...extra,
+      status,
+      practitionerSnapshot: JSON.stringify(buildPractitionerSnapshot(user)),
+      operationCategory: categoryFromKinds(items.map((i) => i.kind)),
+    };
+    if (inv.docType !== "avoir") {
+      const vatEnabled = !!user.billingVatEnabled;
+      const vatRate = user.billingVatRate ?? 2000;
+      const totals = computeInvoiceTotals(items as any, vatEnabled, vatRate);
+      Object.assign(patch, { vatEnabled, vatRate, ...totals });
+    }
+    if (status === "paid" && !extra.paidAt) patch.paidAt = Date.now();
+    return storage.issueInvoice(inv.id, userId, Date.now(), patch as any);
+  }
+
+  // POST /api/invoices/:id/issue — émission explicite (sans envoi)
+  app.post("/api/invoices/:id/issue", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    const inv = await storage.getInvoice(id);
+    if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if (inv.docType === "devis") return res.status(400).json({ message: "Un devis ne s'émet pas : convertissez-le en facture." });
+    if (inv.status !== "draft") return res.status(409).json({ message: "Ce document est déjà émis." });
+    const items = await storage.getInvoiceItems(id);
+    if (!items.length || items.every((i) => !i.totalCents)) {
+      return res.status(400).json({ message: "Ajoutez au moins une ligne d'un montant positif avant d'émettre." });
+    }
+    const updated = await issueDraft(inv, req.userId!, "issued");
+    res.json({ ...updated, items: await storage.getInvoiceItems(id) });
+  });
+
+  // POST /api/invoices/:id/avoir — avoir (brouillon) sur une facture émise
   app.post("/api/invoices/:id/avoir", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    if ((inv as any).docType === "devis") return res.status(400).json({ message: "Un devis ne donne pas lieu à un avoir : modifiez-le directement." });
+    if (inv.docType === "devis") return res.status(400).json({ message: "Un devis ne donne pas lieu à un avoir : modifiez-le directement." });
+    if (inv.docType === "avoir") return res.status(400).json({ message: "On ne crée pas d'avoir sur un avoir." });
     if (inv.status === "draft") return res.status(400).json({ message: "Cette facture est encore en brouillon : modifiez-la directement plutôt que de créer un avoir." });
 
     const now = Date.now();
-    const year = getYearFromMs(now);
     const sourceItems = await storage.getInvoiceItems(id);
-    const avoir = await storage.createInvoiceNumbered(year, {
+    const avoir = await storage.createInvoice({
       userId: req.userId!,
       status: "draft",
-      docType: "invoice",
+      docType: "avoir",
+      number: provisionalNumber(now),
       issueDate: now,
       dueDate: null,
-      appointmentId: inv.appointmentId ?? null,
+      serviceDate: inv.serviceDate ?? null,
+      appointmentId: null,
       clientId: inv.clientId ?? null,
       clientFirstName: inv.clientFirstName,
       clientLastName: inv.clientLastName,
@@ -222,15 +307,23 @@ export function registerInvoiceRoutes(app: Express): void {
       clientAddress: inv.clientAddress,
       clientPostalCode: inv.clientPostalCode,
       clientCity: inv.clientCity,
-      subtotalCents: -(inv.subtotalCents || 0),
-      vatCents: -(inv.vatCents || 0),
-      totalCents: -(inv.totalCents || 0),
+      clientCountry: inv.clientCountry ?? null,
+      clientType: inv.clientType ?? "particulier",
+      clientCompanyName: inv.clientCompanyName ?? null,
+      clientSiren: inv.clientSiren ?? null,
+      clientSiret: inv.clientSiret ?? null,
+      clientVatNumber: inv.clientVatNumber ?? null,
+      // Montants positifs : c'est le type « avoir » qui porte le sens (déduction).
+      subtotalCents: Math.abs(inv.subtotalCents || 0),
+      vatCents: Math.abs(inv.vatCents || 0),
+      totalCents: Math.abs(inv.totalCents || 0),
       vatRate: inv.vatRate,
       vatEnabled: inv.vatEnabled,
       paymentMethod: null,
       paidAt: null,
       sentAt: null,
-      notes: `AVOIR sur la facture ${inv.number}${inv.notes ? `\n${inv.notes}` : ""}`,
+      notes: null,
+      creditedInvoiceId: inv.id,
       practitionerSnapshot: inv.practitionerSnapshot,
       createdAt: now,
       updatedAt: now,
@@ -238,41 +331,40 @@ export function registerInvoiceRoutes(app: Express): void {
     await storage.replaceInvoiceItems(avoir.id, sourceItems.map((it, i) => ({
       invoiceId: avoir.id,
       position: i,
-      description: `Avoir — ${it.description}`,
-      quantity: it.quantity,
-      unitPriceCents: -(it.unitPriceCents || 0),
-      totalCents: -(it.totalCents || 0),
+      description: it.description,
+      quantity: Math.abs(it.quantity || 1),
+      unitPriceCents: Math.abs(it.unitPriceCents || 0),
+      totalCents: Math.abs(it.totalCents || 0),
+      kind: it.kind || "service",
     })) as any);
     const items = await storage.getInvoiceItems(avoir.id);
     res.status(201).json({ ...avoir, items });
   });
 
-  // POST /api/invoices/:id/convert  (Lot 4 — devis → facture, numéro de la séquence légale)
+  // POST /api/invoices/:id/convert — devis → brouillon de facture (numéro à l'émission)
   app.post("/api/invoices/:id/convert", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    if ((inv as any).docType !== "devis") return res.status(400).json({ message: "Seul un devis peut être converti en facture." });
+    if (inv.docType !== "devis") return res.status(400).json({ message: "Seul un devis peut être converti en facture." });
     const now = Date.now();
-    const updated = await storage.convertDevisToInvoice(id, req.userId!, getYearFromMs(now));
+    const updated = await storage.updateInvoice(id, {
+      docType: "invoice", status: "draft", number: provisionalNumber(now), issueDate: now, sentAt: null,
+    } as any);
     const items = await storage.getInvoiceItems(id);
     res.json({ ...updated, items });
   });
 
-  // PATCH /api/invoices/:id  (statut, paiement, lignes, notes)
+  // PATCH /api/invoices/:id  (contenu du brouillon, statut, paiement, notes)
   const invoicePatchSchema = z.object({
-    status: z.enum(["draft", "sent", "paid", "cancelled"]).optional(),
+    status: z.enum(["draft", "issued", "sent", "paid", "cancelled"]).optional(),
     paymentMethod: z.enum(["cash", "check", "transfer", "card"]).nullable().optional(),
     paidAt: z.number().nullable().optional(),
     dueDate: z.number().nullable().optional(),
+    serviceDate: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
     items: z.array(invoiceItemSchema).optional(),
-    clientFirstName: z.string().optional(),
-    clientLastName: z.string().optional(),
-    clientEmail: z.string().optional(),
-    clientAddress: z.string().nullable().optional(),
-    clientPostalCode: z.string().nullable().optional(),
-    clientCity: z.string().nullable().optional(),
+    ...clientFieldsSchema,
   });
   app.patch("/api/invoices/:id", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
@@ -281,57 +373,63 @@ export function registerInvoiceRoutes(app: Express): void {
     const parsed = invoicePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Données invalides", errors: parsed.error.flatten() });
     const data = parsed.data;
-    const patch: any = {};
-    if (data.status !== undefined) patch.status = data.status;
-    if (data.paymentMethod !== undefined) patch.paymentMethod = data.paymentMethod;
-    if (data.paidAt !== undefined) patch.paidAt = data.paidAt;
-    if (data.dueDate !== undefined) patch.dueDate = data.dueDate;
-    if (data.notes !== undefined) patch.notes = data.notes;
-    if (data.clientFirstName !== undefined) patch.clientFirstName = data.clientFirstName;
-    if (data.clientLastName !== undefined) patch.clientLastName = data.clientLastName;
-    if (data.clientEmail !== undefined) patch.clientEmail = data.clientEmail;
-    if (data.clientAddress !== undefined) patch.clientAddress = data.clientAddress;
-    if (data.clientPostalCode !== undefined) patch.clientPostalCode = data.clientPostalCode;
-    if (data.clientCity !== undefined) patch.clientCity = data.clientCity;
 
     // ── Immuabilité d'une facture ÉMISE ────────────────────────────────────
-    // Une facture envoyée ou payée ne se modifie plus : le PDF détenu par la cliente
-    // ferait foi contre un document que l'application ressortirait différent (montant,
-    // lignes, identité). En France, une facture émise se corrige par un avoir, pas en
-    // la réécrivant. Seuls le suivi de règlement et les notes restent ouverts.
+    // Une facture émise ne se modifie plus : le PDF détenu par la cliente ferait foi
+    // contre un document que l'application ressortirait différent (montant, lignes,
+    // identité). En France, une facture émise se corrige par un avoir, pas en la
+    // réécrivant. Seuls le suivi de règlement et les notes restent ouverts.
+    const contentFields = ["items", "clientFirstName", "clientLastName", "clientEmail", "clientAddress",
+      "clientPostalCode", "clientCity", "clientCountry", "clientType", "clientCompanyName", "clientCompanyId",
+      "clientVatNumber", "serviceDate"] as const;
     if (inv.status !== "draft") {
-      const champsFiges = ["items", "clientFirstName", "clientLastName", "clientEmail",
-        "clientAddress", "clientPostalCode", "clientCity", "issueDate"] as const;
-      const touches = champsFiges.filter((c) => (data as any)[c] !== undefined);
+      const touches = contentFields.filter((c) => (data as any)[c] !== undefined);
       if (touches.length) {
         return res.status(409).json({
-          message: `Cette facture est ${inv.status === "paid" ? "payée" : "émise"} : son contenu ne peut plus être modifié. `
-            + `Créez un avoir ou une nouvelle facture. (champs refusés : ${touches.join(", ")})`,
+          message: `Ce document est ${inv.status === "paid" ? "payé" : "émis"} : son contenu ne peut plus être modifié. `
+            + `Créez un avoir ou un nouveau document. (champs refusés : ${touches.join(", ")})`,
         });
+      }
+      if (data.status === "draft") {
+        return res.status(409).json({ message: "Un document émis ne repasse pas en brouillon : créez un avoir pour le corriger." });
       }
     }
 
-    // Auto-set paidAt si status passe à paid sans date
-    if (data.status === "paid" && !inv.paidAt && data.paidAt === undefined) {
-      patch.paidAt = Date.now();
+    // Contenu du brouillon (avant une éventuelle émission dans la même requête).
+    if (inv.status === "draft") {
+      const content: Record<string, unknown> = {};
+      for (const f of ["clientFirstName", "clientLastName", "clientEmail", "clientAddress", "clientPostalCode",
+        "clientCity", "clientCountry", "clientType", "clientCompanyName", "serviceDate"] as const) {
+        if (data[f] !== undefined) content[f] = data[f];
+      }
+      if (data.clientCompanyId !== undefined) Object.assign(content, companyIds(data.clientCompanyId));
+      if (data.clientVatNumber !== undefined) content.clientVatNumber = normalizeVatNumber(data.clientVatNumber);
+      if (data.items) {
+        const totals = computeInvoiceTotals(data.items, !!inv.vatEnabled, inv.vatRate ?? 0);
+        Object.assign(content, totals);
+        await storage.replaceInvoiceItems(id, itemRows(id, data.items) as any);
+      }
+      if (Object.keys(content).length) await storage.updateInvoice(id, content as any);
     }
 
-    // Si lignes mises à jour, recalculer totaux
-    if (data.items) {
-      const totals = computeInvoiceTotals(data.items, !!inv.vatEnabled, inv.vatRate ?? 0);
-      patch.subtotalCents = totals.subtotalCents;
-      patch.vatCents = totals.vatCents;
-      patch.totalCents = totals.totalCents;
-      await storage.replaceInvoiceItems(id, data.items.map((it, i) => ({
-        invoiceId: id,
-        position: i,
-        description: it.description,
-        quantity: it.quantity,
-        unitPriceCents: it.unitPriceCents,
-        totalCents: computeItemTotal(it.quantity, it.unitPriceCents),
-      })) as any);
+    const tracking: Record<string, unknown> = {};
+    if (data.paymentMethod !== undefined) tracking.paymentMethod = data.paymentMethod;
+    if (data.paidAt !== undefined) tracking.paidAt = data.paidAt;
+    if (data.dueDate !== undefined) tracking.dueDate = data.dueDate;
+    if (data.notes !== undefined) tracking.notes = data.notes;
+
+    let updated: Invoice | undefined;
+    const issuing = inv.docType !== "devis" && inv.status === "draft"
+      && (data.status === "issued" || data.status === "sent" || data.status === "paid");
+    if (issuing) {
+      const fresh = (await storage.getInvoice(id))!;
+      updated = await issueDraft(fresh, req.userId!, data.status as "issued" | "sent" | "paid", tracking);
+    } else {
+      if (data.status !== undefined) tracking.status = data.status;
+      // Auto-set paidAt si le statut passe à « payé » sans date
+      if (data.status === "paid" && !inv.paidAt && data.paidAt === undefined) tracking.paidAt = Date.now();
+      updated = Object.keys(tracking).length ? await storage.updateInvoice(id, tracking as any) : await storage.getInvoice(id);
     }
-    const updated = await storage.updateInvoice(id, patch);
     if (!updated) return res.status(404).json({ message: "Introuvable" });
     const items = await storage.getInvoiceItems(id);
     res.json({ ...updated, items });
@@ -342,35 +440,34 @@ export function registerInvoiceRoutes(app: Express): void {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
-    // Une facture émise ne se supprime pas : la séquence de numérotation deviendrait
-    // trouée, et le numéro libéré serait réattribué à la facture suivante — deux
-    // clientes se retrouveraient avec le même numéro. On l'annule (statut "cancelled"),
-    // ce qui la conserve dans la séquence. Un brouillon, lui, n'a jamais été émis.
+    // Une facture émise ne se supprime pas : elle porte un numéro de la séquence légale.
+    // On l'annule (statut « cancelled ») ou on émet un avoir. Un brouillon, lui, n'a
+    // jamais reçu de numéro légal : le supprimer ne crée aucun trou.
     if (inv.status !== "draft") {
       return res.status(409).json({
-        message: "Une facture émise ne peut pas être supprimée. Passez-la en « annulée » pour la neutraliser tout en conservant sa trace comptable.",
+        message: "Une facture émise ne peut pas être supprimée. Créez un avoir pour l'annuler tout en conservant sa trace comptable.",
       });
     }
     await storage.deleteInvoice(id);
     res.json({ ok: true });
   });
 
-  // GET /api/invoices/:id/pdf
+  // GET /api/invoices/:id/pdf — Factur-X (PDF/A-3 + XML) pour un document émis
   app.get("/api/invoices/:id/pdf", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
     const items = await storage.getInvoiceItems(id);
-    let snapshot: PractitionerSnapshot;
-    try {
-      snapshot = JSON.parse(inv.practitionerSnapshot || "{}");
-    } catch {
-      snapshot = {} as any;
+    let snapshot = parseSnapshot(inv);
+    if (inv.status === "draft") {
+      const user = await storage.getUserById(req.userId!);
+      if (user) snapshot = buildPractitionerSnapshot(user);
     }
     try {
-      const pdf = await generateInvoicePdf(inv as any, items as any, snapshot);
+      const pdf = await generateInvoicePdf(inv, items, snapshot, await creditedOf(inv));
+      const name = inv.status === "draft" && inv.docType !== "devis" ? `brouillon-${inv.id}` : inv.number;
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename="${inv.number}.pdf"`);
+      res.setHeader("Content-Disposition", `inline; filename="${name}.pdf"`);
       res.send(pdf);
     } catch (e: any) {
       console.error("[invoice pdf]", e?.message || e);
@@ -378,40 +475,59 @@ export function registerInvoiceRoutes(app: Express): void {
     }
   });
 
-  // POST /api/invoices/:id/send  (envoi par email avec PDF en pièce jointe)
-  app.post("/api/invoices/:id/send", requireAuth, async (req: AuthedRequest, res) => {
+  // GET /api/invoices/:id/facturx.xml — XML CII seul (logiciel comptable, plateforme)
+  app.get("/api/invoices/:id/facturx.xml", requireAuth, async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const inv = await storage.getInvoice(id);
+    if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
+    if (inv.docType === "devis" || inv.status === "draft") {
+      return res.status(409).json({ message: "Le XML Factur-X n'existe que pour une facture ou un avoir émis." });
+    }
+    const items = await storage.getInvoiceItems(id);
+    const xml = generateFacturxXml(inv, items, parseSnapshot(inv), await creditedOf(inv));
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${inv.number}.xml"`);
+    res.send(xml);
+  });
+
+  // POST /api/invoices/:id/send  (envoi par email, PDF Factur-X en pièce jointe ;
+  // un brouillon est d'abord émis)
+  app.post("/api/invoices/:id/send", requireAuth, async (req: AuthedRequest, res) => {
+    const id = Number(req.params.id);
+    let inv = await storage.getInvoice(id);
     if (!inv || inv.userId !== req.userId) return res.status(404).json({ message: "Introuvable" });
     if (!inv.clientEmail) return res.status(400).json({ message: "Email du client manquant" });
     const user = await storage.getUserById(req.userId!);
     const cfg = user ? getEmailConfigForUser(user) : null;
     if (!cfg) return res.status(400).json({ message: "Configuration email manquante (clé Resend + adresse expéditeur)" });
-    const items = await storage.getInvoiceItems(id);
-    let snapshot: PractitionerSnapshot;
     try {
-      snapshot = JSON.parse(inv.practitionerSnapshot || "{}");
-    } catch {
-      snapshot = {} as any;
-    }
-    try {
-      const pdf = await generateInvoicePdf(inv as any, items as any, snapshot);
+      if (inv.status === "draft" && inv.docType !== "devis") {
+        const items = await storage.getInvoiceItems(id);
+        if (!items.length || items.every((i) => !i.totalCents)) {
+          return res.status(400).json({ message: "Ajoutez au moins une ligne d'un montant positif avant d'envoyer." });
+        }
+        inv = (await issueDraft(inv, req.userId!, "issued"))!;
+      }
+      const items = await storage.getInvoiceItems(id);
+      const snapshot = parseSnapshot(inv);
+      const pdf = await generateInvoicePdf(inv, items, snapshot, await creditedOf(inv));
       const email = renderInvoiceEmail({
         invoiceNumber: inv.number,
         clientFirstName: inv.clientFirstName || "",
         practitionerName: snapshot.companyName || user?.name || "votre praticienne",
         totalCents: inv.totalCents,
         notes: inv.notes,
-        isDevis: (inv as any).docType === "devis",
+        isDevis: inv.docType === "devis",
+        isAvoir: inv.docType === "avoir",
       });
-      const r = await sendEmail(cfg, inv.clientEmail, email.subject, email.html, email.text, [{
+      const r = await sendEmail(cfg, inv.clientEmail!, email.subject, email.html, email.text, [{
         filename: `${inv.number}.pdf`,
         content: pdf,
         contentType: "application/pdf",
       }]);
       if (!r.ok) return res.status(502).json({ message: r.error || "Erreur envoi" });
       const patch: any = { sentAt: Date.now() };
-      if (inv.status === "draft") patch.status = "sent";
+      if (inv.status === "draft" || inv.status === "issued") patch.status = "sent";
       const updated = await storage.updateInvoice(id, patch);
       res.json({ ok: true, invoice: updated });
     } catch (e: any) {

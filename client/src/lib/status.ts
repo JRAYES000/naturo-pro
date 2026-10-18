@@ -12,8 +12,11 @@ const EMERALD = "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:tex
 const RED = "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300";
 const NEUTRAL = "bg-muted text-muted-foreground";
 
+const SKY = "bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300";
+
 export const INVOICE_STATUS: Record<string, StatusMeta> = {
   draft: { label: "Brouillon", className: NEUTRAL },
+  issued: { label: "Émise", className: SKY },
   sent: { label: "Envoyée", className: AMBER },
   paid: { label: "Payée", className: EMERALD },
   cancelled: { label: "Annulée", className: RED },

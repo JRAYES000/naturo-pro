@@ -43,6 +43,13 @@
       "when": 1786827531978,
       "tag": "0005_previous_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1792351600608,
+      "tag": "0006_violet_silhouette",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { FeatureGateInline } from "@/components/FeatureGate";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CompanyLookup } from "@/components/CompanyLookup";
 import type { Client, Appointment, ConsultationNote, AiDiscussion, AppointmentCategory, AnamnesisResponse, Program, Package } from "@shared/schema";
 import { formatDate, formatDay, formatTime, durationLabel, formatPrice } from "@/lib/format";
 import { computeImc, imcLabel, ageFromDateOfBirth, poidsIdealCreff } from "@/lib/imc";
@@ -79,8 +80,10 @@ function ClientSummaryCard({ client, cid, apptsCount, notesCount, lastApptAt, an
             <p className="font-bold text-heading text-xl truncate flex items-center gap-2 flex-wrap" data-testid="text-client-summary-name">
               {client.firstName} {client.lastName}
               {/* Lot 4 (action P11) — badges de statut visibles en tête de fiche */}
-              {(client as any).clientType === "entreprise" && (
-                <Badge className="bg-sky-100 text-sky-700 border-0 text-xs font-semibold">Entreprise</Badge>
+              {(client as any).clientType && (client as any).clientType !== "particulier" && (
+                <Badge className="bg-sky-100 text-sky-700 border-0 text-xs font-semibold">
+                  {({ entreprise: "Entreprise", association: "Association", public: "Organisme public" } as Record<string, string>)[(client as any).clientType] || "Professionnel"}
+                </Badge>
               )}
               {client.email ? (
                 <Badge className="bg-accent/30 text-primary border-0 text-xs font-semibold" data-testid="badge-email-ok">
@@ -225,14 +228,16 @@ export default function ClientDetail() {
   // (le spread de l'entité complète renvoyait aussi id/userId/createdAt, rejetés
   // par le schéma .strict() côté serveur), et les champs santé uniquement en
   // accès complet — en gratuit le serveur les ignorerait silencieusement.
+  const isProDraft = !!(draft as any).clientType && (draft as any).clientType !== "particulier";
   const saveMut = useMutation({
     mutationFn: async () => {
       const payload: Partial<Client> = {
         firstName: draft.firstName, lastName: draft.lastName,
         email: draft.email, phone: draft.phone,
         clientType: (draft as any).clientType || "particulier",
-        companyName: (draft as any).clientType === "entreprise" ? ((draft as any).companyName || null) : null,
-        companySiret: (draft as any).clientType === "entreprise" ? ((draft as any).companySiret || null) : null,
+        companyName: isProDraft ? ((draft as any).companyName || null) : null,
+        companySiret: isProDraft ? ((draft as any).companySiret || null) : null,
+        companyVatNumber: isProDraft ? ((draft as any).companyVatNumber || null) : null,
         ...(fullAccess ? {
           dateOfBirth: draft.dateOfBirth, address: draft.address,
           postalCode: (draft as any).postalCode || null,
@@ -451,14 +456,40 @@ export default function ClientDetail() {
                     <SelectTrigger data-testid="select-client-type"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="particulier">Particulier</SelectItem>
-                      <SelectItem value="entreprise">Entreprise</SelectItem>
+                      <SelectItem value="entreprise">Entreprise ou professionnel</SelectItem>
+                      <SelectItem value="association">Association</SelectItem>
+                      <SelectItem value="public">Organisme public</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {(draft as any).clientType === "entreprise" && (
+                {isProDraft && (
                   <>
                     <div><Label>Raison sociale</Label><Input value={(draft as any).companyName || ""} onChange={e => setDraft({ ...draft, companyName: e.target.value } as any)} data-testid="input-company-name" /></div>
-                    <div><Label>SIRET</Label><Input value={(draft as any).companySiret || ""} onChange={e => setDraft({ ...draft, companySiret: e.target.value } as any)} data-testid="input-company-siret" /></div>
+                    <div>
+                      <Label>SIREN ou SIRET</Label>
+                      <div className="flex gap-2">
+                        <Input value={(draft as any).companySiret || ""} onChange={e => setDraft({ ...draft, companySiret: e.target.value } as any)} data-testid="input-company-siret" />
+                        <CompanyLookup
+                          initialQuery={(draft as any).companySiret || (draft as any).companyName || ""}
+                          testid="button-client-lookup"
+                          onPick={(r) => setDraft({
+                            ...draft,
+                            companyName: r.name,
+                            companySiret: r.siret || r.siren,
+                            companyVatNumber: r.vatNumber || (draft as any).companyVatNumber,
+                            ...(fullAccess ? {
+                              address: r.address || draft.address,
+                              postalCode: r.postalCode || (draft as any).postalCode,
+                              city: r.city || (draft as any).city,
+                            } : {}),
+                          } as any)}
+                        />
+                      </div>
+                    </div>
+                    <div><Label>N° de TVA intracommunautaire</Label><Input value={(draft as any).companyVatNumber || ""} onChange={e => setDraft({ ...draft, companyVatNumber: e.target.value } as any)} data-testid="input-company-vat" /></div>
+                    {(draft as any).clientType === "public" && (
+                      <p className="sm:col-span-2 text-xs text-amber-700 self-end">Organisme public : ses factures se déposent sur Chorus Pro.</p>
+                    )}
                   </>
                 )}
               </div>

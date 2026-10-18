@@ -29,6 +29,27 @@ function canMarkPaid(status: string) {
   return status !== "paid" && status !== "cancelled";
 }
 
+/** Brouillon : numéro provisoire, le numéro légal est attribué à l'émission. */
+function isDraftNumber(n: string) {
+  return n.startsWith("BROUILLON-");
+}
+
+function docLabel(inv: Invoice) {
+  return isDraftNumber(inv.number) ? "Brouillon" : inv.number;
+}
+
+/** Montant signé : un avoir vient en déduction. */
+function signed(inv: Invoice) {
+  return (inv as any).docType === "avoir" ? -Math.abs(inv.totalCents || 0) : (inv.totalCents || 0);
+}
+
+function DocTypeBadge({ inv }: { inv: Invoice }) {
+  const t = (inv as any).docType || "invoice";
+  if (t === "devis") return <span className="ml-2 inline-block px-1.5 py-0.5 rounded-sm bg-sky-100 text-sky-700 text-xs font-semibold align-middle">Devis</span>;
+  if (t === "avoir") return <span className="ml-2 inline-block px-1.5 py-0.5 rounded-sm bg-violet-100 text-violet-700 text-xs font-semibold align-middle">Avoir</span>;
+  return null;
+}
+
 function MobileInvoiceCard({
   inv,
   onMarkPaid,
@@ -42,16 +63,19 @@ function MobileInvoiceCard({
   return (
     <div className="card-naturo" data-testid={`card-invoice-${inv.id}`}>
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/app/invoices/${inv.id}`} className="font-bold text-heading hover:underline">
-          {inv.number}
-        </Link>
+        <span>
+          <Link href={`/app/invoices/${inv.id}`} className={`font-bold text-heading hover:underline ${isDraftNumber(inv.number) ? "italic" : ""}`}>
+            {docLabel(inv)}
+          </Link>
+          <DocTypeBadge inv={inv} />
+        </span>
         <StatusBadge domain="invoice" status={inv.status} />
       </div>
       <div className="mt-1 text-sm text-muted-foreground">
-        {clientName || "—"} · {formatDateShort(inv.issueDate)}
+        {(inv as any).clientCompanyName || clientName || "—"} · {isDraftNumber(inv.number) ? "non émise" : formatDateShort(inv.issueDate)}
       </div>
       <div className="mt-2 font-bold text-lg text-heading">
-        {formatPrice(inv.totalCents)}
+        {formatPrice(signed(inv))}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <a
@@ -109,8 +133,12 @@ function InvoicesPage() {
 
   async function handleMarkPaid(inv: Invoice) {
     const ok = await confirm({
-      title: `Marquer la facture N\u00b0 ${inv.number} comme pay\u00e9e ?`,
-      description: "La date de paiement sera fix\u00e9e \u00e0 aujourd'hui.",
+      title: isDraftNumber(inv.number)
+        ? "Émettre ce brouillon et le marquer payé ?"
+        : `Marquer la facture N° ${inv.number} comme payée ?`,
+      description: isDraftNumber(inv.number)
+        ? "La facture recevra son numéro définitif et la date de paiement sera fixée à aujourd'hui."
+        : "La date de paiement sera fixée à aujourd'hui.",
       confirmLabel: "Oui, marquer pay\u00e9e",
       cancelLabel: "Annuler",
     });
@@ -125,7 +153,8 @@ function InvoicesPage() {
       if (search) {
         const q = search.toLowerCase();
         const name = `${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.toLowerCase();
-        if (!name.includes(q) && !inv.number.toLowerCase().includes(q)) return false;
+        const company = ((inv as any).clientCompanyName || "").toLowerCase();
+        if (!name.includes(q) && !company.includes(q) && !inv.number.toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -138,10 +167,10 @@ function InvoicesPage() {
     const factures = invoices.filter((i) =>
       ((i as any).docType || "invoice") !== "devis" && i.issueDate >= debutAnnee);
     const paid = factures.filter((i) => i.status === "paid");
-    const pending = factures.filter((i) => i.status === "sent" || i.status === "draft");
+    const pending = factures.filter((i) => i.status === "issued" || i.status === "sent");
     return {
-      caEncaisseCents: paid.reduce((s, i) => s + (i.totalCents || 0), 0),
-      enAttenteCents: pending.reduce((s, i) => s + (i.totalCents || 0), 0),
+      caEncaisseCents: paid.reduce((s, i) => s + signed(i), 0),
+      enAttenteCents: pending.reduce((s, i) => s + signed(i), 0),
       totalCount: factures.length,
       paidCount: paid.length,
     };
@@ -156,14 +185,22 @@ function InvoicesPage() {
           icon={Receipt}
           actions={
             <div className="flex items-center gap-2">
-              {/* Lot 5 (QC Facture) — export CSV du journal des recettes (année en cours) */}
+              {/* Livre des recettes (encaissements) et journal des factures émises — année en cours */}
               <a
                 href={`/api/stats/recettes.csv?from=${new Date(new Date().getFullYear(), 0, 1).getTime()}&to=${Date.now()}`}
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold border border-input hover:bg-secondary"
-                title="Journal des recettes de l'année en cours, pour votre comptable"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-bold border border-input hover:bg-secondary"
+                title="Livre des recettes de l'année en cours (encaissements, par date de paiement)"
                 data-testid="button-export-csv"
               >
-                <Download className="h-4 w-4" /> Export CSV
+                <Download className="h-4 w-4" /> Livre des recettes
+              </a>
+              <a
+                href={`/api/stats/ventes.csv?from=${new Date(new Date().getFullYear(), 0, 1).getTime()}&to=${Date.now()}`}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-md text-sm font-bold border border-input hover:bg-secondary"
+                title="Factures et avoirs émis dans l'année, pour votre comptable"
+                data-testid="button-export-ventes"
+              >
+                <Download className="h-4 w-4" /> Factures émises
               </a>
               <Link href="/app/invoices/new">
                 <Button className="rounded-lg font-bold" data-testid="button-new-invoice">
@@ -207,7 +244,7 @@ function InvoicesPage() {
             label="En attente"
             value={formatPrice(kpis.enAttenteCents)}
             valueClassName="text-amber-700"
-            sub="brouillons + envoyées"
+            sub="émises, non payées"
             testid="text-kpi-pending"
           />
           <StatCell
@@ -233,18 +270,20 @@ function InvoicesPage() {
             <SelectContent>
               <SelectItem value="all">Tous les statuts</SelectItem>
               <SelectItem value="draft">Brouillon</SelectItem>
+              <SelectItem value="issued">Émise</SelectItem>
               <SelectItem value="sent">Envoyée</SelectItem>
               <SelectItem value="paid">Payée</SelectItem>
               <SelectItem value="cancelled">Annulée</SelectItem>
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-40" data-testid="select-type-filter">
+            <SelectTrigger className="w-48" data-testid="select-type-filter">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Factures + devis</SelectItem>
+              <SelectItem value="all">Tous les documents</SelectItem>
               <SelectItem value="invoice">Factures</SelectItem>
+              <SelectItem value="avoir">Avoirs</SelectItem>
               <SelectItem value="devis">Devis</SelectItem>
             </SelectContent>
           </Select>
@@ -304,18 +343,16 @@ function InvoicesPage() {
                   {filtered.map((inv) => (
                     <tr key={inv.id} data-testid={`row-invoice-${inv.id}`}>
                       <td className="font-bold">
-                        <Link href={`/app/invoices/${inv.id}`} className="hover:underline text-heading">
-                          {inv.number}
+                        <Link href={`/app/invoices/${inv.id}`} className={`hover:underline text-heading ${isDraftNumber(inv.number) ? "italic" : ""}`}>
+                          {docLabel(inv)}
                         </Link>
-                        {((inv as any).docType || "invoice") === "devis" && (
-                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded-sm bg-sky-100 text-sky-700 text-[11px] font-semibold align-middle">Devis</span>
-                        )}
+                        <DocTypeBadge inv={inv} />
                       </td>
-                      <td className="text-muted-foreground">{formatDateShort(inv.issueDate)}</td>
+                      <td className="text-muted-foreground">{isDraftNumber(inv.number) ? "—" : formatDateShort(inv.issueDate)}</td>
                       <td>
-                        {`${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.trim() || <span className="text-muted-foreground italic">—</span>}
+                        {(inv as any).clientCompanyName || `${inv.clientFirstName || ""} ${inv.clientLastName || ""}`.trim() || <span className="text-muted-foreground italic">—</span>}
                       </td>
-                      <td className="text-right font-bold">{formatPrice(inv.totalCents)}</td>
+                      <td className="text-right font-bold">{formatPrice(signed(inv))}</td>
                       <td>
                         <StatusBadge domain="invoice" status={inv.status} />
                       </td>

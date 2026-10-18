@@ -62,6 +62,15 @@ export const users = mysqlTable("users", {
   billingVatRate: int("billing_vat_rate").notNull().default(2000), // 2000 = 20.00%, stocké *100
   billingLegalMention: text("billing_legal_mention"), // mention légale custom (sinon défaut)
   billingPaymentTerms: text("billing_payment_terms"), // conditions de paiement
+  // Réforme facturation 2026 — identité légale complète de l'émettrice.
+  billingLegalForm: varchar("billing_legal_form", { length: 32 }),     // EI | EURL | SASU | SARL | SAS | SELARL | ASSOCIATION | AUTRE
+  billingVatNumber: varchar("billing_vat_number", { length: 32 }),     // n° de TVA intracommunautaire
+  billingVatRegime: varchar("billing_vat_regime", { length: 32 }),     // franchise | simplifie | normal_mensuel | normal_trimestriel (NULL : déduit de billingVatEnabled)
+  billingVatOnDebits: boolean("billing_vat_on_debits").notNull().default(false),
+  billingRcs: varchar("billing_rcs", { length: 255 }),                 // « RCS Lyon 123 456 789 » (sociétés)
+  billingShareCapital: varchar("billing_share_capital", { length: 64 }), // « 1 000 € » (sociétés)
+  billingMediatorName: varchar("billing_mediator_name", { length: 255 }), // médiateur de la consommation (art. L612-1 C. conso)
+  billingMediatorUrl: varchar("billing_mediator_url", { length: 255 }),
   autoInvoiceOnCompleted: boolean("auto_invoice_on_completed").notNull().default(false),
   invoiceCounterYear: int("invoice_counter_year").notNull().default(0),
   invoiceCounterValue: int("invoice_counter_value").notNull().default(0),
@@ -130,6 +139,17 @@ export const invoices = mysqlTable("invoices", {
   notes: text("notes"),
   // Snapshot praticienne (au moment de l'émission, figé même si Settings change ensuite)
   practitionerSnapshot: text("practitioner_snapshot"), // JSON: nom, SIRET, adresse, IBAN, etc.
+  // Réforme facturation 2026 — mentions et données structurées (Factur-X).
+  serviceDate: bigint("service_date", { mode: "number" }),             // date de la prestation (BT-72)
+  operationCategory: varchar("operation_category", { length: 16 }),    // services | goods | mixed (figée à l'émission)
+  clientType: varchar("client_type", { length: 20 }),                  // particulier | entreprise | association | public
+  clientCompanyName: varchar("client_company_name", { length: 255 }),
+  clientSiren: varchar("client_siren", { length: 16 }),
+  clientSiret: varchar("client_siret", { length: 20 }),
+  clientVatNumber: varchar("client_vat_number", { length: 32 }),
+  clientCountry: varchar("client_country", { length: 100 }),
+  creditedInvoiceId: int("credited_invoice_id"),                       // avoir → facture d'origine (BT-25)
+  issuedAt: bigint("issued_at", { mode: "number" }),                   // émission : numéro définitif attribué
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 }, (t) => ({
@@ -179,6 +199,8 @@ export const invoiceItems = mysqlTable("invoice_items", {
   quantity: int("quantity").notNull().default(1), // entiers
   unitPriceCents: int("unit_price_cents").notNull().default(0), // HT par unité
   totalCents: int("total_cents").notNull().default(0), // qty * unit_price (HT)
+  // Nature de la ligne : prestation de services ou vente de biens (catégorie d'opération).
+  kind: varchar("kind", { length: 16 }).notNull().default("service"), // service | goods
 }, (t) => ({
   idx_invoice_items_invoice: index("idx_invoice_items_invoice").on(t.invoiceId),
 }));
@@ -228,9 +250,10 @@ export const clients = mysqlTable("clients", {
   lifestyleNotes: text("lifestyle_notes"),
   penseBete: text("pense_bete"),
   // Lot 4 — facturation B2B : type de client + coordonnées entreprise.
-  clientType: varchar("client_type", { length: 20 }).default("particulier"), // particulier | entreprise
+  clientType: varchar("client_type", { length: 20 }).default("particulier"), // particulier | entreprise | association | public
   companyName: varchar("company_name", { length: 255 }),
-  companySiret: varchar("company_siret", { length: 32 }),
+  companySiret: varchar("company_siret", { length: 32 }),          // SIREN ou SIRET
+  companyVatNumber: varchar("company_vat_number", { length: 32 }),
   // Lot 4 — morphologie (IMC / poids idéal calculés côté client).
   heightCm: int("height_cm"),
   weightKg: int("weight_kg"),

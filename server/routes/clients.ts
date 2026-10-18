@@ -43,9 +43,11 @@ const patchClientSchema = z.object({
   lifestyleNotes: z.string().nullable().optional(),
   penseBete: z.string().nullable().optional(),
   // Lot 4 — B2B + morphologie
-  clientType: z.enum(["particulier", "entreprise"]).optional(),
+  // Réforme 2026 : association et entité publique s'ajoutent (e-reporting, Chorus Pro).
+  clientType: z.enum(["particulier", "entreprise", "association", "public"]).optional(),
   companyName: z.string().max(255).nullable().optional(),
   companySiret: z.string().max(32).nullable().optional(),
+  companyVatNumber: z.string().max(32).nullable().optional(),
   heightCm: z.number().int().min(0).max(300).nullable().optional(),
   weightKg: z.number().int().min(0).max(500).nullable().optional(),
 }).strict();

@@ -102,3 +102,6 @@ TODO.local.md
 
 # Session Playwright enregistree
 /tests/.auth/
+
+# Factur-X d'exemple (npm run facturx:samples)
+.facturx-samples/

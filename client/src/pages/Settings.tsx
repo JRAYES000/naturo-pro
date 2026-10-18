@@ -14,6 +14,23 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ResendTutorialDialog } from "@/components/ResendTutorialDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CompanyLookup } from "@/components/CompanyLookup";
+import { EInvoicingStatus } from "@/components/EInvoicingStatus";
+
+const LEGAL_FORMS: Array<[string, string]> = [
+  ["EI", "Entreprise individuelle (EI, micro-entreprise)"],
+  ["EURL", "EURL"], ["SASU", "SASU"], ["SARL", "SARL"], ["SAS", "SAS"], ["SELARL", "SELARL"],
+  ["ASSOCIATION", "Association"], ["AUTRE", "Autre"],
+];
+const VAT_REGIMES: Array<[string, string]> = [
+  ["franchise", "Franchise en base (pas de TVA, art. 293 B)"],
+  ["simplifie", "Assujettie — régime réel simplifié"],
+  ["normal_trimestriel", "Assujettie — réel normal, déclaration trimestrielle"],
+  ["normal_mensuel", "Assujettie — réel normal, déclaration mensuelle"],
+];
+const VAT_RATES = [20, 10, 5.5, 2.1, 8.5];
+const SOCIETES = ["EURL", "SASU", "SARL", "SAS", "SELARL"];
 
 type GoogleStatus = { configured: boolean; connected: boolean; email: string | null };
 
@@ -51,6 +68,15 @@ export default function Settings() {
       billingVatRate: typeof data.user.billingVatRate === "number" ? data.user.billingVatRate : 2000,
       billingLegalMention: data.user.billingLegalMention || "",
       billingPaymentTerms: data.user.billingPaymentTerms || "",
+      // Réforme facturation 2026 — identité légale
+      billingLegalForm: data.user.billingLegalForm || "",
+      billingVatNumber: data.user.billingVatNumber || "",
+      billingVatRegime: data.user.billingVatRegime || (data.user.billingVatEnabled ? "simplifie" : "franchise"),
+      billingVatOnDebits: !!data.user.billingVatOnDebits,
+      billingRcs: data.user.billingRcs || "",
+      billingShareCapital: data.user.billingShareCapital || "",
+      billingMediatorName: data.user.billingMediatorName || "",
+      billingMediatorUrl: data.user.billingMediatorUrl || "",
       autoInvoiceOnCompleted: !!data.user.autoInvoiceOnCompleted,
       // Avis Google
       googleReviewUrl: data.user.googleReviewUrl || "",
@@ -92,10 +118,14 @@ export default function Settings() {
       if (payload.emailFromName === "") payload.emailFromName = null;
       if (payload.emailReplyTo === "") payload.emailReplyTo = null;
       if (payload.googleReviewUrl === "") payload.googleReviewUrl = null;
+      for (const k of ["billingLegalForm", "billingVatNumber", "billingRcs", "billingShareCapital", "billingMediatorName", "billingMediatorUrl"]) {
+        if (payload[k] === "") payload[k] = null;
+      }
       return apiRequest("PATCH", "/api/profile", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/einvoicing/status"] });
       toast({ title: "Paramètres enregistrés" });
       // Vider le champ clé API après save (sécurité)
       setDraft((d: any) => ({ ...d, resendApiKey: "" }));
@@ -394,6 +424,9 @@ export default function Settings() {
           )}
         </div>
 
+        {/* Réforme facturation électronique 2026 — état de préparation */}
+        <EInvoicingStatus />
+
         {/* Phase 1 — Facturation */}
         <div className="card-naturo space-y-4">
           <div className="flex items-center justify-between">
@@ -403,7 +436,25 @@ export default function Settings() {
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <Label>Raison sociale</Label>
+              <Label>Forme juridique</Label>
+              <Select
+                value={draft.billingLegalForm || "_none"}
+                onValueChange={(v) => setDraft({ ...draft, billingLegalForm: v === "_none" ? "" : v })}
+              >
+                <SelectTrigger data-testid="select-billing-legal-form"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Choisir…</SelectItem>
+                  {LEGAL_FORMS.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {draft.billingLegalForm === "EI" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vos factures porteront votre nom suivi de la mention « EI », obligatoire pour une entreprise individuelle.
+                </p>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <Label>{draft.billingLegalForm === "EI" ? "Nom commercial (facultatif)" : "Raison sociale"}</Label>
               <Input
                 value={draft.billingCompanyName || ""}
                 onChange={(e) => setDraft({ ...draft, billingCompanyName: e.target.value })}
@@ -411,14 +462,31 @@ export default function Settings() {
                 data-testid="input-billing-company"
               />
             </div>
-            <div>
+            <div className="sm:col-span-2">
               <Label>SIRET</Label>
-              <Input
-                value={draft.billingSiret || ""}
-                onChange={(e) => setDraft({ ...draft, billingSiret: e.target.value })}
-                placeholder="123 456 789 00012"
-                data-testid="input-billing-siret"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={draft.billingSiret || ""}
+                  onChange={(e) => setDraft({ ...draft, billingSiret: e.target.value })}
+                  placeholder="123 456 789 00012"
+                  data-testid="input-billing-siret"
+                />
+                <CompanyLookup
+                  initialQuery={draft.billingSiret || ""}
+                  label="Remplir"
+                  testid="button-billing-lookup"
+                  onPick={(r) => setDraft({
+                    ...draft,
+                    billingSiret: r.siret || r.siren,
+                    billingAddress: r.address || draft.billingAddress,
+                    billingPostalCode: r.postalCode || draft.billingPostalCode,
+                    billingCity: r.city || draft.billingCity,
+                    billingLegalForm: r.legalForm || draft.billingLegalForm,
+                    billingVatNumber: r.vatNumber || draft.billingVatNumber,
+                    billingCompanyName: r.isEI ? draft.billingCompanyName : r.name,
+                  })}
+                />
+              </div>
             </div>
             <div>
               <Label>Pays</Label>
@@ -506,30 +574,118 @@ export default function Settings() {
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t pt-4">
+          <div className="border-t pt-4 space-y-3">
             <div>
-              <Label className="font-bold">TVA applicable</Label>
-              <p className="text-xs text-muted-foreground">Activez si vous êtes assujettie à la TVA.</p>
+              <Label className="font-bold">Régime de TVA</Label>
+              <Select
+                value={draft.billingVatRegime || "franchise"}
+                onValueChange={(v) => setDraft({ ...draft, billingVatRegime: v, billingVatEnabled: v !== "franchise" })}
+              >
+                <SelectTrigger data-testid="select-vat-regime"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {VAT_REGIMES.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                La naturopathie n'est pas exonérée de TVA : sans franchise en base, la TVA s'applique.
+                Le régime fixe aussi le rythme de l'e-reporting (2027).
+              </p>
             </div>
-            <Switch
-              checked={!!draft.billingVatEnabled}
-              onCheckedChange={(v) => setDraft({ ...draft, billingVatEnabled: v })}
-              data-testid="switch-vat"
-            />
+            {draft.billingVatRegime && draft.billingVatRegime !== "franchise" && (
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Taux de TVA</Label>
+                  <Select
+                    value={String((draft.billingVatRate ?? 2000) / 100)}
+                    onValueChange={(v) => setDraft({ ...draft, billingVatRate: Math.round(Number(v) * 100) })}
+                  >
+                    <SelectTrigger data-testid="select-vat-rate"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {VAT_RATES.map((r) => <SelectItem key={r} value={String(r)}>{String(r).replace(".", ",")} %</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>N° de TVA intracommunautaire</Label>
+                  <Input
+                    value={draft.billingVatNumber || ""}
+                    onChange={(e) => setDraft({ ...draft, billingVatNumber: e.target.value })}
+                    placeholder="FR12 345678901"
+                    data-testid="input-billing-vat-number"
+                  />
+                </div>
+                <div className="sm:col-span-2 flex items-center justify-between">
+                  <div>
+                    <Label>Option pour le paiement de la TVA d'après les débits</Label>
+                    <p className="text-xs text-muted-foreground">À cocher seulement si vous avez opté auprès de l'administration.</p>
+                  </div>
+                  <Switch
+                    checked={!!draft.billingVatOnDebits}
+                    onCheckedChange={(v) => setDraft({ ...draft, billingVatOnDebits: v })}
+                    data-testid="switch-vat-on-debits"
+                  />
+                </div>
+              </div>
+            )}
+            {draft.billingVatRegime === "franchise" && (
+              <div>
+                <Label>N° de TVA intracommunautaire (si vous en avez un)</Label>
+                <Input
+                  value={draft.billingVatNumber || ""}
+                  onChange={(e) => setDraft({ ...draft, billingVatNumber: e.target.value })}
+                  data-testid="input-billing-vat-number"
+                />
+              </div>
+            )}
           </div>
-          {draft.billingVatEnabled && (
-            <div>
-              <Label>Taux de TVA (%)</Label>
-              <Input
-                type="number"
-                min={0}
-                step={0.1}
-                value={(draft.billingVatRate ?? 2000) / 100}
-                onChange={(e) => setDraft({ ...draft, billingVatRate: Math.round(Number(e.target.value) * 100) })}
-                data-testid="input-vat-rate"
-              />
+
+          {SOCIETES.includes(draft.billingLegalForm) && (
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Immatriculation (RCS ou RM)</Label>
+                <Input
+                  value={draft.billingRcs || ""}
+                  onChange={(e) => setDraft({ ...draft, billingRcs: e.target.value })}
+                  placeholder="RCS Lyon 123 456 789"
+                  data-testid="input-billing-rcs"
+                />
+              </div>
+              <div>
+                <Label>Capital social</Label>
+                <Input
+                  value={draft.billingShareCapital || ""}
+                  onChange={(e) => setDraft({ ...draft, billingShareCapital: e.target.value })}
+                  placeholder="1 000 €"
+                  data-testid="input-billing-capital"
+                />
+              </div>
             </div>
           )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <Label>Médiateur de la consommation</Label>
+              <Input
+                value={draft.billingMediatorName || ""}
+                onChange={(e) => setDraft({ ...draft, billingMediatorName: e.target.value })}
+                placeholder="Nom du médiateur"
+                data-testid="input-billing-mediator"
+              />
+            </div>
+            <div>
+              <Label>Site du médiateur</Label>
+              <Input
+                value={draft.billingMediatorUrl || ""}
+                onChange={(e) => setDraft({ ...draft, billingMediatorUrl: e.target.value })}
+                placeholder="https://…"
+                data-testid="input-billing-mediator-url"
+              />
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground -mt-1">
+              Obligatoire dès que vous accompagnez des particuliers (art. L612-1 du Code de la consommation) :
+              il apparaît sur vos factures aux particuliers.
+            </p>
+          </div>
 
           <div>
             <Label>Mention légale</Label>

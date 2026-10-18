@@ -68,6 +68,15 @@ export const users = sqliteTable("users", {
   billingVatRate: integer("billing_vat_rate").default(2000), // 2000 = 20.00%
   billingLegalMention: text("billing_legal_mention"),
   billingPaymentTerms: text("billing_payment_terms"),
+  // Réforme facturation 2026 — identité légale complète de l'émettrice.
+  billingLegalForm: text("billing_legal_form"),       // EI | EURL | SASU | SARL | SAS | SELARL | ASSOCIATION | AUTRE
+  billingVatNumber: text("billing_vat_number"),       // n° de TVA intracommunautaire
+  billingVatRegime: text("billing_vat_regime"),       // franchise | simplifie | normal_mensuel | normal_trimestriel (NULL : déduit de billingVatEnabled)
+  billingVatOnDebits: integer("billing_vat_on_debits", { mode: "boolean" }).default(false),
+  billingRcs: text("billing_rcs"),                    // « RCS Lyon 123 456 789 » (sociétés)
+  billingShareCapital: text("billing_share_capital"), // « 1 000 € » (sociétés)
+  billingMediatorName: text("billing_mediator_name"), // médiateur de la consommation (art. L612-1 C. conso)
+  billingMediatorUrl: text("billing_mediator_url"),
   autoInvoiceOnCompleted: integer("auto_invoice_on_completed", { mode: "boolean" }).default(false),
   invoiceCounterYear: integer("invoice_counter_year").default(0),
   invoiceCounterValue: integer("invoice_counter_value").default(0),
@@ -129,6 +138,17 @@ export const invoices = sqliteTable("invoices", {
   sentAt: integer("sent_at"),
   notes: text("notes"),
   practitionerSnapshot: text("practitioner_snapshot"),
+  // Réforme facturation 2026 — mentions et données structurées (Factur-X).
+  serviceDate: integer("service_date"),                // date de la prestation (BT-72)
+  operationCategory: text("operation_category"),       // services | goods | mixed (figée à l'émission)
+  clientType: text("client_type"),                     // particulier | entreprise | association | public
+  clientCompanyName: text("client_company_name"),
+  clientSiren: text("client_siren"),
+  clientSiret: text("client_siret"),
+  clientVatNumber: text("client_vat_number"),
+  clientCountry: text("client_country"),
+  creditedInvoiceId: integer("credited_invoice_id"),   // avoir → facture d'origine (BT-25)
+  issuedAt: integer("issued_at"),                      // émission : numéro définitif attribué
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (t) => ({
@@ -178,6 +198,8 @@ export const invoiceItems = sqliteTable("invoice_items", {
   quantity: integer("quantity").notNull().default(1),
   unitPriceCents: integer("unit_price_cents").notNull().default(0),
   totalCents: integer("total_cents").notNull().default(0),
+  // Nature de la ligne : prestation de services ou vente de biens (catégorie d'opération).
+  kind: text("kind").notNull().default("service"), // service | goods
 }, (t) => ({
   idx_invoice_items_invoice: index("idx_invoice_items_invoice").on(t.invoiceId),
 }));
@@ -227,9 +249,10 @@ export const clients = sqliteTable("clients", {
   lifestyleNotes: text("lifestyle_notes"),
   penseBete: text("pense_bete"),
   // Lot 4 — facturation B2B : type de client + coordonnées entreprise.
-  clientType: text("client_type").default("particulier"), // particulier | entreprise
+  clientType: text("client_type").default("particulier"), // particulier | entreprise | association | public
   companyName: text("company_name"),
-  companySiret: text("company_siret"),
+  companySiret: text("company_siret"),                 // SIREN ou SIRET
+  companyVatNumber: text("company_vat_number"),
   // Lot 4 — morphologie (IMC / poids idéal calculés côté client).
   heightCm: integer("height_cm"),
   weightKg: integer("weight_kg"),

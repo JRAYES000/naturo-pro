@@ -289,19 +289,31 @@ section("Facturation");
       { description: "Complément alimentaire", quantity: 2, unitPriceCents: 1250 },
     ],
   });
-  note(f.status === 201 && f.data?.number, "création d'une facture", f.data?.number);
+  note(f.status === 201 && f.data?.number, "création d'un brouillon de facture", f.data?.number);
   invoiceId = f.data?.id;
   note(f.data?.subtotalCents === 12000, "sous-total correct", `${f.data?.subtotalCents} c`);
   note(f.data?.totalCents === 12000, "total sans TVA (défaut)", `${f.data?.totalCents} c`);
-  note(/^FACT-\d{4}-\d{4}$/.test(f.data?.number || ""), "format du numéro");
+  // Réforme 2026 : le numéro légal n'est attribué qu'à l'émission.
+  note(/^BROUILLON-/.test(f.data?.number || ""), "brouillon sans numéro légal", f.data?.number);
 
   const f2 = await api("POST", "/api/invoices", { clientId, items: [{ description: "Suivi", quantity: 1, unitPriceCents: 5000 }] });
-  const n1 = parseInt((f.data?.number || "").split("-")[2], 10);
-  const n2 = parseInt((f2.data?.number || "").split("-")[2], 10);
-  note(n2 === n1 + 1, "numérotation séquentielle", `${f.data?.number} → ${f2.data?.number}`);
+  const e1 = await api("POST", `/api/invoices/${invoiceId}/issue`);
+  note(e1.status === 200 && /^FACT-\d{4}-\d{4}$/.test(e1.data?.number || ""), "émission : numéro légal attribué", e1.data?.number);
+  const e2 = await api("POST", `/api/invoices/${f2.data?.id}/issue`);
+  const n1 = parseInt((e1.data?.number || "").split("-")[2], 10);
+  const n2 = parseInt((e2.data?.number || "").split("-")[2], 10);
+  note(n2 === n1 + 1, "numérotation séquentielle à l'émission", `${e1.data?.number} → ${e2.data?.number}`);
+  const reemis = await api("PATCH", `/api/invoices/${invoiceId}`, { status: "draft" });
+  note(reemis.status === 409, "une facture émise ne repasse pas en brouillon");
 
   const pdf = await api("GET", `/api/invoices/${invoiceId}/pdf`, null, { binary: true });
   note(pdf.status === 200 && pdf.data?.slice(0, 4).toString() === "%PDF", "génération du PDF", `${pdf.data?.length} o`);
+  note(pdf.data?.includes("factur-x.xml"), "PDF Factur-X (XML embarqué)");
+  const xml = await api("GET", `/api/invoices/${invoiceId}/facturx.xml`, null, { binary: true });
+  note(xml.status === 200 && xml.data?.toString().includes("urn:cen.eu:en16931:2017"), "XML Factur-X EN 16931");
+
+  const avoir = await api("POST", `/api/invoices/${f2.data?.id}/avoir`);
+  note(avoir.status === 201 && avoir.data?.docType === "avoir" && avoir.data?.creditedInvoiceId === f2.data?.id, "avoir lié à sa facture");
 
   const paye = await api("PATCH", `/api/invoices/${invoiceId}`, { status: "paid", paymentMethod: "transfer", paidAt: Date.now() });
   note(paye.status === 200 && paye.data?.status === "paid", "passage en payée");

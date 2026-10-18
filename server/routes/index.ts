@@ -29,6 +29,7 @@ import { registerAppointmentRoutes } from "./appointments";
 import { registerEmailTemplateRoutes } from "./email-templates";
 import { registerReminderRoutes } from "./reminders";
 import { registerInvoiceRoutes } from "./invoices";
+import { registerEInvoicingRoutes } from "./einvoicing";
 import { registerAdminRoutes } from "./admin";
 import { registerGoogleRoutes } from "./google";
 import { registerInternalRoutes } from "./internal";
@@ -153,6 +154,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   registerAppointmentRoutes(app);
   registerPublicRoutes(app, ctx);
   registerInvoiceRoutes(app);
+  registerEInvoicingRoutes(app);
   registerAdminRoutes(app);
   registerReminderRoutes(app);
   registerEmailTemplateRoutes(app);
