@@ -1,4 +1,5 @@
-import { MapPin } from "lucide-react";
+import { EyeOff, MapPin } from "lucide-react";
+import { SocialLinks } from "@/components/SocialLinks";
 
 /**
  * Aperçu live (miniature) de la page publique, affiché dans l'éditeur.
@@ -13,6 +14,10 @@ export function PublicPagePreview({
   specialties,
   primaryColor,
   accentColor,
+  instagram,
+  facebook,
+  websiteUrl,
+  offline,
 }: {
   name?: string;
   bio?: string;
@@ -22,6 +27,10 @@ export function PublicPagePreview({
   specialties?: string[];
   primaryColor?: string;
   accentColor?: string;
+  instagram?: string;
+  facebook?: string;
+  websiteUrl?: string;
+  offline?: boolean;
 }) {
   const primary = primaryColor || "#186749";
   const accent = accentColor || "#17EC9B";
@@ -30,7 +39,12 @@ export function PublicPagePreview({
   const tags = specialties || [];
 
   return (
-    <div className="rounded-lg border border-input overflow-hidden bg-card" data-testid="public-page-preview">
+    <div className="rounded-lg border border-input overflow-hidden bg-card relative" data-testid="public-page-preview">
+      {offline && (
+        <div className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-bold bg-secondary text-muted-foreground" data-testid="text-preview-offline">
+          <EyeOff className="h-3 w-3" /> Hors ligne : visible par vous seule
+        </div>
+      )}
       {/* Header miniature */}
       <div
         className="flex items-center justify-between px-4 py-2.5"
@@ -98,6 +112,7 @@ export function PublicPagePreview({
             ))}
           </div>
         )}
+        <SocialLinks instagram={instagram} facebook={facebook} websiteUrl={websiteUrl} color={primary} size="sm" className="mt-3" />
       </div>
     </div>
   );
