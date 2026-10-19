@@ -15,12 +15,13 @@ import { seedNaturalSolutions, DEFAULT_SOLUTIONS, type SolutionSeedStore } from 
 import type { NaturalSolution } from "@shared/schema-active";
 
 /** Faux store en mémoire reproduisant le comportement de `storage`. */
-function makeFakeStore(): SolutionSeedStore & { rows: NaturalSolution[]; createCalls: number } {
+function makeFakeStore(): SolutionSeedStore & { rows: NaturalSolution[]; createCalls: number; updateCalls: number } {
   const rows: NaturalSolution[] = [];
   let nextId = 1;
   return {
     rows,
     createCalls: 0,
+    updateCalls: 0,
     async listNaturalSolutions(_userId: number) {
       // Le seed passe -1 (user inexistant) → ne récupère que les fiches globales.
       return rows.filter((r) => r.userId === null);
@@ -36,10 +37,21 @@ function makeFakeStore(): SolutionSeedStore & { rows: NaturalSolution[]; createC
         properties: data.properties,
         contraindications: data.contraindications,
         usageNotes: data.usageNotes,
+        safety: data.safety ?? null,
+        form: data.form ?? null,
+        cureDuration: data.cureDuration ?? null,
+        synergies: data.synergies ?? null,
+        sources: null,
         createdAt: now,
         updatedAt: now,
       };
       rows.push(row);
+      return row;
+    },
+    async updateNaturalSolution(id, patch) {
+      this.updateCalls++;
+      const row = rows.find((r) => r.id === id);
+      if (row) Object.assign(row, patch);
       return row;
     },
   };
@@ -91,8 +103,30 @@ test("seedNaturalSolutions — best-effort : ne crash pas si la table n'existe p
     async createNaturalSolution() {
       throw new Error("ne devrait pas être appelé");
     },
+    async updateNaturalSolution() {
+      throw new Error("ne devrait pas être appelé");
+    },
   };
 
   // Ne doit PAS rejeter (erreur capturée en best-effort).
   await assert.doesNotReject(() => seedNaturalSolutions(failing));
+});
+
+test("seedNaturalSolutions — fiche globale existante sans champs structurés : enrichie, une seule fois", async () => {
+  const store = makeFakeStore();
+  await store.createNaturalSolution({ userId: null, ...DEFAULT_SOLUTIONS.find((s) => s.name === "Millepertuis")! });
+  await seedNaturalSolutions(store);
+  const row = store.rows.find((r) => r.name === "Millepertuis")!;
+  assert.equal(JSON.parse(row.safety!).antidepresseur, "ci", "surcharge manuelle appliquée");
+  assert.equal(row.form, "Extrait");
+  const updates = store.updateCalls;
+  await seedNaturalSolutions(store);
+  assert.equal(store.updateCalls, updates, "2e passage : rien à mettre à jour");
+});
+
+test("seedNaturalSolutions — ne touche jamais une fiche perso du même nom", async () => {
+  const store = makeFakeStore();
+  const perso = await store.createNaturalSolution({ userId: 7, ...DEFAULT_SOLUTIONS[0] });
+  await seedNaturalSolutions(store);
+  assert.equal(perso.safety, null);
 });

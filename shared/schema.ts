@@ -580,6 +580,13 @@ export const naturalSolutions = sqliteTable("natural_solutions", {
   properties: text("properties"),
   contraindications: text("contraindications"),
   usageNotes: text("usage_notes"),
+  // Précautions structurées : JSON { critère: "ci" | "prudence" } (cf. shared/solutions.ts).
+  safety: text("safety"),
+  form: text("form"),
+  cureDuration: text("cure_duration"),
+  // JSON : noms d'autres fiches.
+  synergies: text("synergies"),
+  sources: text("sources"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (t) => ({

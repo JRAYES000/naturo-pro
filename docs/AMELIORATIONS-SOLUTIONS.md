@@ -68,6 +68,24 @@ de démo. Aucun code modifié.
 - Le bandeau d'aide ne dit pas combien de fiches contient la base : l'afficher valorise la fonction
   (page payante, `FeatureGate`).
 
+## État au 2026-10-19
+
+Livré : lot 1 (commit c94158b), puis lots 2 et 3 :
+
+- **5** : précautions structurées (`safety`, JSON par critère, `ci` / `prudence`), définies dans
+  `shared/solutions.ts`. Catalogue de base balisé par déduction depuis le texte, corrigé à la main
+  (`SAFETY_OVERRIDES`, `server/solutions-enrich.ts`). Filtre « Cliente concernée » sur la page.
+- **6, 7** : programmes : traitements de la cliente (substances et noms commerciaux courants),
+  épilepsie dans les antécédents et âge < 12 ans croisés avec les fiches citées et celles du picker.
+- **10** : forme, durée de cure, synergies (cliquables), sources. Posologie laissée dans « Conseils
+  d'usage » (déjà renseignée partout). Sources vides sur le catalogue de base : aucune inventée.
+- **11** : 9 bourgeons, 6 hydrolats, 6 oligo-éléments (134 fiches).
+- **12** : « Pré-remplir avec l'IA » dans l'éditeur (OpenRouter, quota IA quotidien commun).
+- Demandes en cours de route : aide ouverte par défaut, fiche dépliée dans la ligne (plus de dialogue).
+
+Reste ouvert : 9 (favoris, filtre « mes fiches »), sources du catalogue de base, relecture métier
+des 21 nouvelles fiches et du balisage par une naturopathe.
+
 ## Ordre conseillé
 
 Lot 1 (une demi-journée, sans migration) : 1, 2, 3, 4, 6 (pastille), 8, détails d'interface.

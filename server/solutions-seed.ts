@@ -11,10 +11,11 @@
 
 import { storage } from "./storage";
 import type { NaturalSolution } from "@shared/schema-active";
+import { enrichFiche, type EnrichedFields } from "./solutions-enrich";
 
 export interface SeedSolution {
   name: string;
-  category: string; // Plante | Huile essentielle | Complément | Fleur de Bach
+  category: string; // cf. SOLUTION_CATEGORIES (shared/solutions.ts)
   properties: string;
   contraindications: string;
   usageNotes: string;
@@ -26,7 +27,8 @@ export interface SeedSolution {
  */
 export interface SolutionSeedStore {
   listNaturalSolutions(userId: number): Promise<NaturalSolution[]>;
-  createNaturalSolution(data: { userId: number | null } & SeedSolution): Promise<NaturalSolution>;
+  createNaturalSolution(data: { userId: number | null } & SeedSolution & Partial<EnrichedFields>): Promise<NaturalSolution>;
+  updateNaturalSolution(id: number, patch: Partial<EnrichedFields>): Promise<NaturalSolution | undefined>;
 }
 
 export const DEFAULT_SOLUTIONS: SeedSolution[] = [
@@ -158,23 +160,65 @@ export const DEFAULT_SOLUTIONS: SeedSolution[] = [
   { name: "Vigne (Vine)", category: "Fleur de Bach", properties: "Pour les personnalités autoritaires et inflexibles ; développe respect et leadership bienveillant.", contraindications: "Ne remplace pas un accompagnement des troubles de la personnalité ; versions alcoolisées : prudence grossesse/enfants.", usageNotes: "4 gouttes, 4 fois/jour, sous la langue ou dans un verre d'eau." },
   { name: "Verveine (Vervain)", category: "Fleur de Bach", properties: "Pour l'enthousiasme excessif et le surmenage par idéalisme ; ramène équilibre et modération.", contraindications: "Ne remplace pas un suivi en cas de surmenage/anxiété ; versions alcoolisées : prudence grossesse/enfants.", usageNotes: "4 gouttes, 4 fois/jour, sous la langue ou dans de l'eau." },
   { name: "Moutarde (Mustard)", category: "Fleur de Bach", properties: "Pour la mélancolie profonde et soudaine sans cause apparente ; ramène la joie intérieure.", contraindications: "Ne remplace pas un suivi en cas de dépression diagnostiquée ; versions alcoolisées : prudence grossesse/enfants.", usageNotes: "4 gouttes, 4 fois/jour, sous la langue ou dans un verre d'eau." },
+
+  // ── Bourgeons (gemmothérapie) ──
+  { name: "Cassis (bourgeon)", category: "Bourgeon", properties: "Action dite « cortisone-like » : terrain inflammatoire et allergique, fatigue, soutien surrénalien.", contraindications: "Stimulant : éviter le soir et en cas d'hypertension non contrôlée. Macérat alcoolisé : prudence grossesse/allaitement et enfants (préférer une forme sans alcool).", usageNotes: "5 à 15 gouttes le matin dans un peu d'eau, cure de 3 semaines." },
+  { name: "Tilleul (bourgeon)", category: "Bourgeon", properties: "Calmant du système nerveux : anxiété, nervosité, troubles de l'endormissement ; souvent proposé aux enfants agités.", contraindications: "Peut majorer l'effet des somnifères/anxiolytiques. Macérat alcoolisé : prudence grossesse/allaitement et enfants (préférer une forme sans alcool).", usageNotes: "5 à 15 gouttes le soir, cure de 3 semaines ; synergie avec le figuier (bourgeon)." },
+  { name: "Figuier (bourgeon)", category: "Bourgeon", properties: "Régulateur de l'axe cerveau-intestin : stress, anxiété, troubles digestifs d'origine nerveuse.", contraindications: "Macérat alcoolisé : prudence grossesse/allaitement et enfants (préférer une forme sans alcool).", usageNotes: "5 à 15 gouttes avant les repas, cure de 3 semaines ; synergie avec le tilleul (bourgeon)." },
+  { name: "Églantier (bourgeon)", category: "Bourgeon", properties: "Soutien immunitaire, notamment chez l'enfant : infections ORL à répétition, période de croissance.", contraindications: "Macérat alcoolisé : prudence grossesse/allaitement ; chez l'enfant, préférer une forme sans alcool.", usageNotes: "Dose adaptée à l'âge selon le fabricant, cure de 3 semaines en début d'hiver." },
+  { name: "Aulne glutineux (bourgeon)", category: "Bourgeon", properties: "Circulation et terrain inflammatoire chronique (sphère ORL, articulations) ; soutien de la mémoire.", contraindications: "Prudence avec les anticoagulants. Macérat alcoolisé : prudence grossesse/allaitement et enfants.", usageNotes: "5 à 15 gouttes par jour, cure de 3 semaines." },
+  { name: "Romarin (bourgeon)", category: "Bourgeon", properties: "Drainage et soutien hépatobiliaire ; digestion des graisses.", contraindications: "Contre-indiqué en cas d'obstruction des voies biliaires. Macérat alcoolisé : prudence grossesse/allaitement et enfants.", usageNotes: "5 à 15 gouttes avant le repas de midi, cure de 3 semaines." },
+  { name: "Genévrier (bourgeon)", category: "Bourgeon", properties: "Drainage hépatique et rénal ; souvent utilisé en cure de saison.", contraindications: "Contre-indiqué en cas d'insuffisance rénale et pendant la grossesse. Macérat alcoolisé : prudence allaitement et enfants.", usageNotes: "5 à 15 gouttes le matin, cure de 3 semaines maximum." },
+  { name: "Framboisier (bourgeon)", category: "Bourgeon", properties: "Régulateur hormonal féminin : syndrome prémenstruel, règles douloureuses ou irrégulières.", contraindications: "Contre-indiqué en cas de cancer hormono-dépendant et pendant la grossesse (sauf avis spécialisé). Prudence sous contraception ou traitement hormonal.", usageNotes: "5 à 15 gouttes par jour en 2e partie de cycle, cure de 3 cycles." },
+  { name: "Noyer (bourgeon)", category: "Bourgeon", properties: "Soutien du pancréas et du microbiote ; terrain cutané (eczéma, acné).", contraindications: "Prudence sous antidiabétiques (surveiller la glycémie). Macérat alcoolisé : prudence grossesse/allaitement et enfants.", usageNotes: "5 à 15 gouttes avant les repas, cure de 3 semaines." },
+
+  // ── Hydrolats ──
+  { name: "Fleur d'oranger (hydrolat)", category: "Hydrolat", properties: "Apaisant : nervosité, troubles légers du sommeil ; doux, souvent utilisé chez l'enfant.", contraindications: "Bien toléré. Fragile : conserver au frais et utiliser dans les mois qui suivent l'ouverture.", usageNotes: "1 c. à soupe dans 1 L d'eau à boire dans la journée, cure de 3 semaines ; ou 1 c. à café dans une tisane le soir." },
+  { name: "Camomille romaine (hydrolat)", category: "Hydrolat", properties: "Apaise la peau irritée et les yeux fatigués (compresse) ; calme la nervosité.", contraindications: "Allergie aux Astéracées. Conserver au frais après ouverture.", usageNotes: "En compresse ou brumisation ; en interne, 1 c. à soupe dans 1 L d'eau, cure de 3 semaines." },
+  { name: "Lavande vraie (hydrolat)", category: "Hydrolat", properties: "Apaisant et réparateur cutané : peaux irritées, petites brûlures, stress.", contraindications: "Bien toléré. Conserver au frais après ouverture.", usageNotes: "Brumisation sur la peau ou l'oreiller ; en interne, 1 c. à soupe dans 1 L d'eau, cure de 3 semaines." },
+  { name: "Rose de Damas (hydrolat)", category: "Hydrolat", properties: "Tonique et astringent cutané ; apaisement émotionnel.", contraindications: "Bien toléré. Conserver au frais après ouverture.", usageNotes: "Lotion matin et soir sur peau propre, ou brumisation." },
+  { name: "Menthe poivrée (hydrolat)", category: "Hydrolat", properties: "Digestif et rafraîchissant : nausées, digestion lente.", contraindications: "Par prudence, éviter chez l'enfant de moins de 6 ans et pendant la grossesse.", usageNotes: "1 c. à café dans un verre d'eau après le repas, ou 1 c. à soupe dans 1 L d'eau, cure de 3 semaines." },
+  { name: "Hamamélis (hydrolat)", category: "Hydrolat", properties: "Astringent et décongestionnant : jambes lourdes, couperose, peau grasse.", contraindications: "Usage externe privilégié. Conserver au frais après ouverture.", usageNotes: "En compresse ou lotion, 1 à 2 fois par jour." },
+
+  // ── Oligo-éléments (oligothérapie catalytique) ──
+  { name: "Manganèse (oligothérapie)", category: "Oligo-élément", properties: "Diathèse 1 (allergique, arthritique) : terrain allergique, rhume des foins, fatigue au réveil.", contraindications: "Doses infinitésimales : ne remplace pas une supplémentation en cas de carence avérée.", usageNotes: "1 dose le matin à jeun, gardée 1 min sous la langue, cure de 1 à 3 mois." },
+  { name: "Manganèse-Cuivre (oligothérapie)", category: "Oligo-élément", properties: "Diathèse 2 (hyposthénique) : infections ORL à répétition, fatigue en fin de journée.", contraindications: "Doses infinitésimales : ne remplace pas une supplémentation en cas de carence avérée.", usageNotes: "1 dose le matin à jeun, gardée 1 min sous la langue, cure de 1 à 3 mois." },
+  { name: "Manganèse-Cobalt (oligothérapie)", category: "Oligo-élément", properties: "Diathèse 3 (dystonique) : troubles circulatoires, spasmes digestifs, nervosité, troubles de la mémoire.", contraindications: "Doses infinitésimales : ne remplace pas une supplémentation en cas de carence avérée.", usageNotes: "1 dose le matin à jeun, gardée 1 min sous la langue, cure de 1 à 3 mois." },
+  { name: "Cuivre-Or-Argent (oligothérapie)", category: "Oligo-élément", properties: "Diathèse 4 (anergique) : épuisement profond, infections chroniques, convalescence.", contraindications: "Doses infinitésimales : ne remplace pas une prise en charge médicale d'une infection ou d'un épuisement.", usageNotes: "1 dose le matin à jeun, gardée 1 min sous la langue, cure de 1 à 3 mois." },
+  { name: "Zinc-Cuivre (oligothérapie)", category: "Oligo-élément", properties: "Syndrome de désadaptation hypophyso-gonadique : déséquilibres hormonaux légers, croissance, acné.", contraindications: "Doses infinitésimales : ne remplace pas une supplémentation en cas de carence avérée.", usageNotes: "1 dose le matin à jeun, gardée 1 min sous la langue, cure de 1 à 3 mois." },
+  { name: "Lithium (oligothérapie)", category: "Oligo-élément", properties: "Régulateur de l'humeur à dose infinitésimale : irritabilité, variations d'humeur, troubles légers du sommeil.", contraindications: "Sans rapport avec le lithium médicamenteux : ne jamais le substituer à un traitement prescrit ; avis médical en cas de trouble bipolaire.", usageNotes: "1 dose le soir, gardée 1 min sous la langue, cure de 1 à 3 mois." },
 ];
 
+const ENRICHED_KEYS: (keyof EnrichedFields)[] = ["safety", "form", "cureDuration", "synergies"];
+
 /**
- * Insère les fiches globales MANQUANTES (idempotent par nom). S'exécute à chaque
- * démarrage : crée les nouvelles entrées du catalogue sans dupliquer l'existant.
+ * Insère les fiches globales MANQUANTES (idempotent par nom) et aligne les champs
+ * structurés (précautions, forme, cure, synergies) des fiches globales existantes
+ * sur le code. S'exécute à chaque démarrage ; les fiches perso ne sont jamais touchées.
  */
 export async function seedNaturalSolutions(store: SolutionSeedStore = storage): Promise<void> {
   try {
     const existing = await store.listNaturalSolutions(-1); // -1 = user inexistant → uniquement les globales
-    const seen = new Set(existing.filter((s) => s.userId === null).map((s) => s.name.trim().toLowerCase()));
+    const byName = new Map(existing.filter((s) => s.userId === null).map((s) => [s.name.trim().toLowerCase(), s]));
     let added = 0;
+    let updated = 0;
     for (const s of DEFAULT_SOLUTIONS) {
-      if (seen.has(s.name.trim().toLowerCase())) continue;
-      await store.createNaturalSolution({ userId: null, ...s });
-      added++;
+      const fields = enrichFiche(s, DEFAULT_SOLUTIONS);
+      const row = byName.get(s.name.trim().toLowerCase());
+      if (!row) {
+        await store.createNaturalSolution({ userId: null, ...s, ...fields });
+        added++;
+        continue;
+      }
+      const patch: Partial<EnrichedFields> = {};
+      for (const k of ENRICHED_KEYS) if (((row as any)[k] ?? null) !== fields[k]) patch[k] = fields[k];
+      if (Object.keys(patch).length) {
+        await store.updateNaturalSolution(row.id, patch);
+        updated++;
+      }
     }
     if (added > 0) console.log(`[seed] base de solutions : ${added} nouvelle(s) fiche(s) globale(s) ajoutée(s)`);
+    if (updated > 0) console.log(`[seed] base de solutions : ${updated} fiche(s) globale(s) enrichie(s)`);
   } catch (e: any) {
     console.warn("[seed] seedNaturalSolutions échoué (best-effort):", e?.message || e);
   }
