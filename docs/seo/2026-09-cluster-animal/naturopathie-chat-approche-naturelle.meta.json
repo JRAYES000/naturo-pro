@@ -1,0 +1,131 @@
+{
+  "type": "post",
+  "action": "create",
+  "id": null,
+  "slug": "naturopathie-chat-approche-naturelle",
+  "title": "Naturopathie pour chat : une approche naturelle adaptée à un animal à part",
+  "yoast_title": "Naturopathie chat : une approche adaptée au chat",
+  "yoast_desc": "Naturopathie pour chat : carnivore strict, foie sensible aux huiles essentielles, hydratation, territoire. Ce qu'un naturopathe propose et refuse.",
+  "focus_kw": "naturopathie chat",
+  "secondary_kw_note": "mots-clés secondaires non relevés (pas d'accès serp_analysis / page_keywords dans cette session) ; variante visée dans le corps : « naturopathe pour chat »",
+  "author": 2,
+  "categories": [20, 78],
+  "status": "draft",
+  "publish_date_suggested": "2026-09-28",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://ecole-naturo.fr/blog/naturopathie-chat-approche-naturelle/#article",
+        "headline": "Naturopathie pour chat : une approche naturelle adaptée à un animal à part",
+        "description": "Naturopathie pour chat : carnivore strict, foie sensible aux huiles essentielles, hydratation, territoire. Ce qu'un naturopathe propose et refuse.",
+        "image": "[À COMPLÉTER : URL de l'image à la une]",
+        "datePublished": "2026-09-28",
+        "dateModified": "2026-09-28",
+        "inLanguage": "fr-FR",
+        "author": { "@id": "https://ecole-naturo.fr/#eva-mischler" },
+        "publisher": { "@id": "https://ecole-naturo.fr/#organization" },
+        "mainEntityOfPage": { "@id": "https://ecole-naturo.fr/blog/naturopathie-chat-approche-naturelle/#webpage" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/#eva-mischler",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "description": "Naturopathe depuis 2017, formatrice en école de naturopathie depuis 2020, formatrice référente du cursus en naturopathie animale de l'École Naturo.",
+        "url": "https://ecole-naturo.fr/eva-mischler/",
+        "worksFor": { "@id": "https://ecole-naturo.fr/#organization" },
+        "sameAs": [
+          "https://www.instinctnaturo.com/",
+          "https://www.instagram.com/instinctnaturo/",
+          "https://www.linkedin.com/in/instinctnaturo/",
+          "https://www.youtube.com/channel/UCAkoKWZ6Gb893TXrQ_LGrag"
+        ]
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://ecole-naturo.fr/#organization",
+        "name": "École Naturo",
+        "alternateName": "École de Naturopathie & Sophrologie",
+        "url": "https://ecole-naturo.fr",
+        "logo": "https://ecole-naturo.fr/wp-content/uploads/logo-ecole-naturo.webp"
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/blog/naturopathie-chat-approche-naturelle/#webpage",
+        "url": "https://ecole-naturo.fr/blog/naturopathie-chat-approche-naturelle/",
+        "name": "Naturopathie pour chat : une approche naturelle adaptée à un animal à part",
+        "isPartOf": { "@id": "https://ecole-naturo.fr/#website" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://ecole-naturo.fr/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://ecole-naturo.fr/blog/" },
+          { "@type": "ListItem", "position": 3, "name": "Naturopathie pour chat : une approche naturelle adaptée à un animal à part" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Un naturopathe pour chat peut-il remplacer le vétérinaire ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Non. Le naturopathe pour chat travaille sur l'hygiène de vie et la prévention, en complément du vétérinaire. Il ne diagnostique pas, ne prescrit pas et oriente vers le vétérinaire dès qu'un symptôme apparaît. Chez le chat, certains signes urinaires ou respiratoires sont des urgences en quelques heures." }
+          },
+          {
+            "@type": "Question",
+            "name": "Peut-on utiliser des huiles essentielles chez le chat ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Non, en règle générale. Le chat élimine mal les phénols et de nombreux composés des huiles essentielles, et son toilettage transforme toute diffusion en ingestion. Le tea tree est l'intoxicant le plus souvent rapporté. En cas d'exposition, contactez un vétérinaire ou un centre antipoison animal." }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelle alimentation naturelle convient à un chat ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Un aliment complet formulé pour le chat, avec une part d'aliment humide pour l'hydratation. Toute ration ménagère ou crue doit être formulée par un professionnel compétent en nutrition féline, car le chat a des besoins stricts en taurine, arginine et vitamine A. Le régime végétarien est exclu." }
+          },
+          {
+            "@type": "Question",
+            "name": "Comment aider un chat qui boit peu ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Multipliez les points d'eau, éloignez-les de la nourriture et de la litière, proposez une fontaine et augmentez la part d'aliment humide. Ajouter un peu d'eau à la pâtée fonctionne bien. Si le chat se met à boire beaucoup plus que d'habitude, consultez : c'est un signe à explorer." }
+          },
+          {
+            "@type": "Question",
+            "name": "La naturopathie peut-elle aider un chat qui a une maladie rénale ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Elle peut accompagner le quotidien d'un chat suivi par son vétérinaire pour une maladie rénale, sur l'hydratation, le confort et l'environnement, mais uniquement dans le cadre fixé par le vétérinaire et sans modifier ni l'alimentation prescrite ni le traitement. Elle ne soigne pas la maladie." }
+          }
+        ]
+      }
+    ]
+  },
+  "internal_links_out": [
+    { "url": "https://ecole-naturo.fr/eva-mischler/", "anchor": "Eva Mischler", "role": "auteur" },
+    { "url": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/", "anchor": "ce qu'implique le métier de naturopathe animalier", "role": "pivot" },
+    { "url": "https://ecole-naturo.fr/blog/stress-chat-solutions-naturelles/", "anchor": "le stress du chat et ses solutions naturelles", "role": "satellite latéral" },
+    { "url": "https://ecole-naturo.fr/guide-naturopathie-animale/", "anchor": "guide gratuit « Mon animal au naturel »", "role": "lead magnet" },
+    { "url": "https://ecole-naturo.fr/blog/phytotherapie-chien-chat-plantes-toxiques/", "anchor": "les plantes bénéfiques et toxiques pour le chien et le chat", "role": "satellite latéral" },
+    { "url": "https://ecole-naturo.fr/formation-naturopathie-animale/", "anchor": "formation en naturopathie animale de l'École Naturo", "role": "page de vente (encart « Vous voulez en faire votre métier ? »)" }
+  ],
+  "external_links_out": [
+    "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006071367/LEGISCTA000006152415/",
+    "https://www.merckvetmanual.com/management-and-nutrition/nutrition-small-animals/nutritional-requirements-of-small-animals",
+    "https://www.merckvetmanual.com/toxicology/toxicoses-from-household-hazards/toxicoses-from-essential-oils-in-animals",
+    "https://www.merckvetmanual.com/toxicology/toxicoses-from-human-analgesics/toxicoses-from-human-analgesics-in-animals",
+    "https://www.centre-antipoison-animal.com/huiles-essentielles.html",
+    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11654968/",
+    "https://journals.sagepub.com/doi/10.1177/1098612X13477537",
+    "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/feline-lower-urinary-tract-disease",
+    "https://www.cnitv.fr/"
+  ],
+  "notes_julien": [
+    "AUTEUR : Eva Mischler présentée comme « formatrice référente du cursus en naturopathie animale » (page 40874). Sa qualification féline (formation, expérience) doit être confirmée ou complétée par toi avant publication.",
+    "RELECTURE VÉTÉRINAIRE FORTEMENT RECOMMANDÉE : cet article contient des données toxicologiques chiffrées (paracétamol 10 mg/kg, ibuprofène). Elles sont sourcées Merck Veterinary Manual, mais une relecture par un vétérinaire avant publication est la norme YMYL. Placeholder [À COMPLÉTER] dans le bloc auteur : renseigner ou supprimer la ligne.",
+    "CAS TERRAIN : le paragraphe [CAS TERRAIN À VALIDER PAR EVA] est une proposition à remplacer par un cas réel anonymisé, ou à supprimer.",
+    "DEUX POINTS FORMULÉS SANS SOURCE DÉDIÉE (prudence rédactionnelle appliquée) : (1) le risque hépatique du jeûne chez le chat (lipidose hépatique), formulé « risque hépatique » sans chiffre ; (2) la dangerosité de certains antiparasitaires pour chien chez le chat (perméthrine), formulée sans molécule nommée. Si tu veux les préciser, ajouter une source vétérinaire (Merck / MSD Vet Manual).",
+    "AFFIRMATIONS NON SOURCÉES REPÉRÉES DANS LE PIVOT 8203 (section féline) : « IRC première cause de mortalité chez le chat âgé », « plantes comme le tea-tree » (le tea tree est une huile essentielle). Non reprises ici ; à corriger lors de la mise à jour du pivot.",
+    "IMAGE : 1 placement suggéré en tête (commentaire HTML avec alt). Renseigner l'URL de l'image à la une dans le JSON-LD.",
+    "À FAIRE SUR LES PAGES EXISTANTES : ajouter un lien depuis le pivot 8203 (section « Naturopathie féline ») et depuis 43796 (stress chat) et 43799 (plantes toxiques) vers cet article.",
+    "SCHEMA : @graph complet fourni. Vérifier la non-duplication avec Yoast (ne coller que FAQPage si Yoast génère déjà Article/Person/Breadcrumb). Tester sur Rich Results Test et validator.schema.org.",
+    "MOTS-CLÉS SECONDAIRES : non relevés (pas d'accès serp_analysis / page_keywords). À relever via Ubersuggest sur la page n°1 pour « naturopathie chat »."
+  ]
+}

@@ -1,0 +1,213 @@
+{
+  "type": "post",
+  "action": "update",
+  "id": 8203,
+  "slug": "devenir-naturopathe-animalier-guide",
+  "title": "Comment devenir naturopathe animalier : métier, formation, salaire et débouchés",
+  "yoast_title": "Devenir naturopathe animalier : formation, salaire, métier",
+  "yoast_desc": "Devenir naturopathe animalier : métier, cadre légal, formation à distance, salaire réaliste et débouchés. Le guide complet de l’École Naturo.",
+  "focus_kw": "naturopathe animalier",
+  "author": 2,
+  "categories": [
+    20,
+    78
+  ],
+  "status": "draft",
+  "publish_date_suggested": "2026-09-17",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/#article",
+        "headline": "Comment devenir naturopathe animalier : métier, formation, salaire et débouchés",
+        "description": "Devenir naturopathe animalier : métier, cadre légal, formation à distance, salaire réaliste et débouchés. Le guide complet de l’École Naturo.",
+        "image": "https://ecole-naturo.fr/wp-content/uploads/2026/06/formation-naturopathie-animale-chien-chat.jpg",
+        "datePublished": "2025-10-09",
+        "dateModified": "2026-09-17",
+        "inLanguage": "fr-FR",
+        "author": {
+          "@id": "https://ecole-naturo.fr/#eva-mischler"
+        },
+        "publisher": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        },
+        "mainEntityOfPage": {
+          "@id": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/#webpage"
+        },
+        "about": [
+          {
+            "@type": "Occupation",
+            "name": "Naturopathe animalier",
+            "occupationLocation": {
+              "@type": "Country",
+              "name": "France"
+            }
+          }
+        ]
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/#eva-mischler",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "description": "Naturopathe depuis 2017, formatrice en école de naturopathie depuis 2020, formatrice référente du cursus en naturopathie animale de l'École Naturo.",
+        "url": "https://ecole-naturo.fr/eva-mischler/",
+        "worksFor": {
+          "@id": "https://ecole-naturo.fr/#organization"
+        },
+        "sameAs": [
+          "https://www.instinctnaturo.com/",
+          "https://www.linkedin.com/in/instinctnaturo/",
+          "https://www.instagram.com/instinctnaturo/",
+          "https://www.youtube.com/channel/UCAkoKWZ6Gb893TXrQ_LGrag"
+        ]
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://ecole-naturo.fr/#organization",
+        "name": "École Naturo",
+        "alternateName": "École de Naturopathie & Sophrologie",
+        "url": "https://ecole-naturo.fr",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://ecole-naturo.fr/wp-content/uploads/logo-ecole-naturo.webp"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/#webpage",
+        "url": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/",
+        "name": "Comment devenir naturopathe animalier : métier, formation, salaire et débouchés",
+        "inLanguage": "fr-FR",
+        "isPartOf": {
+          "@id": "https://ecole-naturo.fr/#website"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Accueil",
+            "item": "https://ecole-naturo.fr/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Blog",
+            "item": "https://ecole-naturo.fr/blog/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Comment devenir naturopathe animalier : métier, formation, salaire et débouchés"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Faut-il un diplôme pour devenir naturopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. Le métier de naturopathe animalier n’est pas réglementé en France et aucun diplôme d’État n’existe. Une formation sérieuse reste indispensable pour acquérir les bases en physiologie animale, en alimentation, en toxicité par espèce et en cadre légal. Le document délivré en fin de parcours est un certificat d’école."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Combien de temps faut-il pour devenir naturopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Les formations vont de quelques mois à deux ans selon les organismes. Le cursus de l’École Naturo s’appuie sur six mois d’accompagnement, à votre rythme, démarrés dès l’inscription. Comptez ensuite plusieurs mois pour construire une clientèle, le temps de rencontrer les professionnels de votre territoire et de réaliser vos premiers bilans."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Peut-on devenir naturopathe animalier à distance ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. Le métier repose sur des connaissances, une méthode de bilan et une posture professionnelle, qui s’apprennent bien en ligne. Le format à distance convient aux reconversions et aux personnes en activité, à condition que la formation propose un accompagnement humain identifié, des cas pratiques corrigés et une communauté d’élèves."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quel est le salaire d’un naturopathe animalier débutant ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Il n’y a pas de salaire fixe. Les estimations publiées par des organismes de formation situent le revenu de début d’activité entre 500 et 1 500 € par mois, parfois jusqu’à 2 500 €. Le revenu dépend du tarif de consultation, du nombre de rendez-vous, du statut choisi et des prestations complémentaires proposées."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Un naturopathe animalier peut-il remplacer le vétérinaire ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non, jamais. La médecine et la chirurgie des animaux sont réservées aux vétérinaires par l’article L.243-1 du Code rural et de la pêche maritime. Le naturopathe animalier intervient uniquement sur le bien-être et l’hygiène de vie, en complément du suivi vétérinaire, et oriente vers le vétérinaire dès qu’un signe de maladie apparaît."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quelle est la différence entre naturopathe animalier et ostéopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "L’ostéopathe animalier pratique des manipulations corporelles dans un cadre encadré depuis 2017 : examen d’aptitude et inscription sur le registre national tenu par l’Ordre des vétérinaires. Le naturopathe animalier ne manipule pas. Il conseille sur l’alimentation, l’environnement et le stress, dans un métier non réglementé mais soumis au monopole vétérinaire."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quel statut choisir pour exercer comme naturopathe animalier ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "La micro-entreprise en activité libérale non réglementée (BNC) est le statut le plus simple pour démarrer. En 2026, les cotisations sociales représentent 25,6 % du chiffre d’affaires, dans la limite de 83 600 € par an. Une société (EURL, SASU) se justifie plus tard, quand l’activité et les charges le demandent."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quels animaux un naturopathe animalier peut-il accompagner ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "En théorie tous les animaux de compagnie : chien, chat, cheval, lapin, rongeurs, oiseaux. En pratique, la plupart des praticiens se concentrent sur une ou deux espèces, le plus souvent le chien et le chat, ou le cheval pour ceux issus du milieu équestre. Chaque espèce a ses toxicités et ses besoins propres."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "internal_links_out": [
+    "https://ecole-naturo.fr/blog/barf-chien-alimentation-naturelle-guide-complet/",
+    "https://ecole-naturo.fr/blog/bien-etre-naturel-cheval-besoins-fondamentaux/",
+    "https://ecole-naturo.fr/blog/chien-senior-accompagner-son-vieillissement-au-naturel/",
+    "https://ecole-naturo.fr/blog/naturopathe-micro-entrepreneur-guide-essentiel/",
+    "https://ecole-naturo.fr/blog/phytotherapie-chien-chat-plantes-toxiques/",
+    "https://ecole-naturo.fr/blog/specialisations-apres-formation-naturopathe/",
+    "https://ecole-naturo.fr/blog/stress-chat-solutions-naturelles/",
+    "https://ecole-naturo.fr/eva-mischler/",
+    "https://ecole-naturo.fr/formation-naturopathie-animale/",
+    "https://ecole-naturo.fr/guide-naturopathie-animale/",
+    "https://ecole-naturo.fr/rdv/",
+    "https://ecole-naturo.fr/salaire-naturopathe/"
+  ],
+  "notes_julien": [
+    "Auteur : Eva Mischler. Sa qualification en naturopathie ANIMALE doit être confirmée ou complétée (formations, expérience terrain avec les animaux). La page /eva-mischler/ ne mentionne pas l'animal ; seule la page de vente 40874 la présente comme « formatrice référente du cursus en naturopathie animale ». Si ce n'est pas exact, remplacer le bloc auteur et le JSON-LD Person. Ajouter idéalement une ligne « animal » sur sa page auteur.",
+    "Le lien vers /guide-naturopathie-animale/ figure dans la liste d'URL vérifiées du brief mais pas dans le sitemap (wp/urls.txt) : la page est probablement en noindex. Le lien reste utile au lecteur ; confirmer que la page répond bien en 200.",
+    "Slug inchangé (/blog/devenir-naturopathe-animalier-guide/). Catégories proposées [20, 78] : l'article portait [18, 20] ; 78 est la catégorie des 5 satellites animaux. À confirmer.",
+    "Le post WordPress doit avoir pour titre (H1) : « Comment devenir naturopathe animalier : métier, formation, salaire et débouchés ». Le title Yoast (58 car.) est différent, comme demandé.",
+    "Retirer l'ancien contenu intégralement : les deux images Unsplash (non pertinentes), le <h1> inline, le bloc « Articles du même thème », le lien vers l'article « formation-naturopathie-2025-guide-ultime » (absent du sitemap), les liens bachelor / huiles essentielles massage / financement, la mention ISUPNAT 23 jours et les chiffres non sourcés (200 h, 60-100 €, 3 000-4 500 €).",
+    "Placeholder [CAS TERRAIN À VALIDER PAR EVA] dans la section « au quotidien » : à faire écrire par Eva (3 paragraphes à la première personne) ou à supprimer avant publication. C'est le principal levier d'Information Gain.",
+    "[À VÉRIFIER PAR JULIEN] x2 : (1) absence de titre RNCP « naturopathe animalier » sur francecompetences.fr ; (2) absence de statistique publique sur le revenu du métier. Si vérifié, supprimer les crochets ; sinon reformuler.",
+    "Chiffres de revenus : uniquement des estimations publiées par des sites de formation (Com de Wouf, ISUPNAT, FormaBienEtre), citées avec URL et rel=nofollow. ISUPNAT est un concurrent : si tu préfères ne pas le lier, garder la ligne du tableau sans lien et laisser la source dans les notes.",
+    "Les trois scénarios de revenus sont des hypothèses arithmétiques explicitement présentées comme telles (tarif x volume, cotisations 25,6 %), pas des données observées.",
+    "Chiffres de l'école utilisés : 1 490 €, six mois d'accompagnement, 100 % à distance, 7 modules, certificat d'école, appel découverte gratuit. Aucune note Google citée dans l'article (incohérence relevée sur la page de vente : 4,9/5 « 31 avis » dans le texte vs reviewCount 28 dans le JSON-LD).",
+    "Image à la une : le JSON-LD pointe provisoirement sur l'image existante de la page de vente. Remplacer par la vraie image à la une de l'article une fois choisie. Deux emplacements d'images sont proposés en commentaires HTML avec alt.",
+    "Ancre #programme utilisée vers la page de vente : l'id « programme » existe bien sur le H2 de la page 40874.",
+    "Si Yoast génère déjà un schema Article, vérifier qu'il n'y a pas de doublon avec ce bloc (ou désactiver le schema Yoast pour cet article). Tester sur validator.schema.org.",
+    "Règle des 28 jours : cet article n'a eu aucun clic sur 28 jours ; les liens montants vers la page de vente sont posés sur décision explicite de Julien. Mesurer en GSC 28 jours après publication et ajuster.",
+    "Mots-clés secondaires non relevés par outil (serp_analysis / page_keywords non exécutés dans cette session) : la liste de requêtes du brief (GSC) a servi de référence.",
+    "Longueur : environ 4 400 mots avec les tableaux (2 600 avant). Le bloc de fin du fichier HTML (commentaire) contient les 8 vérifications dures et le Journal ; il peut être supprimé avant collage."
+  ],
+  "word_count_approx": 4400
+}

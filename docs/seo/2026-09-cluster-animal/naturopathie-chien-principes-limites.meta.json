@@ -1,0 +1,133 @@
+{
+  "type": "post",
+  "action": "create",
+  "id": null,
+  "slug": "naturopathie-chien-principes-limites",
+  "title": "Naturopathie pour chien : principes, ce qu'elle peut apporter, ce qu'elle ne fait pas",
+  "yoast_title": "Naturopathie chien : principes, apports et limites",
+  "yoast_desc": "Naturopathie pour chien : 5 techniques adaptées au chien, signaux d'alerte qui imposent le vétérinaire, déroulé d'une consultation. Par École Naturo.",
+  "focus_kw": "naturopathie chien",
+  "secondary_kw_note": "mots-clés secondaires non relevés (pas d'accès serp_analysis / page_keywords dans cette session) ; variante visée dans le corps : « naturopathe pour chien »",
+  "author": 2,
+  "categories": [20, 78],
+  "status": "draft",
+  "publish_date_suggested": "2026-09-21",
+  "jsonld": {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://ecole-naturo.fr/blog/naturopathie-chien-principes-limites/#article",
+        "headline": "Naturopathie pour chien : principes, ce qu'elle peut apporter, ce qu'elle ne fait pas",
+        "description": "Naturopathie pour chien : 5 techniques adaptées au chien, signaux d'alerte qui imposent le vétérinaire, déroulé d'une consultation. Par École Naturo.",
+        "image": "[À COMPLÉTER : URL de l'image à la une]",
+        "datePublished": "2026-09-21",
+        "dateModified": "2026-09-21",
+        "inLanguage": "fr-FR",
+        "author": { "@id": "https://ecole-naturo.fr/#eva-mischler" },
+        "publisher": { "@id": "https://ecole-naturo.fr/#organization" },
+        "mainEntityOfPage": { "@id": "https://ecole-naturo.fr/blog/naturopathie-chien-principes-limites/#webpage" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ecole-naturo.fr/#eva-mischler",
+        "name": "Eva Mischler",
+        "jobTitle": "Naturopathe et formatrice",
+        "description": "Naturopathe depuis 2017, formatrice en école de naturopathie depuis 2020, formatrice référente du cursus en naturopathie animale de l'École Naturo.",
+        "url": "https://ecole-naturo.fr/eva-mischler/",
+        "worksFor": { "@id": "https://ecole-naturo.fr/#organization" },
+        "sameAs": [
+          "https://www.instinctnaturo.com/",
+          "https://www.instagram.com/instinctnaturo/",
+          "https://www.linkedin.com/in/instinctnaturo/",
+          "https://www.youtube.com/channel/UCAkoKWZ6Gb893TXrQ_LGrag"
+        ]
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://ecole-naturo.fr/#organization",
+        "name": "École Naturo",
+        "alternateName": "École de Naturopathie & Sophrologie",
+        "url": "https://ecole-naturo.fr",
+        "logo": "https://ecole-naturo.fr/wp-content/uploads/logo-ecole-naturo.webp"
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ecole-naturo.fr/blog/naturopathie-chien-principes-limites/#webpage",
+        "url": "https://ecole-naturo.fr/blog/naturopathie-chien-principes-limites/",
+        "name": "Naturopathie pour chien : principes, ce qu'elle peut apporter, ce qu'elle ne fait pas",
+        "isPartOf": { "@id": "https://ecole-naturo.fr/#website" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://ecole-naturo.fr/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://ecole-naturo.fr/blog/" },
+          { "@type": "ListItem", "position": 3, "name": "Naturopathie pour chien : principes, ce qu'elle peut apporter, ce qu'elle ne fait pas" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Un naturopathe pour chien peut-il remplacer le vétérinaire ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Non, jamais. En France, seul le vétérinaire peut diagnostiquer, traiter et prescrire pour un animal. Le naturopathe pour chien intervient sur l'hygiène de vie et la prévention, en complément du suivi vétérinaire. Il oriente vers le vétérinaire dès qu'un symptôme apparaît." }
+          },
+          {
+            "@type": "Question",
+            "name": "Combien coûte une consultation de naturopathie pour chien ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Une séance se facture en moyenne entre 40 et 100 euros, selon la durée, la zone géographique et le type d'accompagnement. Un premier bilan est souvent plus long, donc plus cher, qu'un suivi." }
+          },
+          {
+            "@type": "Question",
+            "name": "La naturopathie peut-elle aider un chien qui a une maladie chronique ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Elle peut accompagner le quotidien d'un chien suivi pour une maladie chronique, sur l'alimentation, l'activité et le confort, mais uniquement en accord avec le vétérinaire traitant et sans modifier le traitement. Elle ne soigne pas la maladie et ne remplace aucun médicament." }
+          },
+          {
+            "@type": "Question",
+            "name": "Peut-on donner des huiles essentielles à un chien ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Avec beaucoup de prudence, et jamais sans avis professionnel. Certaines huiles essentielles sont toxiques pour le chien, d'autres tolérées à très faible dilution. L'automédication est déconseillée. Notre article sur les plantes bénéfiques et toxiques pour le chien et le chat liste ce qu'il faut écarter." }
+          },
+          {
+            "@type": "Question",
+            "name": "À partir de quel âge un chien peut-il bénéficier d'un accompagnement naturel ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Dès le chiot, mais avec des précautions : la croissance impose des besoins nutritionnels précis, notamment en calcium chez les grandes races. Chez le chiot, le naturopathe se concentre sur l'alimentation, la socialisation et la construction de routines, toujours en parallèle des visites vétérinaires de croissance." }
+          },
+          {
+            "@type": "Question",
+            "name": "Comment reconnaître un naturopathe pour chien sérieux ?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Il vous demande le suivi vétérinaire avant toute chose, il ne promet rien, il n'utilise pas les mots « soigner » ou « traiter », il connaît les signaux d'alerte et vous renvoie vers le vétérinaire sans hésiter. Il peut justifier d'une formation en physiologie animale et en cadre légal." }
+          }
+        ]
+      }
+    ]
+  },
+  "internal_links_out": [
+    { "url": "https://ecole-naturo.fr/eva-mischler/", "anchor": "Eva Mischler", "role": "auteur" },
+    { "url": "https://ecole-naturo.fr/blog/devenir-naturopathe-animalier-guide/", "anchor": "le métier de naturopathe animalier", "role": "pivot" },
+    { "url": "https://ecole-naturo.fr/blog/barf-chien-alimentation-naturelle-guide-complet/", "anchor": "guide complet du BARF pour chien", "role": "satellite latéral" },
+    { "url": "https://ecole-naturo.fr/guide-naturopathie-animale/", "anchor": "guide gratuit « Mon animal au naturel »", "role": "lead magnet" },
+    { "url": "https://ecole-naturo.fr/blog/chien-senior-accompagner-son-vieillissement-au-naturel/", "anchor": "l'accompagnement du chien senior au naturel", "role": "satellite latéral" },
+    { "url": "https://ecole-naturo.fr/formation-naturopathie-animale/", "anchor": "formation en naturopathie animale de l'École Naturo", "role": "page de vente (encart « Vous voulez en faire votre métier ? »)" },
+    { "url": "https://ecole-naturo.fr/blog/phytotherapie-chien-chat-plantes-toxiques/", "anchor": "les plantes bénéfiques et toxiques pour le chien et le chat", "role": "satellite latéral (FAQ)" }
+  ],
+  "external_links_out": [
+    "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006071367/LEGISCTA000006152415/",
+    "https://www.i-cad.fr/articles/dilatation-torsion-estomac-urgence-veterinaire",
+    "https://www.cnitv.fr/",
+    "https://www.merckvetmanual.com/management-and-nutrition/nutrition-small-animals/nutritional-requirements-of-small-animals"
+  ],
+  "notes_julien": [
+    "AUTEUR : Eva Mischler est présentée comme « formatrice référente du cursus en naturopathie animale » (formulation lue sur la page 40874). Sa qualification animale (formation suivie, expérience avec les chiens) doit être confirmée ou complétée par toi avant publication, sur sa page auteur et dans le bloc auteur.",
+    "RELECTURE : le bloc « Relecture vétérinaire : [À COMPLÉTER] » est un placeholder. Sujet YMYL : une relecture par un vétérinaire (ou au minimum un praticien animalier expérimenté) est recommandée avant de passer en « publish ». Si aucun relecteur : supprimer la ligne, ne pas publier un nom fictif.",
+    "CAS TERRAIN : le paragraphe [CAS TERRAIN À VALIDER PAR EVA] est une proposition. À remplacer par un cas réel anonymisé d'Eva, ou à supprimer. Ne pas publier tel quel.",
+    "IMAGE : 1 placement suggéré en tête (commentaire HTML avec alt). Renseigner l'URL de l'image à la une dans le JSON-LD (champ « image »).",
+    "ÉCART DE CHIFFRES SUR LE SITE : le pivot 8203 annonce 60-100 € la consultation initiale, la page de vente 40874 annonce 40-100 € la séance. L'article reprend 40-100 € (page la plus récente). À harmoniser sur le pivot lors de sa mise à jour.",
+    "MAILLAGE MONTANT : lien vers la page de vente posé dès la publication (encart métier) conformément au brief. Rappel de la règle des 28 jours : ce lien ne transmettra rien tant que l'article n'a pas de clics GSC ; c'est le lien pivot → page de vente qui compte.",
+    "À FAIRE SUR LES PAGES EXISTANTES : ajouter un lien depuis le pivot 8203 (section « Naturopathie canine ») et depuis 43792 (BARF) et 43802 (chien senior) vers cet article, pour fermer le cluster dans les deux sens.",
+    "SCHEMA : bloc JSON-LD fourni avec @graph Article + Person + Organization + WebPage + BreadcrumbList + FAQPage. Vérifier la non-duplication avec Yoast (Yoast génère déjà Article + Person + BreadcrumbList) : ne coller que la partie FAQPage si Yoast est actif, ou désactiver le schema Yoast sur cet article. Tester sur https://search.google.com/test/rich-results et https://validator.schema.org/.",
+    "STAT ÉCARTÉE : aucun chiffre de prévalence du surpoids canin n'a été inclus, le chiffre remonté par la recherche web (38 % des chiens) n'étant pas présent sur la page source citée. Si tu disposes d'une source vérifiée (FACCO, étude vétérinaire française), elle peut être ajoutée dans la section « chien en surpoids ».",
+    "MOTS-CLÉS SECONDAIRES : non relevés (pas d'accès serp_analysis / page_keywords). À relever avant publication via Ubersuggest sur la page n°1 pour « naturopathie chien »."
+  ]
+}
