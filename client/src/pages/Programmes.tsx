@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, FileText, Download, X, Leaf, Copy as CopyIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Download, X, Leaf, Copy as CopyIcon, AlertTriangle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, SUIVI_TABS } from "@/components/SubNav";
 import { HelpNote } from "@/components/HelpNote";
@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { filterSolutions } from "@/lib/solutions-filter";
 import type { Client, NaturalSolution } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
@@ -442,11 +443,7 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
             />
           </div>
           <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-2">
-            {solutions
-              .filter((s) => {
-                const q = pickerSearch.trim().toLowerCase();
-                return !q || s.name.toLowerCase().includes(q) || (s.properties || "").toLowerCase().includes(q) || s.category.toLowerCase().includes(q);
-              })
+            {filterSolutions(solutions, { search: pickerSearch })
               .map((s) => (
                 <button
                   key={s.id}
@@ -457,9 +454,15 @@ function ProgramEditor({ initial, clients, onClose }: ProgramEditorProps) {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{s.name}</span>
-                    <span className="text-[10px] text-muted-foreground border rounded-sm px-1 py-0.5">{s.category}</span>
+                    <span className="text-xs text-muted-foreground border rounded-sm px-1 py-0.5">{s.category}</span>
                   </div>
                   {s.properties && <p className="text-xs text-muted-foreground mt-1">{s.properties}</p>}
+                  {s.contraindications && (
+                    <p className="flex gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-sm px-2 py-1 mt-2" data-testid={`picker-precautions-${s.id}`}>
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" aria-hidden="true" />
+                      <span><span className="font-semibold">Précautions :</span> {s.contraindications}</span>
+                    </p>
+                  )}
                 </button>
               ))}
             {solutions.length === 0 && (
