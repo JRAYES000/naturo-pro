@@ -936,16 +936,27 @@ export class DatabaseStorage implements IStorage {
    * Lot 5 (action P21) — date du dernier RDV par client (map clientId → startAt max),
    * pour enrichir la liste des Clients sans rapatrier tout l'historique.
    */
-  async mapClientLastAppointment(userId: number): Promise<Array<{ clientId: number; lastApptAt: number }>> {
+  async mapClientLastAppointment(userId: number): Promise<Array<{ clientId: number; lastApptAt: number | null; nextApptAt: number | null }>> {
+    // Dernier RDV passé et prochain RDV à venir, séparés : un RDV futur n'est pas un « dernier RDV ».
+    const now = Date.now();
     const rows = await db
       .select({
         clientId: appointments.clientId,
-        lastApptAt: sql<number>`max(${appointments.startAt})`,
+        lastApptAt: sql<number | null>`max(case when ${appointments.startAt} <= ${now} then ${appointments.startAt} end)`,
+        nextApptAt: sql<number | null>`min(case when ${appointments.startAt} > ${now} then ${appointments.startAt} end)`,
       })
       .from(appointments)
       .where(and(eq(appointments.userId, userId), sql`${appointments.clientId} IS NOT NULL`, sql`${appointments.status} != 'cancelled'`))
       .groupBy(appointments.clientId);
-    return rows.filter((r: { clientId: number | null }) => r.clientId != null) as Array<{ clientId: number; lastApptAt: number }>;
+    // MySQL rend les agrégats bigint en chaîne : on normalise en nombre.
+    const toMs = (v: unknown) => (v == null ? null : Number(v));
+    return rows
+      .filter((r: { clientId: number | null }) => r.clientId != null)
+      .map((r: { clientId: number | null; lastApptAt: unknown; nextApptAt: unknown }) => ({
+        clientId: r.clientId as number,
+        lastApptAt: toMs(r.lastApptAt),
+        nextApptAt: toMs(r.nextApptAt),
+      }));
   }
 
   // ── Appointments ───────────────────────────────────────────────────────────
