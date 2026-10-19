@@ -21,12 +21,14 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown,
+  opts?: { signal?: AbortSignal },
 ): Promise<Response> {
   const res = await fetch(`${API_BASE}${url}`, {
     method,
     credentials: "include",
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
+    signal: opts?.signal,
   });
   await throwIfResNotOk(res);
   return res;

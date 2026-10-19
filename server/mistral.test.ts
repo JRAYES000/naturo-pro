@@ -53,3 +53,29 @@ test("buildMistralMessages — injecte la fiche cliente dans le system", () => {
   assert.equal(msgs[0].role, "system");
   assert.ok(msgs[0].content.includes("Marie, 42 ans"));
 });
+
+test("streamNaturoAssistant : modèle du chat et arrêt transmis à OpenRouter", async () => {
+  const { streamNaturoAssistant, CHAT_MODEL } = await import("./mistral");
+  const realFetch = globalThis.fetch;
+  const prevKey = process.env.OPENROUTER_API_KEY;
+  process.env.OPENROUTER_API_KEY = "test";
+  let body: any; let signal: AbortSignal | undefined;
+  globalThis.fetch = (async (_url: any, init: any) => {
+    body = JSON.parse(init.body); signal = init.signal;
+    const sse = 'data: {"choices":[{"delta":{"content":"Bonjour"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n';
+    return new Response(sse, { status: 200 });
+  }) as any;
+  try {
+    const ctrl = new AbortController();
+    let out = "";
+    for await (const d of streamNaturoAssistant([], "Salut", { signal: ctrl.signal })) out += d;
+    assert.equal(out, "Bonjour");
+    assert.equal(body.model, CHAT_MODEL);
+    assert.equal(body.model, "deepseek/deepseek-v4.1-flash-1017");
+    ctrl.abort();
+    assert.equal(signal?.aborted, true);
+  } finally {
+    globalThis.fetch = realFetch;
+    if (prevKey === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = prevKey;
+  }
+});

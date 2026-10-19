@@ -7,10 +7,10 @@
  * /api/discussions/:id/messages. Les réponses de l'assistant sont rendues en Markdown.
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText, BookMarked, ChevronDown, X } from "lucide-react";
+import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText, BookMarked, ChevronDown, X, Square, ArrowDown, CornerDownLeft, ClipboardCopy } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
@@ -93,6 +93,9 @@ function Avatar({ src, fallback, title }: { src?: string | null; fallback: React
 // horizontales (`---`) masquées (le modèle en émet entre les chapitres, inutiles).
 const mdComponents: Components = {
   hr: () => null,
+  a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2" />,
+  blockquote: ({ node, ...props }) => <blockquote className="my-2 border-l-2 border-primary/40 pl-3 not-italic text-muted-foreground" {...props} />,
+  code: ({ node, className, ...props }) => <code className={`${className ?? ""} rounded-sm bg-muted px-1 py-0.5 text-[0.85em] before:content-none after:content-none`} {...props} />,
   table: ({ node, ...props }) => (
     <div className="my-2 rounded-lg border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -108,9 +111,18 @@ const mdComponents: Components = {
   ),
 };
 
-function Bubble({ role, content, typing, streaming, userPhoto, userName, onSave, saved }: {
-  role: string; content: string; typing?: boolean; streaming?: boolean; userPhoto?: string | null; userName?: string | null;
-  onSave?: () => void; saved?: boolean;
+function formatTime(ts?: number | string | Date | null): string | undefined {
+  if (ts == null) return undefined;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? undefined : d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+}
+
+// Mémoïsée : sans ça, chaque frappe dans la zone de saisie re-parsait le Markdown de
+// toute la discussion. Les callbacks reçoivent l'id du message pour rester stables.
+const Bubble = memo(function Bubble({ id, role, content, createdAt, typing, streaming, userPhoto, userName, onSave, onReuse, saved }: {
+  id?: number; role: string; content: string; createdAt?: number | string | Date | null; typing?: boolean; streaming?: boolean;
+  userPhoto?: string | null; userName?: string | null;
+  onSave?: (id: number) => void; onReuse?: (text: string) => void; saved?: boolean;
 }) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
@@ -125,51 +137,53 @@ function Bubble({ role, content, typing, streaming, userPhoto, userName, onSave,
   ) : (
     <Avatar src={NATUROBOT_AVATAR} fallback={<Sparkles className="h-4 w-4" />} title="Naturobot" />
   );
+  const done = !typing && !streaming && !!content;
+  const actionCls = "inline-flex items-center gap-1 rounded-md px-2 h-8 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 transition disabled:opacity-60";
   return (
-    <div className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
+    <div className={`flex items-start gap-2 ${isUser ? "justify-end" : "justify-start"}`} data-testid={`message-${role}`}>
       {!isUser && avatar}
-      <div
-        className={`group relative max-w-[82%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-          isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-card text-foreground border border-border"
-        } ${typing ? "animate-pulse" : ""}`}
-      >
-        {isUser ? (
-          content
-        ) : (
-          <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-pre:bg-muted prose-pre:text-foreground">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{content}</ReactMarkdown>
-            {streaming && <span className="motion-safe:animate-pulse text-primary" aria-hidden="true">▍</span>}
-          </div>
-        )}
-        {!isUser && !typing && !streaming && content && (
-          <>
-            <button
-              onClick={copy}
-              className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
-              aria-label="Copier la réponse"
-              data-testid="button-copy-message"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+      <div className={`flex flex-col min-w-0 ${isUser ? "items-end max-w-[82%]" : "items-start max-w-[92%]"}`}>
+        <div
+          title={formatTime(createdAt)}
+          className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed max-w-full ${
+            isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap break-words" : "bg-card text-foreground border border-border"
+          } ${typing ? "animate-pulse" : ""}`}
+        >
+          {isUser ? (
+            content
+          ) : (
+            <div className="prose prose-sm max-w-none break-words prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-pre:bg-muted prose-pre:text-foreground">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{content}</ReactMarkdown>
+              {streaming && <span className="inline-block h-4 w-1.5 -mb-0.5 ml-0.5 rounded-sm bg-primary motion-safe:animate-pulse" aria-hidden="true" />}
+            </div>
+          )}
+        </div>
+        {/* Actions toujours visibles : le survol n'existe pas sur mobile. */}
+        {done && !isUser && (
+          <div className="flex gap-1 mt-1">
+            <button onClick={copy} className={actionCls} aria-label="Copier la réponse" data-testid="button-copy-message">
+              {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copié" : "Copier"}
             </button>
             {/* Lot 5 (N4) — archiver la réponse dans la bibliothèque */}
-            {onSave && (
-              <button
-                onClick={onSave}
-                className="absolute -bottom-3 right-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition bg-card rounded-full shadow-sm h-10 w-10 flex items-center justify-center"
-                aria-label="Enregistrer dans la bibliothèque"
-                title="Enregistrer dans la bibliothèque"
-                data-testid="button-save-reply"
-              >
-                <BookMarked className={`h-3.5 w-3.5 ${saved ? "text-primary" : "text-muted-foreground"}`} />
+            {onSave && id != null && (
+              <button onClick={() => onSave(id)} disabled={saved} className={actionCls} aria-label="Enregistrer dans la bibliothèque" data-testid="button-save-reply">
+                <BookMarked className={`h-3.5 w-3.5 ${saved ? "text-primary" : ""}`} />
+                {saved ? "Enregistrée" : "Bibliothèque"}
               </button>
             )}
-          </>
+          </div>
+        )}
+        {done && isUser && onReuse && (
+          <button onClick={() => onReuse(content)} className={`${actionCls} mt-1`} aria-label="Reprendre cette question" data-testid="button-reuse-question">
+            <CornerDownLeft className="h-3.5 w-3.5" /> Reprendre
+          </button>
         )}
       </div>
       {isUser && avatar}
     </div>
   );
-}
+});
 
 function Chat() {
   const { toast } = useToast();
@@ -183,6 +197,8 @@ function Chat() {
   const [pending, setPending] = useState<string | null>(null);
   const [streamText, setStreamText] = useState("");
   const [sources, setSources] = useState<string[]>([]);
+  const [atBottom, setAtBottom] = useState(true);
+  const abortRef = useRef<AbortController | null>(null);
   const [filter, setFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -226,6 +242,14 @@ function Chat() {
     queryKey: ["/api/discussions", selectedId, "messages"],
     enabled: selectedId != null,
   });
+  // Refs lues par les callbacks stables passés aux bulles mémoïsées.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const savedIdsRef = useRef(savedIds);
+  savedIdsRef.current = savedIds;
+  const saveReplyMutRef = useRef(saveReplyMut);
+  saveReplyMutRef.current = saveReplyMut;
+  const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
 
   // Sélection auto de la discussion la plus récente si aucune dans l'URL.
   useEffect(() => {
@@ -234,26 +258,46 @@ function Chat() {
 
   const sendMut = useMutation({
     mutationFn: async (message: string) => {
-      const res = await apiRequest("POST", `/api/discussions/${selectedId}/messages`, { message });
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
       setStreamText(""); setSources([]);
-      const reader = res.body!.getReader();
-      const dec = new TextDecoder();
       let acc = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += dec.decode(value, { stream: true });
+      let frame = 0;
+      // Un rendu par image (rAF) au lieu d'un par paquet réseau : le Markdown n'est
+      // re-parsé qu'au rythme de l'écran, même quand le modèle débite très vite.
+      const flush = () => {
+        frame = 0;
         const sep = acc.indexOf("@@SOURCES@@:");
         if (sep >= 0) {
           try { setSources(JSON.parse(acc.slice(sep + "@@SOURCES@@:".length))); } catch { /* partiel */ }
           setStreamText(acc.slice(0, sep).replace(/\n$/, ""));
         } else setStreamText(acc);
+      };
+      try {
+        const res = await apiRequest("POST", `/api/discussions/${selectedId}/messages`, { message }, { signal: ctrl.signal });
+        const reader = res.body!.getReader();
+        const dec = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          acc += dec.decode(value, { stream: true });
+          if (!frame) frame = requestAnimationFrame(flush);
+        }
+      } catch (e: any) {
+        // Arrêt volontaire : le serveur enregistre la réponse partielle, on la recharge.
+        if (!ctrl.signal.aborted) throw e;
+        await new Promise((r) => setTimeout(r, 600));
+      } finally {
+        if (frame) cancelAnimationFrame(frame);
+        flush();
+        abortRef.current = null;
       }
     },
     onSuccess: async () => {
-      setPending(null); setStreamText(""); setSources([]);
+      setPending(null); setStreamText("");
       await queryClient.invalidateQueries({ queryKey: ["/api/discussions", selectedId, "messages"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/discussions"] }); // titre auto + updatedAt
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-usage"] });
       // Réponse complète rendue : on cale la question tout en haut (lecture depuis le début).
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const c = scrollRef.current;
@@ -263,8 +307,10 @@ function Chat() {
         if (q) c.scrollTo({ top: Math.max(0, q.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 12), behavior: "smooth" });
       }));
     },
-    onError: (e: any) => {
+    onError: (e: any, message) => {
+      // La question n'est pas perdue : elle revient dans la zone de saisie.
       setPending(null); setStreamText(""); setSources([]);
+      setInput((cur) => cur || message);
       toast({ title: "Erreur", description: e?.message || "L'assistant n'a pas pu répondre.", variant: "destructive" });
     },
   });
@@ -312,6 +358,35 @@ function Chat() {
     const q = qs[qs.length - 1] as HTMLElement | undefined;
     if (q) c.scrollTo({ top: Math.max(0, q.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 12) });
   }, [streamText, pending, sendMut.isPending]);
+
+  // Changement de discussion : les sources affichées appartenaient à la précédente.
+  useEffect(() => { setSources([]); }, [selectedId]);
+
+  function onScroll() {
+    const c = scrollRef.current;
+    if (c) setAtBottom(c.scrollHeight - c.scrollTop - c.clientHeight < 80);
+  }
+  function scrollToBottom() {
+    const c = scrollRef.current;
+    if (c) c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+  }
+
+  const onSaveReply = useCallback((id: number) => {
+    const m = messagesRef.current.find((x) => x.id === id);
+    if (m && !savedIdsRef.current.has(id)) saveReplyMutRef.current.mutate(m);
+  }, []);
+  const onReuse = useCallback((text: string) => {
+    setInput(text);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+
+  async function copyDiscussion() {
+    const md = messages
+      .map((m) => (m.role === "user" ? `**Question :** ${m.content}` : `**Naturobot :**\n\n${m.content}`))
+      .join("\n\n---\n\n");
+    await navigator.clipboard.writeText(`# ${selected?.title ?? "Discussion Naturobot"}\n\n${md}`);
+    toast({ title: "Discussion copiée", description: "Collez-la dans un document ou un e-mail.", variant: "success" });
+  }
 
   // Auto-grow : la zone de saisie s'agrandit avec le contenu (jusqu'à 200px, puis scroll interne).
   useEffect(() => {
@@ -444,7 +519,8 @@ function Chat() {
                 <FileText className="h-4 w-4 mr-1" />
                 {createProgrammeMut.isPending ? "Création…" : "Créer un programme"}
               </Button>
-              <button onClick={del} className="text-muted-foreground hover:text-destructive" aria-label="Supprimer" data-testid="button-delete-discussion"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={copyDiscussion} disabled={messages.length === 0} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-40" aria-label="Copier toute la discussion" title="Copier toute la discussion" data-testid="button-copy-discussion"><ClipboardCopy className="h-4 w-4" /></button>
+              <button onClick={del} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" aria-label="Supprimer" data-testid="button-delete-discussion"><Trash2 className="h-4 w-4" /></button>
             </div>
           )}
 
@@ -475,7 +551,8 @@ function Chat() {
             );
           })()}
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
+          <div className="relative flex-1 min-h-0 flex flex-col">
+          <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
             {selectedId == null ? (
               <div className="h-full flex items-center justify-center">
                 <EmptyState
@@ -520,15 +597,23 @@ function Chat() {
             ) : (
               <>
                 {messages.map((m) => (
-                  <Bubble
-                    key={m.id}
-                    role={m.role}
-                    content={m.content}
-                    userPhoto={user?.photoUrl}
-                    userName={user?.name}
-                    onSave={m.role === "assistant" ? () => { if (!savedIds.has(m.id)) saveReplyMut.mutate(m); } : undefined}
-                    saved={savedIds.has(m.id)}
-                  />
+                  <div key={m.id}>
+                    <Bubble
+                      id={m.id}
+                      role={m.role}
+                      content={m.content}
+                      createdAt={m.createdAt}
+                      userPhoto={user?.photoUrl}
+                      userName={user?.name}
+                      onSave={m.role === "assistant" ? onSaveReply : undefined}
+                      onReuse={m.role === "user" ? onReuse : undefined}
+                      saved={savedIds.has(m.id)}
+                    />
+                    {/* Sources du dernier échange : restent visibles une fois la réponse finie. */}
+                    {m.id === lastAssistantId && !sendMut.isPending && sources.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1 ml-10" data-testid="text-sources">Sources : {sources.join(", ")}</p>
+                    )}
+                  </div>
                 ))}
                 {pending && <Bubble role="user" content={pending} userPhoto={user?.photoUrl} userName={user?.name} />}
                 {sendMut.isPending && (
@@ -549,10 +634,21 @@ function Chat() {
                     ) : (
                       <Bubble role="assistant" content={streamText} streaming />
                     )}
-                    {sources.length > 0 && <p className="text-xs text-muted-foreground mt-1 ml-1" data-testid="text-sources">Sources : {sources.join(", ")}</p>}
+                    {sources.length > 0 && <p className="text-xs text-muted-foreground mt-1 ml-10" data-testid="text-sources">Sources : {sources.join(", ")}</p>}
                   </div>
                 )}
               </>
+            )}
+          </div>
+            {!atBottom && selectedId != null && messages.length > 0 && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 h-9 px-3 inline-flex items-center gap-1 rounded-full bg-card text-xs text-muted-foreground hover:text-primary shadow-md"
+                aria-label="Aller au dernier message"
+                data-testid="button-scroll-bottom"
+              >
+                <ArrowDown className="h-3.5 w-3.5" /> Dernier message
+              </button>
             )}
           </div>
 
@@ -560,7 +656,11 @@ function Chat() {
             <div className="border-t border-border p-3 bg-card">
               <div className="flex items-end gap-2">
                 <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder="Écris ta question…" className="resize-none overflow-y-auto min-h-[44px] max-h-[200px]" rows={1} data-testid="input-chat-message" />
-                <Button onClick={() => submit()} disabled={!input.trim() || sendMut.isPending} className="rounded-lg shrink-0" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
+                {sendMut.isPending ? (
+                  <Button onClick={() => abortRef.current?.abort()} variant="outline" className="rounded-lg shrink-0" aria-label="Arrêter la réponse" title="Arrêter la réponse" data-testid="button-stop-message"><Square className="h-4 w-4 fill-current" /></Button>
+                ) : (
+                  <Button onClick={() => submit()} disabled={!input.trim()} className="rounded-lg shrink-0" aria-label="Envoyer" data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
+                )}
               </div>
               {/* Lot 5 (N9) — coût affiché sur l'action, au moment de décider */}
               <p className="hidden sm:block text-xs text-muted-foreground mt-1">

@@ -155,15 +155,18 @@ export function registerDiscussionRoutes(app: Express): void {
     // Démarre la génération titre/thème EN PARALLÈLE du streaming (1er échange) :
     // elle se termine pendant la réponse, donc sans rallonger le temps perçu.
     const metaPromise = isFirstExchange ? generateDiscussionMeta(userMessage).catch(() => null) : null;
-    const instructions = await storage.getAssistantInstructions();
+    // Préparation en parallèle (consignes, fiche cliente, RAG) : le RAG appelle une API
+    // d'embedding, l'attendre en série retardait d'autant le premier mot affiché.
+    const [instructions, client, retrieved] = await Promise.all([
+      storage.getAssistantInstructions(),
+      d.clientId != null ? storage.getClient(d.clientId) : Promise.resolve(undefined),
+      retrieveRelevantChunks(userMessage).catch(() => []),
+    ]);
+    const clientContext = client && client.userId === req.userId ? buildClientContext(client) : undefined;
 
-    let clientContext: string | undefined;
-    if (d.clientId != null) {
-      const c = await storage.getClient(d.clientId);
-      if (c && c.userId === req.userId) clientContext = buildClientContext(c);
-    }
-    let retrieved: { content: string; documentId: number }[] = [];
-    try { retrieved = await retrieveRelevantChunks(userMessage); } catch { retrieved = []; }
+    // Bouton « Arrêter » ou onglet fermé : on coupe aussi l'appel OpenRouter (tokens payés).
+    const abort = new AbortController();
+    res.on("close", () => { if (!res.writableEnded) abort.abort(); });
 
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -175,11 +178,13 @@ export function registerDiscussionRoutes(app: Express): void {
         customInstructions: instructions,
         contextChunks: retrieved.map((r) => r.content),
         clientContext,
+        signal: abort.signal,
       })) {
         full += delta;
         res.write(delta);
       }
     } catch (e: any) {
+      if (!full && abort.signal.aborted) return;
       if (!full) {
         res.statusCode = e?.status === 503 ? 503 : 502;
         return res.end(e?.status === 503
@@ -188,7 +193,7 @@ export function registerDiscussionRoutes(app: Express): void {
       }
     }
 
-    if (retrieved.length) {
+    if (retrieved.length && !abort.signal.aborted) {
       const ids = Array.from(new Set(retrieved.map((r) => r.documentId)));
       const docs = await storage.listKbDocuments();
       const names = ids.map((id) => docs.find((doc) => doc.id === id)?.title).filter(Boolean);
