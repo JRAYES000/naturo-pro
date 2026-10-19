@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Sparkles, Copy, Check, Save, Send, Loader2, Trash2, Image as ImageIcon, Download, Instagram, Facebook,
   Layers, Film, Smartphone, Users, Hash, Shuffle, RotateCcw, Pencil, Search, CircleStop, ArrowRight, Repeat,
-  Lightbulb, type LucideIcon,
+  Lightbulb, CalendarDays, List, ChevronLeft, ChevronRight, Undo2, type LucideIcon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -24,7 +24,10 @@ import { renderCarouselSlides, buildCaptionFile, type CarouselDeck, type Rendere
 import { createZip, triggerDownload, type ZipEntry } from "@/lib/zip";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
-import { filterContentPosts, countByStatus, captionLength, countHashtags, slugify, pickRandom } from "@/lib/studio-content";
+import {
+  filterContentPosts, countByStatus, captionLength, countHashtags, slugify, pickRandom,
+  toDateInputValue, fromDateInputValue, buildMonthGrid, groupPostsByDay, dayKey,
+} from "@/lib/studio-content";
 
 type Channel = "instagram" | "facebook";
 type ContentFormat = "carrousel" | "reel" | "story" | "post_groupe" | "legende";
@@ -55,6 +58,17 @@ const CHANNELS: { id: Channel; label: string; icon: LucideIcon }[] = [
   { id: "instagram", label: "Instagram", icon: Instagram },
   { id: "facebook", label: "Facebook", icon: Facebook },
 ];
+type RewriteAction = "court" | "chaleureux" | "cta" | "simple" | "accroche";
+const REWRITES: { id: RewriteAction; label: string }[] = [
+  { id: "court", label: "Plus court" },
+  { id: "chaleureux", label: "Plus chaleureux" },
+  { id: "simple", label: "Plus simple" },
+  { id: "accroche", label: "Nouvelle accroche" },
+  { id: "cta", label: "Appel à l'action renforcé" },
+];
+interface AiUsage { today: number; dailyLimit: number; }
+const refreshUsage = () => queryClient.invalidateQueries({ queryKey: ["/api/ai-usage"] });
+
 const isFormat = (f: string): f is ContentFormat => f in FORMAT_LABELS;
 const isChannel = (c: string): c is Channel => c === "instagram" || c === "facebook";
 const formatDate = (ms: number) => new Date(ms).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
@@ -99,6 +113,8 @@ function StudioContenu() {
   useEffect(() => () => renderedRef.current.forEach((r) => URL.revokeObjectURL(r.url)), []);
 
   const { data: sources } = useQuery<IdeaSources>({ queryKey: ["/api/content/idea-sources"], staleTime: 5 * 60_000 });
+  const { data: usage } = useQuery<AiUsage>({ queryKey: ["/api/ai-usage"] });
+  const remaining = usage ? Math.max(0, usage.dailyLimit - usage.today) : null;
   const { data: posts = [], isLoading: postsLoading } = useQuery<ContentPost[]>({ queryKey: ["/api/content/posts"] });
 
   const { data: voice } = useQuery<{ marketingTone: string | null; marketingAudience: string | null }>({ queryKey: ["/api/content/profile"] });
@@ -114,6 +130,23 @@ function StudioContenu() {
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec.", variant: "destructive" }),
   });
 
+  // Lit une réponse texte streamée et l'affiche au fil de l'eau.
+  async function readStream(res: Response): Promise<string> {
+    const reader = res.body!.getReader();
+    readerRef.current = reader;
+    const dec = new TextDecoder();
+    let acc = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        setStreamText(acc);
+      }
+    } finally { readerRef.current = null; }
+    return acc;
+  }
+
   const genMut = useMutation({
     mutationFn: async () => {
       setStreamText("");
@@ -122,23 +155,36 @@ function StudioContenu() {
       clearVisuals();
       setResultMeta({ channel, format, topic: topic.trim() });
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setPrevText(null);
       const res = await apiRequest("POST", "/api/content/generate", { channel, format, topicType, topic });
-      const reader = res.body!.getReader();
-      readerRef.current = reader;
-      const dec = new TextDecoder();
-      let acc = "";
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          acc += dec.decode(value, { stream: true });
-          setStreamText(acc);
-        }
-      } finally { readerRef.current = null; }
-      return acc;
+      return readStream(res);
     },
+    onSettled: refreshUsage,
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "La génération a échoué.", variant: "destructive" }),
   });
+
+  // Retouche rapide : réécrit le contenu affiché ; la version précédente reste récupérable.
+  const [prevText, setPrevText] = useState<string | null>(null);
+  const rewriteMut = useMutation({
+    mutationFn: async (action: RewriteAction) => {
+      const before = streamText;
+      setEditing(false);
+      setSavedId(null);
+      const res = await apiRequest("POST", "/api/content/rewrite", { channel: meta.channel, format: meta.format, action, text: before });
+      setPrevText(before);
+      const out = await readStream(res);
+      if (!out.trim()) { setStreamText(before); setPrevText(null); }
+      return out;
+    },
+    onSettled: refreshUsage,
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message || "La retouche a échoué.", variant: "destructive" }),
+  });
+  function undoRewrite() {
+    if (prevText === null) return;
+    setStreamText(prevText);
+    setPrevText(null);
+    setSavedId(null);
+  }
   function stopGeneration() { readerRef.current?.cancel().catch(() => {}); }
 
   const suggestMut = useMutation({
@@ -146,6 +192,7 @@ function StudioContenu() {
       const res = await apiRequest("POST", "/api/content/suggest", { themes });
       return (await res.json()).angles as Angle[];
     },
+    onSettled: refreshUsage,
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Impossible de proposer des idées.", variant: "destructive" }),
   });
 
@@ -184,6 +231,7 @@ function StudioContenu() {
       const r = await renderCarouselSlides(d, { background: data.background, practitionerName: user?.name || "" });
       setRendered(r);
     },
+    onSettled: refreshUsage,
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec de la génération des visuels.", variant: "destructive" }),
   });
 
@@ -195,7 +243,8 @@ function StudioContenu() {
     triggerDownload(createZip(entries), `carrousel-${slugify(meta.topic, "carrousel")}.zip`);
   }
 
-  const canGenerate = !!topic.trim() && !genMut.isPending;
+  const busyAi = genMut.isPending || rewriteMut.isPending;
+  const canGenerate = !!topic.trim() && !busyAi && remaining !== 0;
   function generate() { if (canGenerate) genMut.mutate(); }
   // Ctrl/Cmd + Entrée lance la génération depuis l'onglet Créer.
   const generateRef = useRef(generate);
@@ -230,7 +279,7 @@ function StudioContenu() {
 
   const length = streamText ? captionLength(streamText, meta.channel) : null;
   const hashtags = streamText ? countHashtags(streamText) : 0;
-  const streaming = genMut.isPending;
+  const streaming = busyAi;
 
   return (
     <AppLayout>
@@ -366,9 +415,13 @@ function StudioContenu() {
                 <Button className="w-full rounded-md py-6 font-bold" disabled={!canGenerate}
                   onClick={generate} data-testid="button-generate-content">
                   {streaming ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                  {streaming ? "Rédaction en cours…" : "Générer"}
+                  {genMut.isPending ? "Rédaction en cours…" : "Générer"}
                 </Button>
-                <p className="text-[11px] text-muted-foreground text-center mt-1">Raccourci : Ctrl + Entrée</p>
+                <p className="text-[11px] text-muted-foreground text-center mt-1" data-testid="text-ai-quota">
+                  {remaining === null ? "Raccourci : Ctrl + Entrée"
+                    : remaining === 0 ? <span className="text-destructive font-semibold">Limite du jour atteinte ({usage!.dailyLimit} générations). Reviens demain.</span>
+                    : <>Il te reste <strong className="text-foreground">{remaining}</strong> génération{remaining > 1 ? "s" : ""} aujourd'hui · Ctrl + Entrée</>}
+                </p>
               </div>
 
               <details className="pt-3 border-t border-border">
@@ -449,6 +502,26 @@ function StudioContenu() {
                     </p>
                   ) : null}
 
+                  {streamText && !streaming ? (
+                    <div className="mt-3 pt-3 border-t border-border" data-testid="rewrite-bar">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Sparkles className="h-3.5 w-3.5" /> Retoucher :</span>
+                        {REWRITES.map((r) => (
+                          <button key={r.id} type="button" disabled={remaining === 0} onClick={() => rewriteMut.mutate(r.id)}
+                            className="px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-primary hover:bg-secondary/70 transition disabled:opacity-50"
+                            data-testid={`button-rewrite-${r.id}`}>
+                            {r.label}
+                          </button>
+                        ))}
+                        {prevText !== null ? (
+                          <button type="button" onClick={undoRewrite} className="px-2.5 py-1 rounded-full text-xs font-semibold border border-border hover:border-primary transition inline-flex items-center gap-1" data-testid="button-undo-rewrite">
+                            <Undo2 className="h-3.5 w-3.5" /> Version précédente
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {meta.format === "carrousel" && streamText && !streaming ? (
                     <div className="mt-4 pt-3 border-t border-border">
                       <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
@@ -519,15 +592,21 @@ function StudioContenu() {
   );
 }
 
+type PostPatch = { body?: string; title?: string; status?: string; publishedAt?: number | null };
+const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const STATUS_DOT: Record<string, string> = { brouillon: "bg-muted-foreground/50", a_publier: "bg-amber-500", publie: "bg-primary" };
+
 function ContentLibrary({ posts, loading, onReuse, onCreate }: { posts: ContentPost[]; loading: boolean; onReuse: (p: ContentPost) => void; onCreate: () => void }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const confirm = useConfirm();
+  const [view, setView] = useState<"liste" | "calendrier">("liste");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [focusId, setFocusId] = useState<number | null>(null);
 
   const counts = useMemo(() => countByStatus(posts), [posts]);
   const filtered = useMemo(
@@ -536,13 +615,15 @@ function ContentLibrary({ posts, loading, onReuse, onCreate }: { posts: ContentP
   );
 
   const patchMut = useMutation({
-    mutationFn: async (v: { id: number; body?: string; status?: string }) => {
-      const res = await apiRequest("PATCH", `/api/content/posts/${v.id}`, { body: v.body, status: v.status });
+    mutationFn: async (v: PostPatch & { id: number }) => {
+      const { id, ...patch } = v;
+      const res = await apiRequest("PATCH", `/api/content/posts/${id}`, patch);
       return res.json();
     },
     onSuccess: async (_d, v) => {
-      if (v.body !== undefined) { setEditingId(null); toast({ title: "Modifications enregistrées" }); }
+      if (v.body !== undefined || v.title !== undefined) { setEditingId(null); toast({ title: "Modifications enregistrées" }); }
       else if (v.status) toast({ title: `Statut : ${STATUS_LABELS[v.status]}` });
+      else if (v.publishedAt !== undefined) toast({ title: v.publishedAt ? `Prévu le ${formatDate(v.publishedAt)}` : "Date retirée" });
       await queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message || "Échec.", variant: "destructive" }),
@@ -556,6 +637,20 @@ function ContentLibrary({ posts, loading, onReuse, onCreate }: { posts: ContentP
   async function remove(id: number) {
     if (await confirm({ title: "Supprimer ce contenu ?", description: "Cette action est définitive.", destructive: true })) delMut.mutate(id);
   }
+
+  // Depuis le calendrier : ouvre le contenu dans la liste et le met en évidence.
+  function openPost(id: number) {
+    setQuery(""); setStatusFilter("all"); setChannelFilter("all");
+    setView("liste");
+    setFocusId(id);
+  }
+  useEffect(() => {
+    if (view !== "liste" || focusId === null) return;
+    const el = document.querySelector(`[data-testid="content-post-${focusId}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const t = setTimeout(() => setFocusId(null), 2500);
+    return () => clearTimeout(t);
+  }, [view, focusId]);
 
   if (loading) {
     return <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>;
@@ -577,6 +672,15 @@ function ContentLibrary({ posts, loading, onReuse, onCreate }: { posts: ContentP
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap items-center">
+        <div className="inline-flex rounded-md border border-border p-0.5" role="tablist" aria-label="Affichage">
+          {([["liste", "Liste", List], ["calendrier", "Calendrier", CalendarDays]] as const).map(([id, label, Icon]) => (
+            <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}
+              className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-semibold transition ${view === id ? "bg-primary text-primary-foreground" : "text-primary hover:bg-secondary/60"}`}
+              data-testid={`button-view-${id}`}>
+              <Icon className="h-3.5 w-3.5" /> {label}
+            </button>
+          ))}
+        </div>
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un contenu…" className="pl-8" aria-label="Rechercher un contenu" data-testid="input-search-content" />
@@ -600,7 +704,9 @@ function ContentLibrary({ posts, loading, onReuse, onCreate }: { posts: ContentP
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {view === "calendrier" ? (
+        <EditorialCalendar posts={filtered} onOpen={openPost} onPlan={(id, ms) => patchMut.mutate({ id, publishedAt: ms })} />
+      ) : filtered.length === 0 ? (
         <div className="text-sm text-muted-foreground">
           Aucun contenu ne correspond.{" "}
           <button type="button" className="underline text-primary" onClick={() => { setQuery(""); setStatusFilter("all"); setChannelFilter("all"); }} data-testid="button-reset-filters">
@@ -608,37 +714,116 @@ function ContentLibrary({ posts, loading, onReuse, onCreate }: { posts: ContentP
           </button>
         </div>
       ) : filtered.map((p) => (
-        <PostCard key={p.id} post={p} practitionerName={user?.name || ""}
+        <PostCard key={p.id} post={p} practitionerName={user?.name || ""} highlighted={focusId === p.id}
           editing={editingId === p.id} saving={patchMut.isPending && patchMut.variables?.id === p.id}
           onEdit={() => setEditingId(p.id)} onCancelEdit={() => setEditingId(null)}
-          onSaveBody={(body) => patchMut.mutate({ id: p.id, body })}
+          onSaveEdit={(patch) => patchMut.mutate({ id: p.id, ...patch })}
           onStatus={(status) => patchMut.mutate({ id: p.id, status })}
+          onDate={(ms) => patchMut.mutate({ id: p.id, publishedAt: ms })}
           onDelete={() => remove(p.id)} onReuse={() => onReuse(p)} />
       ))}
     </div>
   );
 }
 
-interface PostCardProps {
-  post: ContentPost; practitionerName: string; editing: boolean; saving: boolean;
-  onEdit: () => void; onCancelEdit: () => void; onSaveBody: (body: string) => void;
-  onStatus: (s: string) => void; onDelete: () => void; onReuse: () => void;
+// Calendrier éditorial : chaque contenu est placé à sa date de publication (prévue ou réelle).
+function EditorialCalendar({ posts, onOpen, onPlan }: { posts: ContentPost[]; onOpen: (id: number) => void; onPlan: (id: number, ms: number | null) => void }) {
+  const now = new Date();
+  const [cursor, setCursor] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const weeks = useMemo(() => buildMonthGrid(cursor.y, cursor.m), [cursor]);
+  const { byDay, undated } = useMemo(() => groupPostsByDay(posts), [posts]);
+  const todayKey = dayKey(now);
+  const monthLabel = new Date(cursor.y, cursor.m, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const move = (delta: number) => setCursor((c) => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+
+  return (
+    <div className="space-y-4" data-testid="editorial-calendar">
+      <div className="card-naturo p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <Button variant="outline" size="sm" className="rounded-md" aria-label="Mois précédent" onClick={() => move(-1)} data-testid="button-month-prev"><ChevronLeft className="h-4 w-4" /></Button>
+          <div className="text-center">
+            <p className="font-bold capitalize" data-testid="text-calendar-month">{monthLabel}</p>
+            {cursor.y !== now.getFullYear() || cursor.m !== now.getMonth() ? (
+              <button type="button" className="text-xs text-primary underline" onClick={() => setCursor({ y: now.getFullYear(), m: now.getMonth() })}>Aujourd'hui</button>
+            ) : null}
+          </div>
+          <Button variant="outline" size="sm" className="rounded-md" aria-label="Mois suivant" onClick={() => move(1)} data-testid="button-month-next"><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+        <div className="grid grid-cols-7 gap-px rounded-md overflow-hidden border border-border bg-border text-xs">
+          {WEEKDAYS.map((d) => <div key={d} className="bg-secondary/50 px-1 py-1 text-center font-semibold text-muted-foreground">{d}</div>)}
+          {weeks.flat().map((d) => {
+            const k = dayKey(d);
+            const items = byDay.get(k) ?? [];
+            const outside = d.getMonth() !== cursor.m;
+            return (
+              <div key={k} className={`min-h-[64px] sm:min-h-[92px] p-1 ${outside ? "bg-muted text-muted-foreground/60" : "bg-background"}`} data-testid={`calendar-day-${k}`}>
+                <div className={`text-[11px] mb-0.5 ${k === todayKey ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold" : "text-muted-foreground"}`}>{d.getDate()}</div>
+                <div className="space-y-0.5">
+                  {items.slice(0, 3).map((p) => (
+                    <button key={p.id} type="button" onClick={() => onOpen(p.id)} title={`${p.title} · ${STATUS_LABELS[p.status] || p.status}`}
+                      className="w-full text-left flex items-center gap-1 rounded-sm px-1 py-0.5 bg-secondary/60 hover:bg-secondary text-[11px] leading-tight"
+                      data-testid={`calendar-post-${p.id}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[p.status] || STATUS_DOT.brouillon}`} />
+                      <span className="truncate">{p.theme || p.title}</span>
+                    </button>
+                  ))}
+                  {items.length > 3 ? <p className="text-[10px] text-muted-foreground px-1">+{items.length - 3} autre{items.length - 3 > 1 ? "s" : ""}</p> : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-3 flex-wrap mt-2 text-[11px] text-muted-foreground">
+          {STATUS_ORDER.map((s) => <span key={s} className="inline-flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${STATUS_DOT[s]}`} />{STATUS_LABELS[s]}</span>)}
+        </div>
+      </div>
+
+      <div className="card-naturo" data-testid="calendar-undated">
+        <p className="text-sm font-bold mb-1">À planifier ({undated.length})</p>
+        {undated.length ? (
+          <>
+            <p className="text-xs text-muted-foreground mb-2">Choisis une date pour placer chaque contenu dans ton calendrier.</p>
+            <div className="space-y-2">
+              {undated.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 flex-wrap">
+                  <button type="button" className="text-sm text-left flex-1 min-w-[160px] truncate hover:text-primary" onClick={() => onOpen(p.id)}>{p.title}</button>
+                  <Input type="date" className="h-8 w-[150px] text-xs" aria-label={`Date de publication de ${p.title}`}
+                    onChange={(e) => { const ms = fromDateInputValue(e.target.value); if (ms) onPlan(p.id, ms); }}
+                    data-testid={`input-plan-${p.id}`} />
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">Tout est planifié.</p>
+        )}
+      </div>
+    </div>
+  );
 }
-const PostCard = memo(function PostCard({ post: p, practitionerName, editing, saving, onEdit, onCancelEdit, onSaveBody, onStatus, onDelete, onReuse }: PostCardProps) {
+
+interface PostCardProps {
+  post: ContentPost; practitionerName: string; editing: boolean; saving: boolean; highlighted: boolean;
+  onEdit: () => void; onCancelEdit: () => void; onSaveEdit: (patch: { title?: string; body?: string }) => void;
+  onStatus: (s: string) => void; onDate: (ms: number | null) => void; onDelete: () => void; onReuse: () => void;
+}
+const PostCard = memo(function PostCard({ post: p, practitionerName, editing, saving, highlighted, onEdit, onCancelEdit, onSaveEdit, onStatus, onDate, onDelete, onReuse }: PostCardProps) {
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [editBody, setEditBody] = useState(p.body);
-  useEffect(() => { if (editing) setEditBody(p.body); }, [editing, p.body]);
+  const [editTitle, setEditTitle] = useState(p.title);
+  useEffect(() => { if (editing) { setEditBody(p.body); setEditTitle(p.title); } }, [editing, p.body, p.title]);
   const long = p.body.length > 420 || p.body.split("\n").length > 7;
   const ChannelIcon = p.channel === "facebook" ? Facebook : Instagram;
+  const changed = editBody !== p.body || editTitle.trim() !== p.title;
 
   return (
-    <div className="card-naturo" data-testid={`content-post-${p.id}`}>
+    <div className={`card-naturo transition-colors ${highlighted ? "border-primary bg-secondary/30" : ""}`} data-testid={`content-post-${p.id}`}>
       <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
         <div className="min-w-0">
           <p className="font-bold flex items-center gap-1.5"><ChannelIcon className="h-4 w-4 text-primary flex-shrink-0" />{p.title}</p>
           <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-post-date-${p.id}`}>
-            Créé le {formatDate(p.createdAt)}{p.status === "publie" && p.publishedAt ? ` · publié le ${formatDate(p.publishedAt)}` : ""}
+            Créé le {formatDate(p.createdAt)}
             {p.slidesJson ? (
               <span className="ml-2 px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary inline-flex items-center gap-1" data-testid={`badge-visuals-${p.id}`}>
                 <ImageIcon className="h-3 w-3" /> Visuels
@@ -671,11 +856,21 @@ const PostCard = memo(function PostCard({ post: p, practitionerName, editing, sa
           </Button>
         </div>
       </div>
+      <div className="flex items-center gap-2 mb-2 text-xs">
+        <CalendarDays className="h-3.5 w-3.5 text-primary" />
+        <label htmlFor={`date-${p.id}`} className="text-muted-foreground">{p.status === "publie" ? "Publié le" : "Publication prévue le"}</label>
+        <Input id={`date-${p.id}`} type="date" className="h-7 w-[140px] text-xs" value={toDateInputValue(p.publishedAt)}
+          onChange={(e) => { const v = e.target.value; if (!v) onDate(null); else { const ms = fromDateInputValue(v); if (ms) onDate(ms); } }}
+          data-testid={`input-date-${p.id}`} />
+      </div>
       {editing ? (
         <div className="space-y-2">
+          <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={255} aria-label="Titre" data-testid={`input-edit-title-${p.id}`} />
           <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={10} data-testid={`textarea-edit-${p.id}`} />
           <div className="flex gap-2">
-            <Button size="sm" className="rounded-md" disabled={saving || !editBody.trim() || editBody === p.body} onClick={() => onSaveBody(editBody)} data-testid={`button-save-edit-${p.id}`}>
+            <Button size="sm" className="rounded-md" disabled={saving || !editBody.trim() || !editTitle.trim() || !changed}
+              onClick={() => onSaveEdit({ ...(editBody !== p.body ? { body: editBody } : {}), ...(editTitle.trim() !== p.title ? { title: editTitle.trim() } : {}) })}
+              data-testid={`button-save-edit-${p.id}`}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Enregistrer
             </Button>
             <Button size="sm" variant="outline" className="rounded-md" onClick={onCancelEdit}>Annuler</Button>
