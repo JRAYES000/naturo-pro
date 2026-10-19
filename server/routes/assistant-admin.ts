@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { requireAuth, requireAdmin, type AuthedRequest } from "../auth";
 import { extractText } from "../pdf";
 import { chunkText, embedTexts, invalidateVectorCache } from "../rag";
+import { NATUROBOT_FEEDBACK_EVENT } from "../naturobot";
 
 const MAX_BASE64 = 28_000_000; // ~20 Mo de fichier (base64 ≈ ×1,34)
 const instrSchema = z.object({ instructions: z.string().max(20000) });
@@ -58,5 +59,21 @@ export function registerAssistantAdminRoutes(app: Express): void {
     await storage.deleteKbDocument(Number(req.params.id));
     invalidateVectorCache();
     res.json({ ok: true });
+  });
+
+  // Réponses Naturobot jugées décevantes (dernier avis « pouce bas » par réponse).
+  app.get("/api/admin/assistant/feedback", requireAuth, requireAdmin, async (_req, res) => {
+    const events = await storage.listAnalyticsEventsByName(NATUROBOT_FEEDBACK_EVENT, 500);
+    const seen = new Set<number>();
+    const out: Array<{ messageId: number; question: string; answer: string; createdAt: number }> = [];
+    for (const e of events) { // du plus récent au plus ancien : le premier vu est le dernier avis
+      let m: any;
+      try { m = JSON.parse(e.metadata || "{}"); } catch { continue; }
+      const id = Number(m.messageId);
+      if (!Number.isInteger(id) || seen.has(id)) continue;
+      seen.add(id);
+      if (m.value === -1) out.push({ messageId: id, question: String(m.question ?? ""), answer: String(m.answer ?? ""), createdAt: e.createdAt });
+    }
+    res.json({ negative: out.slice(0, 30), total: seen.size });
   });
 }

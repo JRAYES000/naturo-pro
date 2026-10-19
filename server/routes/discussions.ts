@@ -5,7 +5,9 @@ import { requireAuth, type AuthedRequest } from "../auth";
 import { streamNaturoAssistant, generateDiscussionMeta, AI_DAILY_LIMIT, type ChatTurn } from "../mistral";
 import { retrieveRelevantChunks } from "../rag";
 import { programmeFromMarkdown } from "./helpers/programme-bridge";
-import type { Client } from "@shared/schema";
+import { buildSources, feedbackByMessage, searchSnippet, NATUROBOT_FEEDBACK_EVENT } from "../naturobot";
+import type { AiDiscussion, Client } from "@shared/schema";
+import type { Response } from "express";
 
 const CONTEXT_LIMIT = 30;
 const createSchema = z.object({
@@ -18,6 +20,7 @@ const patchSchema = z.object({
   clientId: z.number().int().positive().nullable().optional(),
 });
 const messageSchema = z.object({ message: z.string().trim().min(1).max(4000) });
+const feedbackSchema = z.object({ value: z.union([z.literal(1), z.literal(-1), z.literal(0)]) });
 
 // Construit le bloc « fiche cliente » injecté dans le contexte (champs santé seulement).
 function buildClientContext(c: Client): string {
@@ -142,78 +145,143 @@ export function registerDiscussionRoutes(app: Express): void {
     if (!d) return res.status(404).json({ message: "Discussion introuvable" });
     const p = messageSchema.safeParse(req.body);
     if (!p.success) return res.status(400).json({ message: "Données invalides" });
-    const userMessage = p.data.message;
-
-    const day = new Date().toISOString().slice(0, 10);
-    if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
-      return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} messages/jour). Réessaie demain.` });
-    }
-
-    const prior = await storage.listDiscussionMessages(d.id, CONTEXT_LIMIT);
-    const history: ChatTurn[] = prior.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
-    const isFirstExchange = prior.length === 0;
-    // Démarre la génération titre/thème EN PARALLÈLE du streaming (1er échange) :
-    // elle se termine pendant la réponse, donc sans rallonger le temps perçu.
-    const metaPromise = isFirstExchange ? generateDiscussionMeta(userMessage).catch(() => null) : null;
-    // Préparation en parallèle (consignes, fiche cliente, RAG) : le RAG appelle une API
-    // d'embedding, l'attendre en série retardait d'autant le premier mot affiché.
-    const [instructions, client, retrieved] = await Promise.all([
-      storage.getAssistantInstructions(),
-      d.clientId != null ? storage.getClient(d.clientId) : Promise.resolve(undefined),
-      retrieveRelevantChunks(userMessage).catch(() => []),
-    ]);
-    const clientContext = client && client.userId === req.userId ? buildClientContext(client) : undefined;
-
-    // Bouton « Arrêter » ou onglet fermé : on coupe aussi l'appel OpenRouter (tokens payés).
-    const abort = new AbortController();
-    res.on("close", () => { if (!res.writableEnded) abort.abort(); });
-
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("X-Accel-Buffering", "no");
-
-    let full = "";
-    try {
-      for await (const delta of streamNaturoAssistant(history, userMessage, {
-        customInstructions: instructions,
-        contextChunks: retrieved.map((r) => r.content),
-        clientContext,
-        signal: abort.signal,
-      })) {
-        full += delta;
-        res.write(delta);
-      }
-    } catch (e: any) {
-      if (!full && abort.signal.aborted) return;
-      if (!full) {
-        res.statusCode = e?.status === 503 ? 503 : 502;
-        return res.end(e?.status === 503
-          ? "L'assistant n'est pas encore disponible. Réessaie plus tard."
-          : "L'assistant n'a pas pu répondre, réessaie dans un instant.");
-      }
-    }
-
-    if (retrieved.length && !abort.signal.aborted) {
-      const ids = Array.from(new Set(retrieved.map((r) => r.documentId)));
-      const docs = await storage.listKbDocuments();
-      const names = ids.map((id) => docs.find((doc) => doc.id === id)?.title).filter(Boolean);
-      if (names.length) res.write(`\n@@SOURCES@@:${JSON.stringify(names)}`);
-    }
-
-    await storage.createDiscussionMessage({ discussionId: d.id, userId: req.userId!, role: "user", content: userMessage });
-    await storage.createDiscussionMessage({ discussionId: d.id, userId: req.userId!, role: "assistant", content: full });
-    await storage.touchDiscussion(d.id);
-
-    // Applique le titre/thème (généré en parallèle) AVANT de clore la réponse, pour
-    // que la liste des discussions réinvalidée côté client l'affiche immédiatement.
-    if (metaPromise) {
-      const meta = await metaPromise;
-      if (meta) {
-        const patch: { title: string; theme?: string } = { title: meta.title };
-        if (d.clientId == null && !d.theme) patch.theme = meta.theme;
-        await storage.updateDiscussion(d.id, patch);
-      }
-    }
-    res.end();
+    await streamReply(req, res, d, p.data.message);
   });
+
+  // Régénère la dernière réponse : rejoue la dernière question, puis remplace
+  // l'ancien échange une fois la nouvelle réponse obtenue (rien n'est perdu en cas d'échec).
+  app.post("/api/discussions/:id/regenerate", requireAuth, async (req: AuthedRequest, res) => {
+    const d = await ownDiscussion(req, Number(req.params.id));
+    if (!d) return res.status(404).json({ message: "Discussion introuvable" });
+    const last = await storage.listDiscussionMessages(d.id, 2);
+    if (last.length < 2 || last[0].role !== "user" || last[1].role !== "assistant") {
+      return res.status(400).json({ message: "Aucune réponse à régénérer." });
+    }
+    await streamReply(req, res, d, last[0].content, [last[0].id, last[1].id]);
+  });
+
+  // Avis sur une réponse (pouce haut / bas) : journalisé en événement analytics,
+  // avec la question et la réponse pour la relecture côté administration.
+  app.post("/api/discussions/:id/messages/:messageId/feedback", requireAuth, async (req: AuthedRequest, res) => {
+    const d = await ownDiscussion(req, Number(req.params.id));
+    if (!d) return res.status(404).json({ message: "Discussion introuvable" });
+    const p = feedbackSchema.safeParse(req.body);
+    if (!p.success) return res.status(400).json({ message: "Données invalides" });
+    const msgs = await storage.listDiscussionMessages(d.id);
+    const i = msgs.findIndex((m) => m.id === Number(req.params.messageId));
+    if (i < 0 || msgs[i].role !== "assistant") return res.status(404).json({ message: "Réponse introuvable" });
+    const question = [...msgs.slice(0, i)].reverse().find((m) => m.role === "user")?.content ?? "";
+    await storage.createAnalyticsEvent(req.userId!, NATUROBOT_FEEDBACK_EVENT, {
+      messageId: msgs[i].id,
+      discussionId: d.id,
+      value: p.data.value,
+      question: question.slice(0, 1000),
+      answer: msgs[i].content.slice(0, 3000),
+    });
+    res.json({ ok: true });
+  });
+
+  app.get("/api/naturobot/feedback", requireAuth, async (req: AuthedRequest, res) => {
+    res.json(feedbackByMessage(await storage.listUserAnalyticsEvents(req.userId!, NATUROBOT_FEEDBACK_EVENT)));
+  });
+
+  // Recherche dans le contenu de toutes les discussions de la praticienne.
+  app.get("/api/naturobot/search", requireAuth, async (req: AuthedRequest, res) => {
+    const q = String(req.query.q ?? "").trim().slice(0, 100);
+    if (q.length < 2) return res.json([]);
+    const rows = await storage.searchDiscussionMessages(req.userId!, q);
+    res.json(rows.map((m) => ({
+      discussionId: m.discussionId,
+      messageId: m.id,
+      role: m.role,
+      createdAt: m.createdAt,
+      snippet: searchSnippet(m.content, q),
+    })));
+  });
+}
+
+/**
+ * Génère et streame une réponse (texte brut, puis `@@SOURCES@@:` + JSON des sources).
+ * `replaceIds` : échange remplacé (régénération), exclu du contexte et supprimé
+ * seulement si une nouvelle réponse a bien été produite.
+ */
+async function streamReply(req: AuthedRequest, res: Response, d: AiDiscussion, userMessage: string, replaceIds: number[] = []) {
+  const userId = req.userId!;
+  const day = new Date().toISOString().slice(0, 10);
+  if ((await storage.incrementAiChatUsage(userId, day)) > AI_DAILY_LIMIT) {
+    await storage.decrementAiChatUsage(userId, day);
+    return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} messages/jour). Réessayez demain.` });
+  }
+
+  const prior = (await storage.listDiscussionMessages(d.id, CONTEXT_LIMIT)).filter((m) => !replaceIds.includes(m.id));
+  const history: ChatTurn[] = prior.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+  const isFirstExchange = prior.length === 0 && replaceIds.length === 0;
+  // Démarre la génération titre/thème EN PARALLÈLE du streaming (1er échange) :
+  // elle se termine pendant la réponse, donc sans rallonger le temps perçu.
+  const metaPromise = isFirstExchange ? generateDiscussionMeta(userMessage).catch(() => null) : null;
+  // Préparation en parallèle (consignes, fiche cliente, RAG) : le RAG appelle une API
+  // d'embedding, l'attendre en série retardait d'autant le premier mot affiché.
+  const [instructions, client, retrieved] = await Promise.all([
+    storage.getAssistantInstructions(),
+    d.clientId != null ? storage.getClient(d.clientId) : Promise.resolve(undefined),
+    retrieveRelevantChunks(userMessage).catch(() => []),
+  ]);
+  const clientContext = client && client.userId === userId ? buildClientContext(client) : undefined;
+
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  // Bouton « Arrêter » ou onglet fermé : on coupe aussi l'appel OpenRouter (tokens payés).
+  const abort = new AbortController();
+  res.on("close", () => { if (!res.writableEnded) abort.abort(); });
+
+  let full = "";
+  try {
+    for await (const delta of streamNaturoAssistant(history, userMessage, {
+      customInstructions: instructions,
+      contextChunks: retrieved.map((r) => r.content),
+      clientContext,
+      signal: abort.signal,
+    })) {
+      full += delta;
+      res.write(delta);
+    }
+  } catch (e: any) {
+    if (!full) {
+      // Rien produit : l'appel ne compte pas dans le quota du jour.
+      await storage.decrementAiChatUsage(userId, day).catch(() => {});
+      if (abort.signal.aborted) return;
+      res.statusCode = e?.status === 503 ? 503 : 502;
+      return res.end(e?.status === 503
+        ? "L'assistant n'est pas encore disponible. Réessayez plus tard."
+        : "L'assistant n'a pas pu répondre, réessayez dans un instant.");
+    }
+  }
+  if (!full) {
+    await storage.decrementAiChatUsage(userId, day).catch(() => {});
+    return res.end();
+  }
+
+  if (retrieved.length && !abort.signal.aborted) {
+    const sources = buildSources(retrieved, await storage.listKbDocuments());
+    if (sources.length) res.write(`\n@@SOURCES@@:${JSON.stringify(sources)}`);
+  }
+
+  if (replaceIds.length) await storage.deleteDiscussionMessages(d.id, replaceIds);
+  await storage.createDiscussionMessage({ discussionId: d.id, userId, role: "user", content: userMessage });
+  await storage.createDiscussionMessage({ discussionId: d.id, userId, role: "assistant", content: full });
+  await storage.touchDiscussion(d.id);
+
+  // Applique le titre/thème (généré en parallèle) AVANT de clore la réponse, pour
+  // que la liste des discussions réinvalidée côté client l'affiche immédiatement.
+  if (metaPromise) {
+    const meta = await metaPromise;
+    if (meta) {
+      const patch: { title: string; theme?: string } = { title: meta.title };
+      if (d.clientId == null && !d.theme) patch.theme = meta.theme;
+      await storage.updateDiscussion(d.id, patch);
+    }
+  }
+  res.end();
 }

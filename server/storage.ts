@@ -449,11 +449,14 @@ export interface IStorage {
   // Assistant IA — messages (scopés par discussion)
   listDiscussionMessages(discussionId: number, limit?: number): Promise<AiChatMessage[]>;
   createDiscussionMessage(d: { discussionId: number; userId: number; role: string; content: string }): Promise<AiChatMessage>;
+  deleteDiscussionMessages(discussionId: number, ids: number[]): Promise<void>;
+  searchDiscussionMessages(userId: number, q: string, limit?: number): Promise<AiChatMessage[]>;
   // Backfill legacy
   listLegacyChatUserIds(): Promise<number[]>;
   assignLegacyMessagesToDiscussion(userId: number, discussionId: number): Promise<void>;
   // Quota (inchangé)
   incrementAiChatUsage(userId: number, day: string): Promise<number>;
+  decrementAiChatUsage(userId: number, day: string): Promise<void>;
 
   // Assistant IA — instructions globales + base de connaissances (RAG)
   getAssistantInstructions(): Promise<string>;
@@ -479,6 +482,8 @@ export interface IStorage {
   createAnalyticsEvent(userId: number, event: string, metadata?: Record<string, unknown>): Promise<void>;
   countAnalyticsByEvent(sinceMs?: number): Promise<Array<{ event: string; count: number }>>;
   listRecentAnalyticsEvents(limit?: number): Promise<AnalyticsEvent[]>;
+  listUserAnalyticsEvents(userId: number, event: string): Promise<AnalyticsEvent[]>;
+  listAnalyticsEventsByName(event: string, limit?: number): Promise<AnalyticsEvent[]>;
   // Lot 1 (action 11) — purge des comptes gratuits inactifs
   listPurgeCandidates(cutoffMs: number): Promise<User[]>;
 }
@@ -1871,6 +1876,23 @@ export class DatabaseStorage implements IStorage {
   async createDiscussionMessage(d: { discussionId: number; userId: number; role: string; content: string }): Promise<AiChatMessage> {
     return dbInsertReturning<AiChatMessage>(aiChatMessages, { ...d, createdAt: Date.now() });
   }
+  async deleteDiscussionMessages(discussionId: number, ids: number[]): Promise<void> {
+    if (!ids.length) return;
+    await db.delete(aiChatMessages)
+      .where(and(eq(aiChatMessages.discussionId, discussionId), inArray(aiChatMessages.id, ids)));
+  }
+  // Recherche plein texte dans les messages de la praticienne (discussions rattachées).
+  async searchDiscussionMessages(userId: number, q: string, limit = 30): Promise<AiChatMessage[]> {
+    const term = `%${q.toLowerCase().replace(/[!%_]/g, (c) => "!" + c)}%`;
+    return db.select().from(aiChatMessages)
+      .where(and(
+        eq(aiChatMessages.userId, userId),
+        sql`${aiChatMessages.discussionId} is not null`,
+        sql`lower(${aiChatMessages.content}) like ${term} escape '!'`,
+      ))
+      .orderBy(desc(aiChatMessages.createdAt))
+      .limit(limit);
+  }
   // ── Backfill legacy ──────────────────────────────────────────────────────────
   async listLegacyChatUserIds(): Promise<number[]> {
     const rows = await db.selectDistinct({ userId: aiChatMessages.userId })
@@ -1892,6 +1914,12 @@ export class DatabaseStorage implements IStorage {
     }
     await dbInsertReturning<AiChatUsage>(aiChatUsage, { userId, day, count: 1 });
     return 1;
+  }
+  // Rend le crédit d'un appel qui n'a rien produit (erreur OpenRouter, clé absente).
+  async decrementAiChatUsage(userId: number, day: string): Promise<void> {
+    await db.update(aiChatUsage)
+      .set({ count: sql`case when ${aiChatUsage.count} > 0 then ${aiChatUsage.count} - 1 else 0 end` })
+      .where(and(eq(aiChatUsage.userId, userId), eq(aiChatUsage.day, day)));
   }
 
   // ── Lot 5 (NaturoBot N4) — bibliothèque de réponses IA ─────────────────────
@@ -2125,6 +2153,17 @@ export class DatabaseStorage implements IStorage {
 
   async listRecentAnalyticsEvents(limit = 50): Promise<AnalyticsEvent[]> {
     return db.select().from(analyticsEvents)
+      .orderBy(desc(analyticsEvents.createdAt), desc(analyticsEvents.id))
+      .limit(limit);
+  }
+  async listUserAnalyticsEvents(userId: number, event: string): Promise<AnalyticsEvent[]> {
+    return db.select().from(analyticsEvents)
+      .where(and(eq(analyticsEvents.userId, userId), eq(analyticsEvents.event, event)))
+      .orderBy(analyticsEvents.createdAt, analyticsEvents.id);
+  }
+  async listAnalyticsEventsByName(event: string, limit = 100): Promise<AnalyticsEvent[]> {
+    return db.select().from(analyticsEvents)
+      .where(eq(analyticsEvents.event, event))
       .orderBy(desc(analyticsEvents.createdAt), desc(analyticsEvents.id))
       .limit(limit);
   }

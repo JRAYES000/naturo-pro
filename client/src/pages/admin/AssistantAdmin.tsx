@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { FeedbackReview } from "@/components/assistant/FeedbackReview";
 
 interface KbDoc {
   id: number;
@@ -196,6 +197,8 @@ export default function AssistantAdmin() {
           </>
         )}
       </div>
+
+      <FeedbackReview />
 
       <div className="card-naturo mb-6">
         <h2 className="font-bold text-heading mb-2">Ajouter un support de cours</h2>

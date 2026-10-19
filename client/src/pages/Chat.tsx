@@ -10,7 +10,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText, BookMarked, ChevronDown, X, Square, ArrowDown, CornerDownLeft, ClipboardCopy } from "lucide-react";
+import { Send, Trash2, Sparkles, Info, Copy, Check, Pencil, ShieldCheck, Plus, FileText, BookMarked, ChevronDown, X, Square, ArrowDown, CornerDownLeft, ClipboardCopy, ThumbsUp, ThumbsDown, RefreshCw, Mic, MicOff } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AppLayout } from "@/components/AppLayout";
@@ -26,7 +26,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { NewDiscussionDialog } from "@/components/assistant/NewDiscussionDialog";
 import { DiscussionSidebar } from "@/components/assistant/DiscussionSidebar";
 import { NaturobotTabs } from "@/components/assistant/NaturobotTabs";
-import type { AiChatMessage, AiDiscussion, Client } from "@shared/schema";
+import type { AiChatMessage, AiDiscussion, AiSavedReply, Client } from "@shared/schema";
+import { useDictation } from "@/hooks/use-dictation";
 import { useAuth } from "@/lib/auth";
 import { FeatureGate } from "@/components/FeatureGate";
 
@@ -119,10 +120,11 @@ function formatTime(ts?: number | string | Date | null): string | undefined {
 
 // Mémoïsée : sans ça, chaque frappe dans la zone de saisie re-parsait le Markdown de
 // toute la discussion. Les callbacks reçoivent l'id du message pour rester stables.
-const Bubble = memo(function Bubble({ id, role, content, createdAt, typing, streaming, userPhoto, userName, onSave, onReuse, saved }: {
+const Bubble = memo(function Bubble({ id, role, content, createdAt, typing, streaming, userPhoto, userName, onSave, onReuse, saved, feedback, onFeedback, onRegenerate }: {
   id?: number; role: string; content: string; createdAt?: number | string | Date | null; typing?: boolean; streaming?: boolean;
   userPhoto?: string | null; userName?: string | null;
   onSave?: (id: number) => void; onReuse?: (text: string) => void; saved?: boolean;
+  feedback?: 1 | -1; onFeedback?: (id: number, value: 1 | -1 | 0) => void; onRegenerate?: () => void;
 }) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
@@ -160,7 +162,7 @@ const Bubble = memo(function Bubble({ id, role, content, createdAt, typing, stre
         </div>
         {/* Actions toujours visibles : le survol n'existe pas sur mobile. */}
         {done && !isUser && (
-          <div className="flex gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1">
             <button onClick={copy} className={actionCls} aria-label="Copier la réponse" data-testid="button-copy-message">
               {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? "Copié" : "Copier"}
@@ -171,6 +173,21 @@ const Bubble = memo(function Bubble({ id, role, content, createdAt, typing, stre
                 <BookMarked className={`h-3.5 w-3.5 ${saved ? "text-primary" : ""}`} />
                 {saved ? "Enregistrée" : "Bibliothèque"}
               </button>
+            )}
+            {onRegenerate && (
+              <button onClick={onRegenerate} className={actionCls} aria-label="Régénérer la réponse" data-testid="button-regenerate">
+                <RefreshCw className="h-3.5 w-3.5" /> Régénérer
+              </button>
+            )}
+            {onFeedback && id != null && (
+              <>
+                <button onClick={() => onFeedback(id, feedback === 1 ? 0 : 1)} aria-pressed={feedback === 1} className={`${actionCls} ${feedback === 1 ? "text-primary" : ""}`} aria-label="Réponse utile" title="Réponse utile" data-testid="button-feedback-up">
+                  <ThumbsUp className={`h-3.5 w-3.5 ${feedback === 1 ? "fill-current" : ""}`} />
+                </button>
+                <button onClick={() => onFeedback(id, feedback === -1 ? 0 : -1)} aria-pressed={feedback === -1} className={`${actionCls} ${feedback === -1 ? "text-destructive" : ""}`} aria-label="Réponse décevante" title="Réponse décevante" data-testid="button-feedback-down">
+                  <ThumbsDown className={`h-3.5 w-3.5 ${feedback === -1 ? "fill-current" : ""}`} />
+                </button>
+              </>
             )}
           </div>
         )}
@@ -185,6 +202,39 @@ const Bubble = memo(function Bubble({ id, role, content, createdAt, typing, stre
   );
 });
 
+type Source = { title: string; excerpt?: string };
+// Les anciennes réponses du serveur envoyaient de simples titres.
+const toSources = (raw: unknown): Source[] =>
+  Array.isArray(raw) ? raw.map((x: any) => (typeof x === "string" ? { title: x } : { title: String(x?.title ?? ""), excerpt: x?.excerpt })) : [];
+
+function SourcesList({ sources }: { sources: Source[] }) {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <div className="mt-1 ml-10 text-xs" data-testid="text-sources">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-muted-foreground">Sources :</span>
+        {sources.map((src, i) => (
+          <button
+            key={i}
+            onClick={() => setOpen(open === i ? null : i)}
+            disabled={!src.excerpt}
+            aria-expanded={open === i}
+            className={`rounded-sm px-1.5 py-0.5 border border-border ${open === i ? "bg-primary/10 text-primary" : "bg-card text-muted-foreground hover:text-primary"} disabled:cursor-default`}
+            data-testid="button-source"
+          >
+            {src.title}
+          </button>
+        ))}
+      </div>
+      {open != null && sources[open]?.excerpt && (
+        <blockquote className="mt-1.5 max-w-[92%] rounded-md border-l-2 border-primary/40 bg-card px-3 py-2 text-muted-foreground" data-testid="text-source-excerpt">
+          {sources[open].excerpt}
+        </blockquote>
+      )}
+    </div>
+  );
+}
+
 function Chat() {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -196,7 +246,9 @@ function Chat() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const [streamText, setStreamText] = useState("");
-  const [sources, setSources] = useState<string[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
+  const [regenerating, setRegenerating] = useState(false);
+  const [liveMsg, setLiveMsg] = useState("");
   const [atBottom, setAtBottom] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
   const [filter, setFilter] = useState("");
@@ -215,8 +267,31 @@ function Chat() {
   // Lot 5 (N7) — transparence : résumé dépliable de ce qui est transmis à l'IA.
   const [clientSummaryOpen, setClientSummaryOpen] = useState(false);
 
-  // Lot 5 (N4) — archiver une réponse dans la bibliothèque.
+  // Lot 5 (N4) — archiver une réponse dans la bibliothèque. L'état « enregistrée »
+  // se déduit de la bibliothèque elle-même (même contenu) : il survit au rechargement.
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  const { data: savedReplies = [] } = useQuery<AiSavedReply[]>({ queryKey: ["/api/saved-replies"] });
+  const savedContents = new Set(savedReplies.map((r) => r.content));
+
+  const { data: feedback = {} } = useQuery<Record<number, 1 | -1>>({ queryKey: ["/api/naturobot/feedback"] });
+  const feedbackMut = useMutation({
+    mutationFn: async ({ id, value }: { id: number; value: 1 | -1 | 0 }) =>
+      apiRequest("POST", `/api/discussions/${selectedIdRef.current}/messages/${id}/feedback`, { value }),
+    onMutate: ({ id, value }) => {
+      queryClient.setQueryData<Record<number, 1 | -1>>(["/api/naturobot/feedback"], (old = {}) => {
+        const next = { ...old };
+        if (value === 0) delete next[id]; else next[id] = value;
+        return next;
+      });
+    },
+    onSuccess: (_r, { value }) => {
+      if (value === -1) toast({ title: "Merci pour votre retour", description: "Cette réponse sera relue pour améliorer Naturobot. Vous pouvez aussi la régénérer." });
+    },
+    onError: (e: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/naturobot/feedback"] });
+      toast({ title: "Erreur", description: e?.message, variant: "destructive" });
+    },
+  });
   const saveReplyMut = useMutation({
     mutationFn: async (m: AiChatMessage) =>
       apiRequest("POST", "/api/saved-replies", {
@@ -237,6 +312,8 @@ function Chat() {
     mutationFn: async () => apiRequest("PATCH", "/api/profile", { naturobotIntroSeenAt: Date.now() }),
     onSuccess: () => refetch(),
   });
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const selected = discussions.find((d) => d.id === selectedId) || null;
   const { data: messages = [], isLoading } = useQuery<AiChatMessage[]>({
     queryKey: ["/api/discussions", selectedId, "messages"],
@@ -247,9 +324,16 @@ function Chat() {
   messagesRef.current = messages;
   const savedIdsRef = useRef(savedIds);
   savedIdsRef.current = savedIds;
+  const savedContentsRef = useRef(savedContents);
+  savedContentsRef.current = savedContents;
+  const feedbackMutRef = useRef(feedbackMut);
+  feedbackMutRef.current = feedbackMut;
   const saveReplyMutRef = useRef(saveReplyMut);
   saveReplyMutRef.current = saveReplyMut;
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+  // Pendant une régénération, l'ancien dernier échange est masqué (il sera remplacé).
+  const visibleMessages = regenerating ? messages.slice(0, -2) : messages;
+  const canRegenerate = messages.length >= 2 && messages[messages.length - 1].role === "assistant" && messages[messages.length - 2].role === "user";
 
   // Sélection auto de la discussion la plus récente si aucune dans l'URL.
   useEffect(() => {
@@ -257,8 +341,10 @@ function Chat() {
   }, [selectedId, discussions, navigate]);
 
   const sendMut = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, regenerate }: { message: string; regenerate?: boolean }) => {
       const ctrl = new AbortController();
+      const lastIdBefore = messagesRef.current[messagesRef.current.length - 1]?.id;
+      setLiveMsg("Naturobot rédige sa réponse…");
       abortRef.current = ctrl;
       setStreamText(""); setSources([]);
       let acc = "";
@@ -269,12 +355,14 @@ function Chat() {
         frame = 0;
         const sep = acc.indexOf("@@SOURCES@@:");
         if (sep >= 0) {
-          try { setSources(JSON.parse(acc.slice(sep + "@@SOURCES@@:".length))); } catch { /* partiel */ }
+          try { setSources(toSources(JSON.parse(acc.slice(sep + "@@SOURCES@@:".length)))); } catch { /* partiel */ }
           setStreamText(acc.slice(0, sep).replace(/\n$/, ""));
         } else setStreamText(acc);
       };
       try {
-        const res = await apiRequest("POST", `/api/discussions/${selectedId}/messages`, { message }, { signal: ctrl.signal });
+        const res = regenerate
+          ? await apiRequest("POST", `/api/discussions/${selectedId}/regenerate`, undefined, { signal: ctrl.signal })
+          : await apiRequest("POST", `/api/discussions/${selectedId}/messages`, { message }, { signal: ctrl.signal });
         const reader = res.body!.getReader();
         const dec = new TextDecoder();
         while (true) {
@@ -284,9 +372,14 @@ function Chat() {
           if (!frame) frame = requestAnimationFrame(flush);
         }
       } catch (e: any) {
-        // Arrêt volontaire : le serveur enregistre la réponse partielle, on la recharge.
+        // Arrêt volontaire : le serveur enregistre la réponse partielle après coup.
+        // On attend qu'elle apparaisse (dernier message changé) plutôt qu'un délai fixe.
         if (!ctrl.signal.aborted) throw e;
-        await new Promise((r) => setTimeout(r, 600));
+        for (let i = 0; i < 12; i++) {
+          await new Promise((r) => setTimeout(r, 250));
+          const fresh = await queryClient.fetchQuery<AiChatMessage[]>({ queryKey: ["/api/discussions", selectedId, "messages"], staleTime: 0 });
+          if (fresh[fresh.length - 1]?.id !== lastIdBefore) break;
+        }
       } finally {
         if (frame) cancelAnimationFrame(frame);
         flush();
@@ -294,8 +387,9 @@ function Chat() {
       }
     },
     onSuccess: async () => {
-      setPending(null); setStreamText("");
       await queryClient.invalidateQueries({ queryKey: ["/api/discussions", selectedId, "messages"] });
+      setPending(null); setStreamText(""); setRegenerating(false);
+      setLiveMsg("Réponse de Naturobot reçue.");
       await queryClient.invalidateQueries({ queryKey: ["/api/discussions"] }); // titre auto + updatedAt
       queryClient.invalidateQueries({ queryKey: ["/api/ai-usage"] });
       // Réponse complète rendue : on cale la question tout en haut (lecture depuis le début).
@@ -307,10 +401,11 @@ function Chat() {
         if (q) c.scrollTo({ top: Math.max(0, q.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 12), behavior: "smooth" });
       }));
     },
-    onError: (e: any, message) => {
+    onError: (e: any, { message, regenerate }) => {
       // La question n'est pas perdue : elle revient dans la zone de saisie.
-      setPending(null); setStreamText(""); setSources([]);
-      setInput((cur) => cur || message);
+      setPending(null); setStreamText(""); setSources([]); setRegenerating(false);
+      setLiveMsg("");
+      if (!regenerate) setInput((cur) => cur || message);
       toast({ title: "Erreur", description: e?.message || "L'assistant n'a pas pu répondre.", variant: "destructive" });
     },
   });
@@ -373,8 +468,14 @@ function Chat() {
 
   const onSaveReply = useCallback((id: number) => {
     const m = messagesRef.current.find((x) => x.id === id);
-    if (m && !savedIdsRef.current.has(id)) saveReplyMutRef.current.mutate(m);
+    if (m && !savedIdsRef.current.has(id) && !savedContentsRef.current.has(m.content)) saveReplyMutRef.current.mutate(m);
   }, []);
+  const onFeedback = useCallback((id: number, value: 1 | -1 | 0) => {
+    feedbackMutRef.current.mutate({ id, value });
+  }, []);
+
+  // Dictée : le texte reconnu s'ajoute à la saisie en cours.
+  const dictation = useDictation((text) => setInput((cur) => (cur.trim() ? `${cur.trimEnd()} ${text}` : text)));
   const onReuse = useCallback((text: string) => {
     setInput(text);
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -392,6 +493,9 @@ function Chat() {
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+    // Vide : hauteur naturelle (une ligne) — une mesure prise avant la mise en page
+    // gonflait sinon la zone au maximum dès l'ouverture.
+    if (!input) { el.style.height = ""; return; }
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 200) + "px";
   }, [input]);
@@ -399,7 +503,13 @@ function Chat() {
   function submit(text?: string) {
     const t = (text ?? input).trim();
     if (!t || sendMut.isPending || selectedId == null) return;
-    setPending(t); setInput(""); sendMut.mutate(t);
+    if (dictation.listening) dictation.stop();
+    setPending(t); setInput(""); sendMut.mutate({ message: t });
+  }
+  function regenerate() {
+    if (sendMut.isPending || !canRegenerate) return;
+    const q = messages[messages.length - 2].content;
+    setRegenerating(true); setPending(q); sendMut.mutate({ message: q, regenerate: true });
   }
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     // isComposing : ne pas intercepter Entrée pendant une composition IME (accents, etc.).
@@ -416,7 +526,7 @@ function Chat() {
   return (
     <AppLayout>
       <NaturobotTabs />
-      <PageHeader title="Naturobot" subtitle="Ton formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
+      <PageHeader title="Naturobot" subtitle="Votre formateur en naturopathie, disponible à tout moment." icon={Sparkles} />
 
       {/* Lot 5 (N10) — intro Discussion vs Studio, affichée jusqu'à fermeture */}
       {!introSeen && (
@@ -438,10 +548,21 @@ function Chat() {
         </div>
       )}
 
-      <div className="flex justify-end sm:hidden">
+      {/* Mobile : la barre des discussions est masquée, on choisit ici. */}
+      <div className="flex gap-2 mb-3 md:hidden">
+        <select
+          value={selectedId ?? ""}
+          onChange={(e) => e.target.value && navigate(`/app/chat/${e.target.value}`)}
+          className="h-11 flex-1 min-w-0 rounded-md border border-border bg-card px-3 text-sm"
+          aria-label="Choisir une discussion"
+          data-testid="select-discussion-mobile"
+        >
+          {selectedId == null && <option value="">Choisir une discussion…</option>}
+          {discussions.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+        </select>
         <Button
           onClick={() => setDialogOpen(true)}
-          className="sm:hidden rounded-lg shrink-0 mb-4 h-11 w-11"
+          className="rounded-lg shrink-0 h-11 w-11"
           size="icon"
           aria-label="Nouvelle discussion"
           data-testid="button-new-discussion-mobile"
@@ -450,18 +571,8 @@ function Chat() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm flex gap-2 items-start mb-4" data-testid="text-disclaimer-sante">
-        <Info className="h-4 w-4 shrink-0 mt-0.5" />
-        <span className="flex-1">Cet assistant est à visée <strong>éducative</strong> et ne remplace pas un avis médical. Pour tout problème de santé, oriente la personne vers un professionnel de santé.</span>
-        {/* Lot 4 (action P4) — transparence sur l'usage IA */}
-        {aiUsage && (
-          <span className="shrink-0 text-xs font-semibold text-amber-700 bg-amber-100 rounded-full px-2.5 py-1" data-testid="text-ai-usage" title="Nombre d'appels à l'IA (Naturobot + générations)">
-            IA : {aiUsage.today}/{aiUsage.dailyLimit} aujourd'hui · {aiUsage.month} ce mois-ci
-          </span>
-        )}
-      </div>
-
-      <div className="card-naturo flex h-[calc(100vh-22rem)] min-h-[460px] !p-0 overflow-hidden">
+      {/* Hauteur : la conversation occupe l'écran (l'avertissement santé est passé sous la saisie). */}
+      <div className="card-naturo flex h-[calc(100dvh-13rem)] min-h-[480px] !p-0 overflow-hidden">
         <DiscussionSidebar discussions={discussions} clients={clients} selectedId={selectedId}
           onNew={() => setDialogOpen(true)} filter={filter} setFilter={setFilter} />
 
@@ -479,9 +590,9 @@ function Chat() {
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
                     className="h-8" data-testid="input-rename-discussion" />
                 ) : (
-                  <p className="font-semibold text-heading truncate flex items-center gap-1.5">
-                    {selected.title}
-                    <button onClick={() => setEditing(true)} className="text-muted-foreground hover:text-primary" aria-label="Renommer" data-testid="button-rename"><Pencil className="h-3.5 w-3.5" /></button>
+                  <p className="font-semibold text-heading flex items-center gap-1.5 min-w-0">
+                    <span className="truncate" title={selected.title}>{selected.title}</span>
+                    <button onClick={() => setEditing(true)} className="shrink-0 text-muted-foreground hover:text-primary" aria-label="Renommer" data-testid="button-rename"><Pencil className="h-3.5 w-3.5" /></button>
                   </p>
                 )}
                 {selected.clientId != null && (
@@ -502,6 +613,8 @@ function Chat() {
                 size="sm"
                 variant="outline"
                 className="rounded-lg font-bold shrink-0"
+                aria-label="Créer un programme depuis cette discussion"
+                title="Créer un programme depuis cette discussion"
                 onClick={async () => {
                   // Lot 5 (N7) — consentement explicite avant toute sauvegarde d'une
                   // réponse IA dans le dossier (même formule que le benchmark).
@@ -516,8 +629,8 @@ function Chat() {
                 disabled={createProgrammeMut.isPending || messages.every((m) => m.role !== "assistant")}
                 data-testid="button-create-programme"
               >
-                <FileText className="h-4 w-4 mr-1" />
-                {createProgrammeMut.isPending ? "Création…" : "Créer un programme"}
+                <FileText className="h-4 w-4 xl:mr-1" />
+                <span className="hidden xl:inline">{createProgrammeMut.isPending ? "Création…" : "Créer un programme"}</span>
               </Button>
               <button onClick={copyDiscussion} disabled={messages.length === 0} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-40" aria-label="Copier toute la discussion" title="Copier toute la discussion" data-testid="button-copy-discussion"><ClipboardCopy className="h-4 w-4" /></button>
               <button onClick={del} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" aria-label="Supprimer" data-testid="button-delete-discussion"><Trash2 className="h-4 w-4" /></button>
@@ -552,7 +665,7 @@ function Chat() {
           })()}
 
           <div className="relative flex-1 min-h-0 flex flex-col">
-          <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
+          <div ref={scrollRef} onScroll={onScroll} role="log" aria-label="Conversation avec Naturobot" className="flex-1 overflow-y-auto p-4 space-y-4 bg-secondary/30">
             {selectedId == null ? (
               <div className="h-full flex items-center justify-center">
                 <EmptyState
@@ -564,7 +677,7 @@ function Chat() {
                   testid="empty-state-no-discussion"
                 />
               </div>
-            ) : isLoading ? <Loading /> : messages.length === 0 && !pending && !sendMut.isPending ? (
+            ) : isLoading ? <Loading /> : visibleMessages.length === 0 && !pending && !sendMut.isPending ? (
               <div className="h-full flex flex-col items-center justify-center gap-4">
                 <EmptyState
                   icon={Sparkles}
@@ -596,7 +709,7 @@ function Chat() {
               </div>
             ) : (
               <>
-                {messages.map((m) => (
+                {visibleMessages.map((m) => (
                   <div key={m.id}>
                     <Bubble
                       id={m.id}
@@ -607,12 +720,13 @@ function Chat() {
                       userName={user?.name}
                       onSave={m.role === "assistant" ? onSaveReply : undefined}
                       onReuse={m.role === "user" ? onReuse : undefined}
-                      saved={savedIds.has(m.id)}
+                      saved={savedIds.has(m.id) || savedContents.has(m.content)}
+                      feedback={feedback[m.id]}
+                      onFeedback={m.role === "assistant" ? onFeedback : undefined}
+                      onRegenerate={m.id === lastAssistantId && canRegenerate && !sendMut.isPending ? regenerate : undefined}
                     />
                     {/* Sources du dernier échange : restent visibles une fois la réponse finie. */}
-                    {m.id === lastAssistantId && !sendMut.isPending && sources.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1 ml-10" data-testid="text-sources">Sources : {sources.join(", ")}</p>
-                    )}
+                    {m.id === lastAssistantId && !sendMut.isPending && sources.length > 0 && <SourcesList sources={sources} />}
                   </div>
                 ))}
                 {pending && <Bubble role="user" content={pending} userPhoto={user?.photoUrl} userName={user?.name} />}
@@ -634,12 +748,13 @@ function Chat() {
                     ) : (
                       <Bubble role="assistant" content={streamText} streaming />
                     )}
-                    {sources.length > 0 && <p className="text-xs text-muted-foreground mt-1 ml-10" data-testid="text-sources">Sources : {sources.join(", ")}</p>}
+                    {sources.length > 0 && <SourcesList sources={sources} />}
                   </div>
                 )}
               </>
             )}
           </div>
+            <div className="sr-only" role="status" aria-live="polite">{liveMsg}</div>
             {!atBottom && selectedId != null && messages.length > 0 && (
               <button
                 onClick={scrollToBottom}
@@ -655,7 +770,20 @@ function Chat() {
           {selectedId != null && (
             <div className="border-t border-border p-3 bg-card">
               <div className="flex items-end gap-2">
-                <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder="Écris ta question…" className="resize-none overflow-y-auto min-h-[44px] max-h-[200px]" rows={1} data-testid="input-chat-message" />
+                <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDown} placeholder={dictation.listening ? "Parlez, je vous écoute…" : "Écrivez votre question…"} className="resize-none overflow-y-auto min-h-[44px] max-h-[200px]" rows={1} data-testid="input-chat-message" />
+                {dictation.supported && (
+                  <Button
+                    onClick={() => (dictation.listening ? dictation.stop() : dictation.start())}
+                    variant="outline"
+                    className={`rounded-lg shrink-0 ${dictation.listening ? "text-destructive border-destructive/40" : ""}`}
+                    aria-label={dictation.listening ? "Arrêter la dictée" : "Dicter la question"}
+                    aria-pressed={dictation.listening}
+                    title={dictation.listening ? "Arrêter la dictée" : "Dicter la question"}
+                    data-testid="button-dictation"
+                  >
+                    {dictation.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                )}
                 {sendMut.isPending ? (
                   <Button onClick={() => abortRef.current?.abort()} variant="outline" className="rounded-lg shrink-0" aria-label="Arrêter la réponse" title="Arrêter la réponse" data-testid="button-stop-message"><Square className="h-4 w-4 fill-current" /></Button>
                 ) : (
@@ -663,10 +791,19 @@ function Chat() {
                 )}
               </div>
               {/* Lot 5 (N9) — coût affiché sur l'action, au moment de décider */}
-              <p className="hidden sm:block text-xs text-muted-foreground mt-1">
-                Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · chaque envoi = <strong>1 appel IA</strong>
-                {aiUsage ? ` (${aiUsage.today}/${aiUsage.dailyLimit} aujourd'hui)` : ""}
-              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1 text-amber-700" data-testid="text-disclaimer-sante">
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                  Usage éducatif : ne remplace pas un avis médical. Pour tout problème de santé, orientez vers un professionnel de santé.
+                </span>
+                <span className="hidden sm:inline">Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne</span>
+                {/* Lot 4 (action P4) — transparence sur l'usage IA */}
+                {aiUsage && (
+                  <span className="sm:ml-auto" data-testid="text-ai-usage" title="Chaque envoi = 1 appel IA (Naturobot + générations)">
+                    IA : {aiUsage.today}/{aiUsage.dailyLimit} aujourd'hui · {aiUsage.month} ce mois-ci
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
