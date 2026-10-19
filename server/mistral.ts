@@ -18,6 +18,9 @@ export interface ChatTurn {
 }
 
 export const LLM_MODEL = "deepseek/deepseek-v4-flash";
+// Modèle de la discussion Naturobot (réponses streamées) : dernière DeepSeek d'OpenRouter,
+// version datée plutôt que l'alias « ~deepseek/deepseek-flash-latest » qui bouge sans prévenir.
+export const CHAT_MODEL = "deepseek/deepseek-v4.1-flash-1017";
 export const MAX_HISTORY = 15; // nb de tours d'historique envoyés (borne coût + contexte)
 const MAX_TOKENS = 4096; // marge confortable (~3000 mots) — évite les réponses coupées
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -99,18 +102,21 @@ export function buildMistralMessages(
 async function* streamMistralSegment(
   messages: Array<{ role: string; content: string }>,
   apiKey: string,
+  model: string,
+  signal?: AbortSignal,
 ): AsyncGenerator<string, string, unknown> {
+  const timeout = AbortSignal.timeout(STREAM_TIMEOUT_MS);
   const res = await fetch(OPENROUTER_CHAT_URL, {
     method: "POST",
     headers: openrouterHeaders(apiKey, true),
     body: JSON.stringify({
-      model: LLM_MODEL,
+      model,
       messages,
       max_tokens: MAX_TOKENS,
       temperature: 0.3,
       stream: true,
     }),
-    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+    signal: signal ? AbortSignal.any([timeout, signal]) : timeout,
   });
   if (!res.ok || !res.body) {
     const e: any = new Error(`OpenRouter ${res.status}`);
@@ -154,6 +160,7 @@ async function* streamMistralSegment(
  */
 export async function* streamCompletion(
   messages: Array<{ role: string; content: string }>,
+  opts?: { model?: string; signal?: AbortSignal },
 ): AsyncGenerator<string, void, unknown> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -163,7 +170,7 @@ export async function* streamCompletion(
   }
   const msgs = [...messages];
   for (let seg = 0; seg < MAX_SEGMENTS; seg++) {
-    const gen = streamMistralSegment(msgs, apiKey);
+    const gen = streamMistralSegment(msgs, apiKey, opts?.model ?? LLM_MODEL, opts?.signal);
     let segText = "";
     let finishReason = "stop";
     try {
@@ -179,7 +186,7 @@ export async function* streamCompletion(
       return; // une reprise a échoué → on s'arrête proprement avec le texte déjà produit
     }
     // Réponse terminée d'elle-même, ou plus de budget de reprise → on s'arrête.
-    if (finishReason !== "length" || seg >= MAX_SEGMENTS - 1) return;
+    if (finishReason !== "length" || seg >= MAX_SEGMENTS - 1 || opts?.signal?.aborted) return;
     // Coupée par la limite de tokens → on demande la suite et on enchaîne.
     msgs.push({ role: "assistant", content: segText });
     msgs.push({ role: "user", content: CONTINUE_NUDGE });
@@ -200,10 +207,10 @@ export async function* streamCompletion(
 export async function* streamNaturoAssistant(
   history: ChatTurn[],
   userMessage: string,
-  opts?: { customInstructions?: string; contextChunks?: string[]; clientContext?: string },
+  opts?: { customInstructions?: string; contextChunks?: string[]; clientContext?: string; signal?: AbortSignal },
 ): AsyncGenerator<string, void, unknown> {
   const messages = buildMistralMessages(history, userMessage, opts);
-  yield* streamCompletion(messages);
+  yield* streamCompletion(messages, { model: CHAT_MODEL, signal: opts?.signal });
 }
 
 /**
