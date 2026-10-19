@@ -144,3 +144,14 @@ test("splitSlidesFromText — repli sur une slide unique si aucun marqueur", () 
   assert.equal(deck.slides[0].title, "Juste une ligne de contenu.");
   assert.deepEqual(deck.hashtags, []);
 });
+
+test("buildRewriteMessages — garde le system du format et injecte texte + consigne", async () => {
+  const { buildRewriteMessages, REWRITE_ACTIONS, REWRITE_INSTRUCTIONS } = await import("./social-content");
+  for (const a of REWRITE_ACTIONS) assert.ok(REWRITE_INSTRUCTIONS[a].length > 10);
+  const m = buildRewriteMessages({ channel: "instagram", format: "reel", action: "court", text: "Mon texte original", voice: { name: "Marie" } });
+  assert.equal(m.length, 2);
+  assert.equal(m[0].role, "system");
+  assert.match(m[0].content, /REEL/);
+  assert.match(m[1].content, /Mon texte original/);
+  assert.match(m[1].content, /Raccourcis/);
+});

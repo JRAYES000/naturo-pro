@@ -202,6 +202,46 @@ export async function* streamContentStudio(params: {
   yield* streamCompletion(messages);
 }
 
+// ── Retouches rapides d'un contenu déjà rédigé ─────────────────────────────────
+
+export const REWRITE_ACTIONS = ["court", "chaleureux", "cta", "simple", "accroche"] as const;
+export type RewriteAction = (typeof REWRITE_ACTIONS)[number];
+
+export const REWRITE_INSTRUCTIONS: Record<RewriteAction, string> = {
+  court: "Raccourcis nettement le contenu (environ moitié moins long) en gardant l'idée principale, la structure du format, l'appel à l'action et les hashtags essentiels.",
+  chaleureux: "Rends le ton plus chaleureux, proche et bienveillant, comme une amie qui conseille, sans perdre en clarté.",
+  cta: "Renforce l'appel à l'action : plus clair, plus engageant, placé au bon endroit, en gardant le lien de réservation s'il est présent.",
+  simple: "Simplifie le vocabulaire : phrases courtes, aucun jargon, compréhensible par tout le monde.",
+  accroche: "Réécris uniquement l'accroche (la ou les premières lignes) pour qu'elle arrête le scroll ; garde le reste quasiment identique.",
+};
+
+/** Messages LLM (PUR) pour retoucher un contenu existant selon une action rapide. */
+export function buildRewriteMessages(params: {
+  channel: Channel;
+  format: ContentFormat;
+  action: RewriteAction;
+  text: string;
+  voice: ContentVoice;
+}): Array<{ role: string; content: string }> {
+  const [system] = buildContentMessages({ channel: params.channel, format: params.format, topic: "", voice: params.voice });
+  const userMsg =
+    `Voici un contenu déjà rédigé :
+
+"""
+${params.text.slice(0, 12000)}
+"""
+
+` +
+    `Consigne : ${REWRITE_INSTRUCTIONS[params.action]}
+` +
+    "Respecte toujours les règles de conformité. Rends uniquement le contenu retouché complet, prêt à publier, sans commentaire.";
+  return [system, { role: "user", content: userMsg }];
+}
+
+export async function* streamContentRewrite(params: Parameters<typeof buildRewriteMessages>[0]): AsyncGenerator<string, void, unknown> {
+  yield* streamCompletion(buildRewriteMessages(params));
+}
+
 // ── Carrousels en images : structuration du texte en slides + prompt de fond ────
 
 export interface CarouselSlide { kicker: string; title: string; body: string; }

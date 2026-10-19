@@ -37,3 +37,31 @@ test("slugify et pickRandom", () => {
   assert.equal(pickRandom(["a", "b"], "a", () => 0), "b");
   assert.equal(pickRandom([], undefined), undefined);
 });
+
+test("dates — aller-retour input date ↔ timestamp à midi local", async () => {
+  const { toDateInputValue, fromDateInputValue } = await import("./studio-content");
+  const ms = fromDateInputValue("2026-10-31")!;
+  assert.equal(new Date(ms).getHours(), 12);
+  assert.equal(toDateInputValue(ms), "2026-10-31");
+  assert.equal(fromDateInputValue("31/10/2026"), null);
+  assert.equal(toDateInputValue(null), "");
+});
+
+test("buildMonthGrid — commence un lundi et couvre tout le mois", async () => {
+  const { buildMonthGrid, dayKey } = await import("./studio-content");
+  const g = buildMonthGrid(2026, 9); // octobre 2026 : 1er = jeudi
+  assert.equal(g[0][0].getDay(), 1);
+  assert.equal(dayKey(g[0][3]), "2026-10-01");
+  const all = g.flat().map(dayKey);
+  assert.ok(all.includes("2026-10-31"));
+  assert.ok(g.every((w) => w.length === 7));
+  assert.equal(g.length, 5);
+});
+
+test("groupPostsByDay — sépare datés et non datés", async () => {
+  const { groupPostsByDay, fromDateInputValue } = await import("./studio-content");
+  const d = fromDateInputValue("2026-10-20");
+  const { byDay, undated } = groupPostsByDay([{ publishedAt: d }, { publishedAt: d }, { publishedAt: null }]);
+  assert.equal(byDay.get("2026-10-20")?.length, 2);
+  assert.equal(undated.length, 1);
+});

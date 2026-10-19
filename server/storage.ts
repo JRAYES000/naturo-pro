@@ -472,7 +472,7 @@ export interface IStorage {
   listContentPosts(userId: number, status?: string): Promise<Omit<ContentPost, "backgroundImage">[]>;
   getContentPostBackground(id: number): Promise<{ userId: number; backgroundImage: string | null } | undefined>;
   getContentPost(id: number): Promise<ContentPost | undefined>;
-  updateContentPost(id: number, patch: { body?: string; status?: string }): Promise<ContentPost | undefined>;
+  updateContentPost(id: number, patch: { body?: string; status?: string; title?: string; publishedAt?: number | null }): Promise<ContentPost | undefined>;
   deleteContentPost(id: number): Promise<void>;
   getClientThemeStats(userId: number, sinceMs: number): Promise<Array<{ theme: string; count: number }>>;
   updateUserMarketing(userId: number, patch: { marketingTone: string | null; marketingAudience: string | null }): Promise<void>;
@@ -1834,13 +1834,16 @@ export class DatabaseStorage implements IStorage {
     return first(db.select().from(contentPosts).where(eq(contentPosts.id, id)));
   }
 
-  async updateContentPost(id: number, patch: { body?: string; status?: string }): Promise<ContentPost | undefined> {
+  async updateContentPost(id: number, patch: { body?: string; status?: string; title?: string; publishedAt?: number | null }): Promise<ContentPost | undefined> {
     const set: any = { updatedAt: Date.now() };
     if (patch.body !== undefined) set.body = patch.body;
+    if (patch.title !== undefined) set.title = patch.title;
     if (patch.status !== undefined) {
       set.status = patch.status;
-      if (patch.status === "publie") set.publishedAt = Date.now();
+      if (patch.status === "publie" && patch.publishedAt === undefined) set.publishedAt = Date.now();
     }
+    // Date de publication : prévue (à publier) ou réelle (publié). Alimente le calendrier.
+    if (patch.publishedAt !== undefined) set.publishedAt = patch.publishedAt;
     return dbUpdateReturning<ContentPost>(contentPosts, id, set);
   }
 

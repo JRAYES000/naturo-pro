@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { requireAuth, type AuthedRequest } from "../auth";
 import { ASSISTANT_THEMES, THEME_OTHER } from "@shared/assistant-themes";
 import { retrieveRelevantChunks } from "../rag";
-import { streamContentStudio, suggestContentAngles, structureCarouselSlides, buildBackgroundPrompt, type Channel, type ContentFormat } from "../social-content";
+import { streamContentStudio, streamContentRewrite, REWRITE_ACTIONS, suggestContentAngles, structureCarouselSlides, buildBackgroundPrompt, type Channel, type ContentFormat } from "../social-content";
 import { AI_DAILY_LIMIT } from "../mistral";
 import { generateBackgroundImage } from "../openrouter-image";
 
@@ -36,7 +36,15 @@ const savePostSchema = z.object({
 });
 const patchPostSchema = z.object({
   body: z.string().min(1).optional(),
+  title: z.string().trim().min(1).max(255).optional(),
   status: z.enum(["brouillon", "a_publier", "publie"]).optional(),
+  publishedAt: z.number().int().positive().nullable().optional(),
+});
+const rewriteSchema = z.object({
+  channel: z.enum(CHANNELS),
+  format: z.enum(FORMATS),
+  action: z.enum(REWRITE_ACTIONS),
+  text: z.string().trim().min(1).max(20000),
 });
 const profileSchema = z.object({
   marketingTone: z.string().max(64).nullable().optional(),
@@ -104,6 +112,48 @@ export function registerContentRoutes(app: Express): void {
         return res.end(e?.status === 503
           ? "Le studio de contenu n'est pas encore disponible. Réessaie plus tard."
           : "La génération a échoué, réessaie dans un instant.");
+      }
+    }
+    res.end();
+  });
+
+  // Retouche rapide d'un contenu déjà généré (plus court, plus chaleureux…), streamée.
+  app.post("/api/content/rewrite", requireAuth, async (req: AuthedRequest, res) => {
+    const p = rewriteSchema.safeParse(req.body);
+    if (!p.success) return res.status(400).json({ message: "Données invalides" });
+
+    const day = new Date().toISOString().slice(0, 10);
+    if ((await storage.incrementAiChatUsage(req.userId!, day)) > AI_DAILY_LIMIT) {
+      return res.status(429).json({ message: `Limite quotidienne atteinte (${AI_DAILY_LIMIT} générations/jour). Réessaie demain.` });
+    }
+
+    const user = await storage.getUserById(req.userId!);
+    if (!user) return res.status(404).json({ message: "Compte introuvable" });
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("X-Accel-Buffering", "no");
+
+    let full = "";
+    try {
+      for await (const delta of streamContentRewrite({
+        channel: p.data.channel as Channel,
+        format: p.data.format as ContentFormat,
+        action: p.data.action,
+        text: p.data.text,
+        voice: {
+          name: user.name, specialties: user.specialties, city: user.city,
+          marketingTone: user.marketingTone, marketingAudience: user.marketingAudience,
+          slug: user.slug, publicPageEnabled: user.publicPageEnabled,
+        },
+      })) {
+        full += delta;
+        res.write(delta);
+      }
+    } catch (e: any) {
+      if (!full) {
+        res.statusCode = e?.status === 503 ? 503 : 502;
+        return res.end("La retouche a échoué, réessaie dans un instant.");
       }
     }
     res.end();

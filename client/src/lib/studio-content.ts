@@ -60,3 +60,52 @@ export function pickRandom<T>(items: T[], exclude?: T, rand: () => number = Math
   const pool = items.length > 1 && exclude !== undefined ? items.filter((i) => i !== exclude) : items;
   return pool.length ? pool[Math.floor(rand() * pool.length)] : undefined;
 }
+
+// ── Calendrier éditorial (date de publication prévue ou réelle = publishedAt) ──
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** Clé de jour locale « AAAA-MM-JJ ». */
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Valeur d'un <input type="date"> à partir d'un timestamp (vide si absent). */
+export function toDateInputValue(ms: number | null | undefined): string {
+  return ms ? dayKey(new Date(ms)) : "";
+}
+
+/** Timestamp à midi heure locale (évite les bascules de jour liées au fuseau). */
+export function fromDateInputValue(v: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0).getTime();
+}
+
+/** Semaines (lundi → dimanche) couvrant le mois donné (month : 0-11). */
+export function buildMonthGrid(year: number, month: number): Date[][] {
+  const first = new Date(year, month, 1);
+  const offset = (first.getDay() + 6) % 7; // lundi = 0
+  const start = new Date(year, month, 1 - offset);
+  const weeks: Date[][] = [];
+  for (let w = 0; w < 6; w++) {
+    const week: Date[] = [];
+    for (let d = 0; d < 7; d++) week.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d));
+    if (w > 0 && week[0].getMonth() !== month) break;
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+/** Regroupe les contenus datés par jour ; les autres vont dans `undated`. */
+export function groupPostsByDay<T extends { publishedAt: number | null }>(posts: T[]): { byDay: Map<string, T[]>; undated: T[] } {
+  const byDay = new Map<string, T[]>();
+  const undated: T[] = [];
+  for (const p of posts) {
+    if (!p.publishedAt) { undated.push(p); continue; }
+    const k = dayKey(new Date(p.publishedAt));
+    const list = byDay.get(k);
+    if (list) list.push(p); else byDay.set(k, [p]);
+  }
+  return { byDay, undated };
+}
