@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { filterSolutions } from "@/lib/solutions-filter";
+import { detectClientRisks, safetyAlerts, parseSafety, solutionsMentioned, SAFETY_LABELS, type SafetyAlert } from "@shared/solutions";
 import {
   type ProgramSection, type ProgramListItem, type StatusFilter, type SortKey, type ProgramTemplate,
   parseSections, filterPrograms, countByStatus, cleanSections, untitledSectionsWithContent,
@@ -137,6 +138,19 @@ function TemplatePicker({ onPick }: { onPick: (t: ProgramTemplate) => void }) {
   );
 }
 
+/** « Contre-indiqué : Anticoagulants · Prudence : Thyroïde ». */
+function AlertLabels({ alerts }: { alerts: SafetyAlert[] }) {
+  const ci = alerts.filter(a => a.level === "ci").map(a => SAFETY_LABELS[a.key]);
+  const pr = alerts.filter(a => a.level === "prudence").map(a => SAFETY_LABELS[a.key]);
+  return (
+    <>
+      {ci.length > 0 && <span className="text-red-700">Contre-indiqué : {ci.join(", ")}</span>}
+      {ci.length > 0 && pr.length > 0 && " · "}
+      {pr.length > 0 && <span>Prudence : {pr.join(", ")}</span>}
+    </>
+  );
+}
+
 // ── Éditeur de programme ──────────────────────────────────────────────────────
 
 interface ProgramEditorProps {
@@ -184,6 +198,18 @@ function ProgramEditor({ initial, template, clients, onClose, registerRequestClo
   const [pickerSection, setPickerSection] = useState<number | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const pickerResults = useMemo(() => filterSolutions(solutions, { search: pickerSearch }), [solutions, pickerSearch]);
+
+  // Profil de la cliente liée (traitements repérés, âge) croisé avec les précautions
+  // des fiches citées dans le programme et de celles du picker.
+  const client = clientId !== "none" ? clients.find(c => String(c.id) === clientId) : undefined;
+  const clientRisks = useMemo(() => (client ? detectClientRisks(client) : []), [client]);
+  const riskKeys = useMemo(() => clientRisks.map(r => r.key), [clientRisks]);
+  const programAlerts = useMemo(() => {
+    if (!riskKeys.length) return [];
+    return solutionsMentioned(sections.flatMap(s => s.items), solutions)
+      .map(sol => ({ sol, alerts: safetyAlerts(parseSafety(sol.safety), riskKeys) }))
+      .filter(x => x.alerts.length > 0);
+  }, [riskKeys, sections, solutions]);
 
   function insertSolution(sectionIdx: number, sol: NaturalSolution) {
     const text = sol.usageNotes ? `${sol.name} : ${sol.usageNotes}` : sol.name;
@@ -348,6 +374,30 @@ function ProgramEditor({ initial, template, clients, onClose, registerRequestClo
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden="true" />
           Sans cliente liée, ce programme n'apparaît dans aucun espace cliente : choisissez-en une ou remettez le PDF.
         </p>
+      )}
+
+      {client && clientRisks.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 space-y-1.5 -mt-1" data-testid="panel-client-risks">
+          <p className="flex items-start gap-1.5">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+            <span>
+              <strong>À surveiller pour {client.firstName} :</strong>{" "}
+              {clientRisks.map(r => `${SAFETY_LABELS[r.key]} (${r.reasons.join(", ")})`).join(" · ")}
+            </span>
+          </p>
+          {programAlerts.length > 0 ? (
+            <ul className="pl-6 space-y-0.5" data-testid="list-program-alerts">
+              {programAlerts.map(({ sol, alerts }) => (
+                <li key={sol.id}>
+                  <strong>{sol.name}</strong> : <AlertLabels alerts={alerts} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pl-6 text-xs">Aucune solution de la bibliothèque citée dans ce programme n'est signalée pour ce profil.</p>
+          )}
+          <p className="pl-6 text-xs opacity-80">Repérage automatique dans les traitements et la fiche cliente, non exhaustif : il ne remplace pas votre vérification.</p>
+        </div>
       )}
 
       {/* Lot 3a — programme par étapes */}
@@ -562,7 +612,13 @@ function ProgramEditor({ initial, template, clients, onClose, registerRequestClo
           <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
             <DialogTitle>Piocher dans la base de solutions</DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-3 shrink-0">
+          <div className="px-6 py-3 shrink-0 space-y-2">
+            {client && clientRisks.length > 0 && (
+              <p className="text-xs text-amber-900 flex items-start gap-1.5" data-testid="text-picker-risks">
+                <AlertTriangle className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
+                Précautions croisées avec le profil de {client.firstName} : {riskKeys.map(k => SAFETY_LABELS[k]).join(", ")}.
+              </p>
+            )}
             <Input
               placeholder="Rechercher (nom, propriété, catégorie)…"
               value={pickerSearch}
@@ -572,7 +628,9 @@ function ProgramEditor({ initial, template, clients, onClose, registerRequestClo
             />
           </div>
           <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-2">
-            {pickerResults.map((s) => (
+            {pickerResults.map((s) => {
+              const alerts = safetyAlerts(parseSafety(s.safety), riskKeys);
+              return (
               <button
                 key={s.id}
                 type="button"
@@ -584,6 +642,11 @@ function ProgramEditor({ initial, template, clients, onClose, registerRequestClo
                   <span className="font-semibold">{s.name}</span>
                   <span className="text-xs text-muted-foreground border rounded-sm px-1 py-0.5">{s.category}</span>
                 </div>
+                {alerts.length > 0 && (
+                  <p className={`text-xs font-semibold mt-1 ${alerts[0].level === "ci" ? "text-red-700" : "text-amber-800"}`} data-testid={`picker-alert-${s.id}`}>
+                    <AlertLabels alerts={alerts} />
+                  </p>
+                )}
                 {s.properties && <p className="text-xs text-muted-foreground mt-1">{s.properties}</p>}
                 {s.contraindications && (
                   <p className="flex gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-sm px-2 py-1 mt-2" data-testid={`picker-precautions-${s.id}`}>
@@ -592,7 +655,8 @@ function ProgramEditor({ initial, template, clients, onClose, registerRequestClo
                   </p>
                 )}
               </button>
-            ))}
+              );
+            })}
             {solutions.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">Aucune solution dans la base pour le moment.</p>
             ) : pickerResults.length === 0 && (

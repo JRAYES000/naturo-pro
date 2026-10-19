@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { normalizeText, filterSolutions, countByCategory } from "./solutions-filter";
 
 const BASE = [
-  { name: "Mélisse", category: "Plante", properties: "Calmante, favorise l'endormissement", contraindications: "Déconseillée pendant la grossesse", usageNotes: "Infusion le soir" },
-  { name: "Gingembre", category: "Plante", properties: "Anti-nauséeux", contraindications: "Prudence avec les anticoagulants", usageNotes: null },
-  { name: "Magnésium", category: "Complément", properties: "Stress, sommeil", contraindications: "Insuffisance rénale", usageNotes: "Le soir" },
+  { name: "Mélisse", category: "Plante", properties: "Calmante, favorise l'endormissement", contraindications: "Déconseillée pendant la grossesse", usageNotes: "Infusion le soir", safety: '{"grossesse":"ci"}' },
+  { name: "Gingembre", category: "Plante", properties: "Anti-nauséeux", contraindications: "Prudence avec les anticoagulants", usageNotes: null, safety: '{"anticoagulant":"prudence"}' },
+  { name: "Magnésium", category: "Complément", properties: "Stress, sommeil", contraindications: "Insuffisance rénale", usageNotes: "Le soir", safety: null },
 ];
 
 test("normalizeText — sans accents, minuscules, espaces réduits", () => {
@@ -22,11 +22,10 @@ test("filterSolutions — tous les mots tapés doivent apparaître", () => {
   assert.deepEqual(filterSolutions(BASE, { search: "soir infusion" }).map((s) => s.name), ["Mélisse"]);
 });
 
-test("filterSolutions — catégorie et précaution se cumulent avec la recherche", () => {
-  assert.deepEqual(filterSolutions(BASE, { category: "Plante", precaution: "anticoagulant" }).map((s) => s.name), ["Gingembre"]);
-  assert.deepEqual(filterSolutions(BASE, { search: "soir", precaution: "grossesse" }).map((s) => s.name), ["Mélisse"]);
-  // La précaution ne cherche que dans les précautions : « sommeil » n'y est jamais.
-  assert.equal(filterSolutions(BASE, { precaution: "sommeil" }).length, 0);
+test("filterSolutions — profil : masque les contre-indiquées, garde la prudence", () => {
+  assert.deepEqual(filterSolutions(BASE, { profile: ["grossesse"] }).map((s) => s.name), ["Gingembre", "Magnésium"]);
+  assert.deepEqual(filterSolutions(BASE, { profile: ["anticoagulant"] }).map((s) => s.name), ["Mélisse", "Gingembre", "Magnésium"]);
+  assert.deepEqual(filterSolutions(BASE, { category: "Plante", profile: ["grossesse"], search: "nause" }).map((s) => s.name), ["Gingembre"]);
 });
 
 test("countByCategory — compte par catégorie", () => {

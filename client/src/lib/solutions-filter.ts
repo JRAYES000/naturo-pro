@@ -2,9 +2,15 @@
  * client/src/lib/solutions-filter.ts — filtre de la bibliothèque de référence
  *
  * Recherche insensible aux accents et à la casse (« melisse » trouve « Mélisse »),
- * catégorie et précaution cumulables, indépendantes du texte tapé.
+ * catégorie et profil cumulables, indépendants du texte tapé.
+ * Profil = critères de précaution (grossesse, anticoagulants…) : les fiches
+ * contre-indiquées pour l'un d'eux sont masquées, les fiches « prudence » restent.
  * Partagé par la page Bibliothèque et le picker des programmes.
  */
+
+import { normalizeText, parseSafety, type SafetyKey } from "@shared/solutions";
+
+export { normalizeText };
 
 export interface SearchableSolution {
   name: string;
@@ -12,24 +18,25 @@ export interface SearchableSolution {
   properties?: string | null;
   contraindications?: string | null;
   usageNotes?: string | null;
-}
-
-export function normalizeText(s: string | null | undefined): string {
-  return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  form?: string | null;
+  safety?: string | null;
 }
 
 export interface SolutionFilter {
   search?: string;
   category?: string; // "all" ou une catégorie
-  precaution?: string | null; // mot cherché dans les précautions seulement
+  profile?: readonly SafetyKey[];
 }
 
 export function matchesSolution(s: SearchableSolution, f: SolutionFilter): boolean {
   if (f.category && f.category !== "all" && s.category !== f.category) return false;
-  if (f.precaution && !normalizeText(s.contraindications).includes(normalizeText(f.precaution))) return false;
+  if (f.profile?.length) {
+    const safety = parseSafety(s.safety);
+    if (f.profile.some((k) => safety[k] === "ci")) return false;
+  }
   const q = normalizeText(f.search);
   if (!q) return true;
-  const haystack = normalizeText([s.name, s.category, s.properties, s.contraindications, s.usageNotes].join(" "));
+  const haystack = normalizeText([s.name, s.category, s.properties, s.contraindications, s.usageNotes, s.form].join(" "));
   // Chaque mot tapé doit apparaître (« sommeil enfant » = les deux).
   return q.split(" ").every((w) => haystack.includes(w));
 }
