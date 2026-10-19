@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ExternalLink, Save, Globe, Copy, Check, Link as LinkIcon, AlertCircle, RotateCcw, Upload, Image as ImageIcon } from "lucide-react";
+import {
+  ExternalLink, Save, Globe, Copy, Check, Link as LinkIcon, AlertCircle, RotateCcw, Upload,
+  Image as ImageIcon, User, FileText, MapPin, Share2, Palette, Wand2, Undo2, Search,
+} from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SubNav, PAGE_PUBLIQUE_TABS } from "@/components/SubNav";
 import { PageHeader } from "@/components/PageHeader";
@@ -17,6 +20,10 @@ import { PublicPagePreview } from "@/components/PublicPagePreview";
 // Phase 3 Lot 2 — URL publique (path-based en mode actif, sous-domaine en attente DNS)
 import { tenantPathUrl } from "@/lib/tenant";
 import { QrCodeCard } from "@/components/QrCode";
+import {
+  BIO_RECOMMENDED, COLOR_PRESETS, DEFAULT_ACCENT, DEFAULT_PRIMARY, completeness, parseSpecialties,
+  primaryIsReadable, slugError, slugify, socialHref, type CompletenessField,
+} from "@/lib/public-page";
 
 // Suggestions de spécialités naturo courantes (alignées sur l'onboarding).
 const SPECIALTY_SUGGESTIONS = [
@@ -24,9 +31,6 @@ const SPECIALTY_SUGGESTIONS = [
   "Digestion", "Féminin / hormonal", "Sportif", "Émotionnel", "Énergie",
   "Phytothérapie", "Aromathérapie",
 ];
-
-const DEFAULT_PRIMARY = "#186749";
-const DEFAULT_ACCENT = "#17EC9B";
 
 /**
  * Redimensionne et compresse une image côté client avant envoi — 1200px de
@@ -63,41 +67,77 @@ function resizeImageFile(file: File): Promise<string> {
   });
 }
 
-/** Parse défensif des spécialités stockées (JSON array en DB). Ne plante jamais. */
-function parseSpecialties(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
-  if (typeof raw !== "string" || !raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
+/** Brouillon éditable construit depuis le profil serveur (ordre des clés stable : sert à la comparaison). */
+function fromUser(u: any) {
+  return {
+    name: u.name || "",
+    slug: u.slug || "",
+    bio: u.bio || "",
+    photoUrl: u.photoUrl || "",
+    phone: u.phone || "",
+    address: u.address || "",
+    city: u.city || "",
+    publicPageEnabled: !!u.publicPageEnabled,
+    specialties: parseSpecialties(u.specialties),
+    primaryColor: u.primaryColor || DEFAULT_PRIMARY,
+    accentColor: u.accentColor || DEFAULT_ACCENT,
+    instagram: u.instagram || "",
+    facebook: u.facebook || "",
+    websiteUrl: u.websiteUrl || "",
+  };
+}
+type Draft = ReturnType<typeof fromUser>;
+
+const same = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Champ ciblé par un clic sur un élément manquant de la complétude. */
+const FIELD_IDS: Record<CompletenessField, string> = {
+  name: "pp-name", photoUrl: "pp-photo", bio: "pp-bio", city: "pp-city", phone: "pp-phone", specialties: "pp-specialties",
+};
+
+function focusField(field: CompletenessField) {
+  const el = document.getElementById(FIELD_IDS[field]);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  const target = el.matches("input, textarea, button, label") ? el : el.querySelector<HTMLElement>("input, textarea, button");
+  setTimeout(() => (target as HTMLElement | null)?.focus({ preventScroll: true }), 300);
 }
 
-/** Validation de format du slug (pas de vérif de disponibilité réseau ici). */
-function slugError(slug: string): string | null {
-  if (!slug) return "L'URL ne peut pas être vide.";
-  if (slug.length < 3) return "Au moins 3 caractères.";
-  if (!/^[a-z0-9-]+$/.test(slug)) return "Lettres minuscules, chiffres et tirets uniquement.";
-  if (/^-|-$/.test(slug)) return "Ne doit pas commencer ni finir par un tiret.";
-  return null;
+function Section({ icon: Icon, title, hint, children }: { icon: typeof User; title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-start gap-2 border-b border-border pb-2">
+        <Icon className="h-4 w-4 text-primary mt-1 shrink-0" />
+        <div>
+          <h3 className="text-base">{title}</h3>
+          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
 }
 
-/** Pourcentage de complétude du profil public (champs qui valorisent la page). */
-function completeness(draft: any): { pct: number; missing: string[] } {
-  const checks: Array<[boolean, string]> = [
-    [!!draft.name?.trim(), "Nom"],
-    [!!draft.photoUrl?.trim(), "Photo"],
-    [!!draft.bio?.trim(), "Bio"],
-    [!!draft.city?.trim(), "Ville"],
-    [!!draft.phone?.trim(), "Téléphone"],
-    [(draft.specialties?.length || 0) > 0, "Spécialités"],
-  ];
-  const done = checks.filter(([ok]) => ok).length;
-  const pct = Math.round((done / checks.length) * 100);
-  const missing = checks.filter(([ok]) => !ok).map(([, label]) => label);
-  return { pct, missing };
+function SocialField({ id, label, kind, value, placeholder, onChange, testId }: {
+  id: string; label: string; kind: "instagram" | "facebook" | "website"; value: string;
+  placeholder: string; onChange: (v: string) => void; testId: string;
+}) {
+  const href = socialHref(kind, value);
+  const invalid = !!value.trim() && !href;
+  return (
+    <div>
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        className={invalid ? "border-destructive" : ""} data-testid={testId} />
+      {invalid ? (
+        <p className="text-xs text-destructive mt-1">Format non reconnu : ce lien ne sera pas affiché.</p>
+      ) : href ? (
+        <a href={href} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary mt-1 truncate block">
+          {href.replace(/^https?:\/\/(www\.)?/, "")}
+        </a>
+      ) : null}
+    </div>
+  );
 }
 
 export default function PublicPageEditor() {
@@ -108,10 +148,35 @@ export default function PublicPageEditor() {
   const { data: seo } = useQuery<{ indexable: boolean; missing: string[] }>({
     queryKey: ["/api/profile/seo"],
   });
-  const [draft, setDraft] = useState<any>({});
-  // Phase 3 Lot 2 — feedback "copié"
+
+  // Brouillon vs état enregistré : un rechargement du profil (après une
+  // publication par l'interrupteur, par exemple) n'écrase jamais une saisie en cours.
+  const saved = useMemo(() => (data?.user ? fromUser(data.user) : null), [data]);
+  const prevSaved = useRef<Draft | null>(null);
+  const [draft, setDraft] = useState<Draft>(() => fromUser({}));
+  useEffect(() => {
+    if (!saved) return;
+    // Valeur capturée ici : la fonction passée à setDraft s'exécute plus tard, après l'affectation de la ref.
+    const before = prevSaved.current;
+    setDraft((prev) => {
+      const untouched = !before || same(prev, before);
+      return untouched ? saved : { ...prev, publicPageEnabled: saved.publicPageEnabled };
+    });
+    prevSaved.current = saved;
+  }, [saved]);
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+
+  // La publication s'enregistre seule (interrupteur) : elle ne compte pas comme modification en attente.
+  const dirty = !!saved && !same({ ...draft, publicPageEnabled: saved.publicPageEnabled }, saved);
+  const slugErr = slugError(draft.slug);
+  const slugChanged = !!saved?.slug && draft.slug !== saved.slug;
+  const { pct, missing } = completeness(draft);
+  const bioLength = draft.bio.trim().length;
+  const readable = primaryIsReadable(draft.primaryColor);
+
+  const liveSlug = saved?.slug || user?.slug || "";
+  const publicUrl = liveSlug ? tenantPathUrl(liveSlug) : "";
   const [copied, setCopied] = useState(false);
-  const publicUrl = user?.slug ? tenantPathUrl(user.slug) : "";
   async function copyPublicUrl() {
     if (!publicUrl) return;
     try {
@@ -123,53 +188,91 @@ export default function PublicPageEditor() {
       toast({ title: "Impossible de copier", variant: "destructive" });
     }
   }
-  useEffect(() => {
-    if (data?.user) {
-      setDraft({
-        name: data.user.name,
-        slug: data.user.slug,
-        bio: data.user.bio || "",
-        photoUrl: data.user.photoUrl || "",
-        phone: data.user.phone || "",
-        address: data.user.address || "",
-        city: data.user.city || "",
-        publicPageEnabled: !!data.user.publicPageEnabled,
-        specialties: parseSpecialties(data.user.specialties),
-        primaryColor: data.user.primaryColor || DEFAULT_PRIMARY,
-        accentColor: data.user.accentColor || DEFAULT_ACCENT,
-        instagram: data.user.instagram || "",
-        facebook: data.user.facebook || "",
-        websiteUrl: data.user.websiteUrl || "",
-      });
-    }
-  }, [data]);
 
-  const slugErr = slugError(draft.slug || "");
-  const { pct, missing } = completeness(draft);
+  function afterSave() {
+    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/profile/seo"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    refetch();
+  }
+  function saveError(e: any) {
+    const taken = e?.status === 409;
+    toast({
+      title: taken ? "Adresse déjà prise" : "Erreur",
+      description: taken ? "Une autre praticienne utilise déjà cette adresse : choisissez-en une autre." : e?.message,
+      variant: "destructive",
+    });
+  }
 
   const saveMut = useMutation({
     mutationFn: async () => apiRequest("PATCH", "/api/profile", draft),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile/seo"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      refetch();
+      afterSave();
       toast({ title: "Page publique enregistrée", variant: "success" });
     },
-    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+    onError: saveError,
   });
+
+  // L'interrupteur de publication agit tout de suite : c'est l'action principale
+  // de la page, elle ne doit pas dépendre d'un « Enregistrer » oublié. La ville
+  // saisie part avec, puisque le serveur l'exige pour publier.
+  const publishMut = useMutation({
+    mutationFn: async (enabled: boolean) =>
+      apiRequest("PATCH", "/api/profile", {
+        publicPageEnabled: enabled,
+        ...(enabled && saved && draft.city !== saved.city ? { city: draft.city } : {}),
+      }),
+    onSuccess: (_r, enabled) => {
+      afterSave();
+      toast({
+        title: enabled ? "Votre page est en ligne" : "Votre page est hors ligne",
+        description: enabled ? "Vos clientes peuvent réserver dès maintenant." : "Votre lien affiche désormais « Page introuvable ».",
+        variant: enabled ? "success" : undefined,
+      });
+    },
+    onError: (e, enabled) => {
+      set("publicPageEnabled", !enabled);
+      saveError(e);
+    },
+  });
+
+  const canSave = dirty && !slugErr && !saveMut.isPending;
+  const save = () => { if (canSave) saveMut.mutate(); };
+
+  // Ctrl/Cmd + S pour enregistrer, alerte avant de quitter avec des modifications en cours.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  const online = !!saved?.publicPageEnabled;
+  const cityMissing = !draft.city.trim();
 
   return (
     <AppLayout>
-      <div className="max-w-5xl">
+      <div className="max-w-6xl pb-24">
         <SubNav group="page-publique" tabs={PAGE_PUBLIQUE_TABS} />
         <PageHeader
           title="Page publique"
-          subtitle="Personnalisez votre page de réservation en ligne."
+          subtitle="Votre vitrine en ligne : présentation, prestations et réservation."
           icon={Globe}
-          actions={user && (
-            <a href={`/p/${user.slug}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-primary inline-flex items-center gap-1 hover:underline" data-testid="link-preview-public">
-              Aperçu <ExternalLink className="h-3.5 w-3.5" />
+          actions={publicUrl && (
+            <a href={publicUrl} target="_blank" rel="noreferrer" className="text-sm font-bold text-primary inline-flex items-center gap-1 hover:underline" data-testid="link-preview-public">
+              Voir ma page <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
         />
@@ -188,288 +291,347 @@ export default function PublicPageEditor() {
           </div>
         )}
 
-        {/* Phase 3 Lot 2 — Lien public sur sous-domaine personnel */}
-        <div className="card-naturo space-y-3 mb-5" data-testid="card-public-url">
-          <div className="flex items-center gap-3">
-            <LinkIcon className="h-5 w-5 text-primary" />
-            <div>
-              <p className="font-bold">Votre lien public</p>
-              <p className="text-xs text-muted-foreground">
-                L'adresse à partager avec vos clients pour accéder à votre page et réserver.
-              </p>
+        {/* Publication + lien : l'essentiel, en tête de page. */}
+        <div className="card-naturo mb-5 space-y-4" data-testid="card-public-url">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={`h-2.5 w-2.5 rounded-full shrink-0 ${online ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+                aria-hidden
+              />
+              <div>
+                <p className="font-bold" data-testid="text-publication-status">
+                  {online ? "Votre page est en ligne" : "Votre page est hors ligne"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {online
+                    ? "Vos clientes peuvent la consulter et réserver."
+                    : cityMissing
+                      ? "Indiquez la ville de votre cabinet pour pouvoir la publier."
+                      : "Personne ne peut la consulter tant qu'elle n'est pas publiée."}
+                </p>
+              </div>
             </div>
+            <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+              {online ? "Publiée" : "Publier"}
+              <Switch
+                checked={draft.publicPageEnabled}
+                disabled={publishMut.isPending || (!draft.publicPageEnabled && cityMissing)}
+                onCheckedChange={(v) => { set("publicPageEnabled", v); publishMut.mutate(v); }}
+                aria-label="Publier la page"
+                data-testid="switch-public-enabled"
+              />
+            </label>
           </div>
-          <div className="flex items-stretch gap-2">
-            <Input
-              readOnly
-              value={publicUrl}
-              className="font-mono text-sm"
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-              data-testid="input-public-url"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={copyPublicUrl}
-              className="rounded-lg font-bold"
-              data-testid="button-copy-public-url"
-            >
-              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-              {copied ? "Copié" : "Copier"}
-            </Button>
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center px-3 rounded-lg border border-input bg-background hover:bg-secondary text-sm font-bold"
-              data-testid="link-open-public-url"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
+          {cityMissing && !online && (
+            <button type="button" onClick={() => focusField("city")} className="text-xs font-bold text-amber-700 hover:underline" data-testid="button-goto-city">
+              Renseigner la ville
+            </button>
+          )}
+
+          <div>
+            <Label htmlFor="pp-public-url" className="flex items-center gap-1.5"><LinkIcon className="h-3.5 w-3.5 text-primary" /> Votre lien à partager</Label>
+            <div className="flex items-stretch gap-2 mt-1">
+              <Input
+                id="pp-public-url"
+                readOnly
+                value={publicUrl}
+                className="font-mono text-sm"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                data-testid="input-public-url"
+              />
+              <Button type="button" variant="outline" onClick={copyPublicUrl} className="font-bold shrink-0" data-testid="button-copy-public-url">
+                {copied ? <Check className="h-4 w-4 sm:mr-1" /> : <Copy className="h-4 w-4 sm:mr-1" />}
+                <span className="hidden sm:inline">{copied ? "Copié" : "Copier"}</span>
+              </Button>
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Ouvrir ma page dans un nouvel onglet"
+                className="inline-flex items-center justify-center px-3 rounded-md border border-input bg-background hover:bg-secondary text-sm font-bold shrink-0"
+                data-testid="link-open-public-url"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              À mettre dans votre signature d'email, vos SMS, votre bio Instagram ou votre fiche Google.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Partagez ce lien avec vos clients par email, SMS ou sur vos réseaux sociaux.
-          </p>
         </div>
 
-        {/* Lot 2c — QR code imprimable de la page de réservation. */}
-        {publicUrl && <QrCodeCard url={publicUrl} fileName={`qr-reservation-${user?.slug || "page"}`} />}
-
-        {/* Barre de complétude du profil */}
-        <div className="card-naturo mb-5" data-testid="card-completeness">
-          <div className="flex items-center justify-between mb-2">
+        {/* Complétude + référencement, regroupés : ce qui manque, en un clic. */}
+        <div className="card-naturo mb-5 space-y-3" data-testid="card-completeness">
+          <div className="flex items-center justify-between">
             <p className="font-bold text-sm">Complétude de votre page</p>
-            <span className="text-sm font-bold" style={{ color: pct === 100 ? DEFAULT_PRIMARY : "#b45309" }}>
-              {pct}%
-            </span>
+            <span className={`text-sm font-bold ${pct === 100 ? "text-primary" : "text-amber-700"}`}>{pct}%</span>
           </div>
           <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
             <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${pct}%`, background: pct === 100 ? DEFAULT_PRIMARY : "#f59e0b" }}
+              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-primary" : "bg-amber-500"}`}
+              style={{ width: `${pct}%` }}
               data-testid="bar-completeness"
             />
           </div>
           {missing.length > 0 ? (
-            <p className="text-xs text-muted-foreground mt-2">
-              À compléter pour une page plus attractive : <span className="font-medium">{missing.join(", ")}</span>.
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground mr-1">À compléter :</span>
+              {missing.map((m) => (
+                <button
+                  key={m.field}
+                  type="button"
+                  onClick={() => focusField(m.field)}
+                  className="px-2 py-0.5 rounded-sm bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-medium"
+                  data-testid={`button-complete-${m.field}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           ) : (
-            <p className="text-xs text-primary font-medium mt-2">Votre page est complète.</p>
+            <p className="text-xs text-primary font-medium">Votre page est complète.</p>
+          )}
+
+          {/* Référencement (audit SEO du 15/08/2026, A11) — une fiche trop
+              incomplète reste accessible par son lien mais sort du sitemap et
+              de l'annuaire : autant dire lesquels champs la bloquent. */}
+          {seo && (
+            <div className="flex items-start gap-2 text-xs pt-3 border-t border-border" data-testid="text-seo-status">
+              <Search className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${seo.indexable ? "text-primary" : "text-amber-700"}`} />
+              {seo.indexable ? (
+                <p>
+                  <span className="font-bold text-primary">Référencée.</span>{" "}
+                  <span className="text-muted-foreground">Votre fiche figure dans l'annuaire et dans le plan du site transmis à Google.</span>
+                </p>
+              ) : (
+                <p>
+                  <span className="font-bold text-amber-700">Pas encore proposée à Google.</span>{" "}
+                  <span className="text-muted-foreground">
+                    Il manque {seo.missing.join(", ")}. Votre page reste accessible par son lien direct.
+                  </span>
+                </p>
+              )}
+            </div>
           )}
         </div>
 
         {/* Deux colonnes : formulaire + aperçu live */}
         <div className="grid lg:grid-cols-[1fr,360px] gap-5 items-start">
-          <div className="card-naturo space-y-5">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-secondary">
-              <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-primary" />
+          <div className="card-naturo space-y-8">
+            <Section icon={User} title="Identité">
+              <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <p className="font-bold">Page publique active</p>
-                  <p className="text-xs text-muted-foreground">Désactivez pour rendre votre page privée.</p>
+                  <Label htmlFor="pp-name">Nom affiché</Label>
+                  <Input id="pp-name" value={draft.name} onChange={(e) => set("name", e.target.value)} data-testid="input-name" />
                 </div>
-              </div>
-              <Switch
-                checked={!!draft.publicPageEnabled}
-                disabled={!draft.city?.trim()}
-                onCheckedChange={(v) => setDraft({ ...draft, publicPageEnabled: v })}
-                data-testid="switch-public-enabled"
-              />
-            </div>
-
-            {/* Référencement (audit SEO du 15/08/2026, A11) — une fiche trop
-                incomplète reste accessible par son lien mais sort du sitemap et
-                de l'annuaire : autant dire lesquels champs la bloquent. */}
-            {seo && (
-              <div
-                className={`p-3 rounded-xl text-sm ${seo.indexable ? "bg-secondary" : "bg-amber-50 border border-amber-200"}`}
-                data-testid="text-seo-status"
-              >
-                {seo.indexable ? (
-                  <p className="font-bold text-primary">
-                    Votre fiche est référençable : elle figure dans l'annuaire et dans le plan du site
-                    transmis à Google.
-                  </p>
-                ) : (
-                  <>
-                    <p className="font-bold text-amber-700">
-                      Votre fiche n'est pas encore proposée à Google.
-                    </p>
-                    <p className="text-muted-foreground mt-1">
-                      Il manque {seo.missing.join(", ")}. Votre page reste accessible par son lien
-                      direct, vous pouvez déjà la partager.
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div><Label>Nom affiché</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-name" /></div>
-              <div>
-                <Label>URL personnalisée</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">/p/</span>
-                  <Input
-                    value={draft.slug || ""}
-                    onChange={e => setDraft({ ...draft, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
-                    className={slugErr ? "border-destructive" : ""}
-                    data-testid="input-slug"
-                  />
-                </div>
-                {slugErr ? (
-                  <p className="text-xs text-destructive flex items-center gap-1 mt-1" data-testid="text-slug-error">
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {slugErr}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {tenantPathUrl(draft.slug || "")}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <Label>Photo de profil</Label>
-              <div className="flex items-center gap-3">
-                {draft.photoUrl ? (
-                  <img
-                    src={draft.photoUrl}
-                    alt="Aperçu"
-                    className="h-16 w-16 rounded-full object-cover border border-input shrink-0"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    onLoad={(e) => { (e.target as HTMLImageElement).style.display = ""; }}
-                    data-testid="img-photo-preview"
-                  />
-                ) : (
-                  <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center text-muted-foreground shrink-0">
-                    <ImageIcon className="h-6 w-6" />
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="pp-slug">Adresse de la page</Label>
+                    {draft.name.trim() && slugify(draft.name) !== draft.slug && (
+                      <button type="button" onClick={() => set("slug", slugify(draft.name))}
+                        className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1" data-testid="button-slug-from-name">
+                        <Wand2 className="h-3 w-3" /> Depuis le nom
+                      </button>
+                    )}
                   </div>
-                )}
-                <div className="flex flex-col gap-2">
-                  <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background hover:bg-secondary text-sm font-bold cursor-pointer w-fit" data-testid="label-upload-photo">
-                    <Upload className="h-4 w-4" />
-                    {draft.photoUrl ? "Changer la photo" : "Importer une photo"}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      data-testid="input-photo-file"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        // Garde-fou large : le fichier d'origine n'a plus besoin d'être déjà
-                        // compressé (resizeImageFile s'en charge) — seuil élevé pour éviter
-                        // uniquement un cas dégénéré qui ferait ramer le navigateur.
-                        if (file.size > 15 * 1024 * 1024) {
-                          toast({ title: "Image trop lourde", description: "Maximum 15 Mo pour le fichier d'origine.", variant: "destructive" });
-                          e.target.value = "";
-                          return;
-                        }
-                        try {
-                          const compressed = await resizeImageFile(file);
-                          setDraft({ ...draft, photoUrl: compressed });
-                        } catch {
-                          toast({ title: "Image invalide", description: "Ce fichier ne peut pas être utilisé comme photo.", variant: "destructive" });
-                        }
-                        e.target.value = "";
-                      }}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">/p/</span>
+                    <Input
+                      id="pp-slug"
+                      value={draft.slug}
+                      onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                      className={slugErr ? "border-destructive" : ""}
+                      data-testid="input-slug"
                     />
-                  </label>
-                  {draft.photoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setDraft({ ...draft, photoUrl: "" })}
-                      className="text-xs text-muted-foreground hover:text-destructive w-fit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      data-testid="button-remove-photo"
-                    >
-                      Retirer la photo
-                    </button>
+                  </div>
+                  {slugErr ? (
+                    <p className="text-xs text-destructive flex items-center gap-1 mt-1" data-testid="text-slug-error">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {slugErr}
+                    </p>
+                  ) : slugChanged && online ? (
+                    <p className="text-xs text-amber-700 flex items-start gap-1 mt-1" data-testid="text-slug-change-warning">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      Les liens et QR codes déjà partagés ne fonctionneront plus.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1 truncate">{tenantPathUrl(draft.slug)}</p>
                   )}
                 </div>
               </div>
-              <details className="mt-2">
-                <summary className="text-xs text-muted-foreground cursor-pointer">Ou coller une URL d'image</summary>
-                <Input
-                  value={draft.photoUrl?.startsWith("data:") ? "" : (draft.photoUrl || "")}
-                  onChange={e => setDraft({ ...draft, photoUrl: e.target.value })}
-                  placeholder="https://…"
-                  className="mt-1"
-                  data-testid="input-photo"
-                />
-              </details>
-            </div>
-            <div>
-              <Label>Bio / présentation</Label>
-              <Textarea rows={5} value={draft.bio || ""} onChange={e => setDraft({ ...draft, bio: e.target.value })} data-testid="input-bio" />
-              {/* Aide à la rédaction (Action 18, 07/08/2026) — seuil aligné sur le critère
-                  SEO réel (Onglet 2, Cocon 8) : une bio trop courte prive la fiche de son
-                  potentiel de référencement local, indépendamment de son intérêt pour un
-                  lecteur humain. */}
-              <p
-                className={`text-xs mt-1 ${(draft.bio?.length || 0) >= 300 ? "text-muted-foreground" : "text-amber-600"}`}
-                data-testid="text-bio-counter"
-              >
-                {(draft.bio?.length || 0)} / 300 caractères {(draft.bio?.length || 0) >= 300 ? "— longueur recommandée atteinte" : "minimum recommandé pour le référencement"}
-              </p>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div><Label>Téléphone</Label><Input value={draft.phone || ""} onChange={e => setDraft({ ...draft, phone: e.target.value })} data-testid="input-phone" /></div>
               <div>
-                <Label>Ville {!draft.city?.trim() && <span className="text-amber-600 font-normal">(obligatoire pour publier)</span>}</Label>
-                <Input value={draft.city || ""} onChange={e => setDraft({ ...draft, city: e.target.value })} data-testid="input-city" />
-                {!draft.city?.trim() && (
-                  <p className="text-xs text-amber-600 mt-1" data-testid="text-city-warning">
-                    Sans ville, votre fiche n'apparaît pas dans les recherches locales ("naturopathe [votre ville]"),
-                    qui sont de loin les plus recherchées. La ville est donc requise pour publier la page.
+                <Label>Photo de profil</Label>
+                <div className="flex items-center gap-3">
+                  {draft.photoUrl ? (
+                    <img
+                      src={draft.photoUrl}
+                      alt="Aperçu"
+                      className="h-16 w-16 rounded-full object-cover border border-input shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      onLoad={(e) => { (e.target as HTMLImageElement).style.display = ""; }}
+                      data-testid="img-photo-preview"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center text-muted-foreground shrink-0">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <label id="pp-photo" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget.querySelector("input") as HTMLInputElement)?.click(); } }}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-secondary text-sm font-bold cursor-pointer w-fit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      data-testid="label-upload-photo">
+                      <Upload className="h-4 w-4" />
+                      {draft.photoUrl ? "Changer la photo" : "Importer une photo"}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        data-testid="input-photo-file"
+                        onChange={async (e) => {
+                          const input = e.target;
+                          const file = input.files?.[0];
+                          if (!file) return;
+                          // Garde-fou large : le fichier d'origine n'a plus besoin d'être déjà
+                          // compressé (resizeImageFile s'en charge) — seuil élevé pour éviter
+                          // uniquement un cas dégénéré qui ferait ramer le navigateur.
+                          if (file.size > 15 * 1024 * 1024) {
+                            toast({ title: "Image trop lourde", description: "Maximum 15 Mo pour le fichier d'origine.", variant: "destructive" });
+                            input.value = "";
+                            return;
+                          }
+                          try {
+                            set("photoUrl", await resizeImageFile(file));
+                          } catch {
+                            toast({ title: "Image invalide", description: "Ce fichier ne peut pas être utilisé comme photo.", variant: "destructive" });
+                          }
+                          input.value = "";
+                        }}
+                      />
+                    </label>
+                    {draft.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => set("photoUrl", "")}
+                        className="text-xs text-muted-foreground hover:text-destructive w-fit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        data-testid="button-remove-photo"
+                      >
+                        Retirer la photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Un portrait souriant, de face, sur fond clair : c'est la première chose que vos clientes regardent.
+                </p>
+                <details className="mt-1">
+                  <summary className="text-xs text-muted-foreground cursor-pointer">Ou coller une URL d'image</summary>
+                  <Input
+                    value={draft.photoUrl.startsWith("data:") ? "" : draft.photoUrl}
+                    onChange={(e) => set("photoUrl", e.target.value)}
+                    placeholder="https://…"
+                    className="mt-1"
+                    data-testid="input-photo"
+                  />
+                </details>
+              </div>
+            </Section>
+
+            <Section icon={FileText} title="Présentation" hint="Votre parcours, votre approche, ce que vos clientes viennent chercher.">
+              <div>
+                <Label htmlFor="pp-bio">Bio</Label>
+                <Textarea id="pp-bio" rows={7} value={draft.bio} onChange={(e) => set("bio", e.target.value)}
+                  placeholder="Ex. : Naturopathe certifiée depuis 2019, je vous accompagne sur la digestion, le sommeil et la gestion du stress…"
+                  data-testid="input-bio" />
+                {/* Aide à la rédaction (Action 18, 07/08/2026) — seuil aligné sur le critère
+                    SEO réel (Onglet 2, Cocon 8) : une bio trop courte prive la fiche de son
+                    potentiel de référencement local, indépendamment de son intérêt pour un
+                    lecteur humain. */}
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="h-1 flex-1 rounded-full bg-secondary overflow-hidden">
+                    <div className={`h-full ${bioLength >= BIO_RECOMMENDED ? "bg-primary" : "bg-amber-500"}`}
+                      style={{ width: `${Math.min(100, (bioLength / BIO_RECOMMENDED) * 100)}%` }} />
+                  </div>
+                  <p className={`text-xs shrink-0 ${bioLength >= BIO_RECOMMENDED ? "text-muted-foreground" : "text-amber-700"}`} data-testid="text-bio-counter">
+                    {bioLength} / {BIO_RECOMMENDED} {bioLength >= BIO_RECOMMENDED ? "— longueur recommandée atteinte" : "caractères recommandés"}
                   </p>
-                )}
+                </div>
               </div>
-            </div>
-            <div><Label>Adresse cabinet</Label><Input value={draft.address || ""} onChange={e => setDraft({ ...draft, address: e.target.value })} data-testid="input-address" /></div>
-
-            <div>
-              <Label>Spécialités</Label>
-              <SpecialtiesInput
-                value={draft.specialties || []}
-                onChange={(next) => setDraft({ ...draft, specialties: next })}
-                suggestions={SPECIALTY_SUGGESTIONS}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Tapez une spécialité puis Entrée, ou cliquez une suggestion. Ces étiquettes s'affichent sur votre page publique.
-              </p>
-            </div>
-
-            {/* Réseaux sociaux */}
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div><Label>Instagram</Label><Input value={draft.instagram || ""} onChange={e => setDraft({ ...draft, instagram: e.target.value })} placeholder="@pseudo ou URL" data-testid="input-instagram" /></div>
-              <div><Label>Facebook</Label><Input value={draft.facebook || ""} onChange={e => setDraft({ ...draft, facebook: e.target.value })} placeholder="URL de la page" data-testid="input-facebook" /></div>
-              <div><Label>Site web</Label><Input value={draft.websiteUrl || ""} onChange={e => setDraft({ ...draft, websiteUrl: e.target.value })} placeholder="https://…" data-testid="input-website" /></div>
-            </div>
-
-            {/* Couleurs du thème */}
-            <div>
-              <div className="flex items-center justify-between">
-                <Label>Couleurs de votre page</Label>
-                {(draft.primaryColor !== DEFAULT_PRIMARY || draft.accentColor !== DEFAULT_ACCENT) && (
-                  <button
-                    type="button"
-                    onClick={() => setDraft({ ...draft, primaryColor: DEFAULT_PRIMARY, accentColor: DEFAULT_ACCENT })}
-                    className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    data-testid="button-reset-colors"
-                  >
-                    <RotateCcw className="h-3 w-3" /> Réinitialiser
-                  </button>
-                )}
+              <div id="pp-specialties">
+                <Label>Spécialités</Label>
+                <SpecialtiesInput
+                  value={draft.specialties}
+                  onChange={(next) => set("specialties", next)}
+                  suggestions={SPECIALTY_SUGGESTIONS}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tapez une spécialité puis Entrée, ou cliquez une suggestion.
+                </p>
               </div>
-              <div className="flex flex-wrap gap-4 mt-1">
+            </Section>
+
+            <Section icon={MapPin} title="Coordonnées" hint="La ville est indispensable pour apparaître dans les recherches locales.">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="pp-city">Ville {cityMissing && <span className="text-amber-700 font-normal">(obligatoire pour publier)</span>}</Label>
+                  <Input id="pp-city" value={draft.city} onChange={(e) => set("city", e.target.value)} data-testid="input-city" />
+                  {cityMissing && (
+                    <p className="text-xs text-amber-700 mt-1" data-testid="text-city-warning">
+                      Sans ville, votre fiche n'apparaît pas sur « naturopathe [votre ville] », les recherches les plus fréquentes.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="pp-phone">Téléphone</Label>
+                  <Input id="pp-phone" type="tel" value={draft.phone} onChange={(e) => set("phone", e.target.value)} data-testid="input-phone" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="pp-address">Adresse du cabinet</Label>
+                <Input id="pp-address" value={draft.address} onChange={(e) => set("address", e.target.value)} placeholder="12 rue des Lilas" data-testid="input-address" />
+              </div>
+            </Section>
+
+            <Section icon={Share2} title="Réseaux et site" hint="Affichés sous votre présentation, sur votre page publique.">
+              <div className="grid sm:grid-cols-3 gap-3">
+                <SocialField id="pp-instagram" label="Instagram" kind="instagram" value={draft.instagram} placeholder="@pseudo ou URL"
+                  onChange={(v) => set("instagram", v)} testId="input-instagram" />
+                <SocialField id="pp-facebook" label="Facebook" kind="facebook" value={draft.facebook} placeholder="URL de la page"
+                  onChange={(v) => set("facebook", v)} testId="input-facebook" />
+                <SocialField id="pp-website" label="Site web" kind="website" value={draft.websiteUrl} placeholder="monsite.fr"
+                  onChange={(v) => set("websiteUrl", v)} testId="input-website" />
+              </div>
+            </Section>
+
+            <Section icon={Palette} title="Apparence">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Palettes proposées">
+                {COLOR_PRESETS.map((p) => {
+                  const active = draft.primaryColor.toLowerCase() === p.primary.toLowerCase() && draft.accentColor.toLowerCase() === p.accent.toLowerCase();
+                  return (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, primaryColor: p.primary, accentColor: p.accent }))}
+                      aria-pressed={active}
+                      className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-md border text-xs font-bold ${active ? "border-primary bg-secondary" : "border-input hover:bg-secondary"}`}
+                      data-testid={`button-preset-${p.name.toLowerCase()}`}
+                    >
+                      <span className="flex">
+                        <span className="h-5 w-5 rounded-sm" style={{ background: p.primary }} />
+                        <span className="h-5 w-5 rounded-sm -ml-1.5" style={{ background: p.accent }} />
+                      </span>
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="color"
-                    value={draft.primaryColor || DEFAULT_PRIMARY}
-                    onChange={e => setDraft({ ...draft, primaryColor: e.target.value })}
+                    value={draft.primaryColor}
+                    onChange={(e) => set("primaryColor", e.target.value)}
                     className="h-9 w-12 rounded-sm border border-input cursor-pointer bg-transparent"
                     data-testid="input-primary-color"
                   />
@@ -478,42 +640,83 @@ export default function PublicPageEditor() {
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="color"
-                    value={draft.accentColor || DEFAULT_ACCENT}
-                    onChange={e => setDraft({ ...draft, accentColor: e.target.value })}
+                    value={draft.accentColor}
+                    onChange={(e) => set("accentColor", e.target.value)}
                     className="h-9 w-12 rounded-sm border border-input cursor-pointer bg-transparent"
                     data-testid="input-accent-color"
                   />
                   <span>Couleur d'accent</span>
                 </label>
+                {(draft.primaryColor !== DEFAULT_PRIMARY || draft.accentColor !== DEFAULT_ACCENT) && (
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, primaryColor: DEFAULT_PRIMARY, accentColor: DEFAULT_ACCENT }))}
+                    className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    data-testid="button-reset-colors"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Réinitialiser
+                  </button>
+                )}
               </div>
-            </div>
+              {!readable && (
+                <p className="text-xs text-amber-700 flex items-start gap-1" data-testid="text-color-contrast-warning">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  Couleur principale trop claire : le texte blanc des boutons « Prendre rendez-vous » sera difficile à lire.
+                </p>
+              )}
+            </Section>
 
-            <Button
-              onClick={() => saveMut.mutate()}
-              disabled={saveMut.isPending || !!slugErr}
-              className="rounded-lg font-bold"
-              data-testid="button-save-public-page"
-            >
-              <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border">
+              <Button onClick={save} disabled={!canSave} className="font-bold" data-testid="button-save-public-page">
+                <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {dirty ? "Modifications non enregistrées (Ctrl + S)" : "Tout est enregistré."}
+              </span>
+            </div>
           </div>
 
-          {/* Aperçu live */}
-          <div className="lg:sticky lg:top-4">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Aperçu en direct</p>
-            <PublicPagePreview
-              name={draft.name}
-              bio={draft.bio}
-              photoUrl={draft.photoUrl}
-              city={draft.city}
-              address={draft.address}
-              specialties={draft.specialties}
-              primaryColor={draft.primaryColor}
-              accentColor={draft.accentColor}
-            />
+          {/* Aperçu live + QR code */}
+          <div className="lg:sticky lg:top-4 space-y-5">
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Aperçu en direct</p>
+              <PublicPagePreview
+                name={draft.name}
+                bio={draft.bio}
+                photoUrl={draft.photoUrl}
+                city={draft.city}
+                address={draft.address}
+                specialties={draft.specialties}
+                primaryColor={draft.primaryColor}
+                accentColor={draft.accentColor}
+                instagram={draft.instagram}
+                facebook={draft.facebook}
+                websiteUrl={draft.websiteUrl}
+                offline={!draft.publicPageEnabled}
+              />
+            </div>
+            {/* Lot 2c — QR code imprimable de la page de réservation. */}
+            {publicUrl && <QrCodeCard url={publicUrl} fileName={`qr-reservation-${liveSlug || "page"}`} compact />}
           </div>
         </div>
       </div>
+
+      {/* Barre d'enregistrement flottante, visible dès qu'une modification attend. */}
+      {dirty && (
+        <div
+          className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-40 rounded-lg bg-card shadow-lg px-4 py-3 flex items-center gap-3"
+          role="status"
+          data-testid="bar-unsaved-changes"
+        >
+          <span className="text-sm font-bold flex-1 sm:flex-none">Modifications non enregistrées</span>
+          <Button variant="ghost" size="sm" onClick={() => saved && setDraft(saved)} disabled={saveMut.isPending} data-testid="button-discard-changes">
+            <Undo2 className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Annuler</span>
+          </Button>
+          <Button size="sm" onClick={save} disabled={!canSave} className="font-bold" data-testid="button-save-bar">
+            <Save className="h-4 w-4 mr-1" /> {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </div>
+      )}
     </AppLayout>
   );
 }

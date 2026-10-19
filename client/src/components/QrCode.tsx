@@ -45,20 +45,21 @@ function pngBlob(qr: QrCode): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
 
-export function QrCodeCard({ url, fileName }: { url: string; fileName: string }) {
+/** `compact` : version empilée pour une colonne étroite (aperçu de l'éditeur de page publique). */
+export function QrCodeCard({ url, fileName, compact = false }: { url: string; fileName: string; compact?: boolean }) {
   const qr = useMemo(() => (url ? encodeQr(url, { ecc: "M" }) : null), [url]);
   if (!qr) return null;
   return (
-    <div className="card-naturo mb-5" data-testid="card-public-qr">
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+    <div className={`card-naturo ${compact ? "" : "mb-5"}`} data-testid="card-public-qr">
+      <div className={`flex flex-col gap-4 ${compact ? "items-center text-center" : "sm:flex-row sm:items-center"}`}>
         <QrCodeImage value={url} size={152} alt="QR code de votre page de réservation" />
         <div className="space-y-2">
-          <p className="font-bold flex items-center gap-2"><QrIcon className="h-4 w-4 text-primary" /> QR code de votre page</p>
+          <p className={`font-bold flex items-center gap-2 ${compact ? "justify-center" : ""}`}><QrIcon className="h-4 w-4 text-primary" /> QR code de votre page</p>
           <p className="text-sm text-muted-foreground">
             Imprimez-le sur vos cartes de visite, flyers ou en salle d'attente : vos clientes le scannent avec leur
             téléphone et arrivent directement sur votre page de réservation.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className={`flex flex-wrap gap-2 ${compact ? "justify-center" : ""}`}>
             <Button variant="outline" size="sm" className="rounded-md font-bold" data-testid="button-qr-png"
               onClick={async () => { const b = await pngBlob(qr); if (b) download(`${fileName}.png`, b); }}>
               <Download className="h-4 w-4 mr-1" /> PNG

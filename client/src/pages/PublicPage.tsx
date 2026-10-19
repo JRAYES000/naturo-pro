@@ -3,6 +3,7 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { MapPin, Sparkles, Clock, ArrowRight, Leaf, Heart, ShieldCheck, AlertCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { SocialLinks } from "@/components/SocialLinks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatPrice, durationLabel } from "@/lib/format";
@@ -14,7 +15,7 @@ import { getCurrentTenant, isOnTenantSubdomain } from "@/lib/tenant";
 import { titleCase } from "@shared/display-name";
 
 interface PublicData {
-  naturo: { name: string; slug: string; bio: string; photoUrl: string | null; city: string | null; address: string | null; specialties: string[]; primaryColor: string; accentColor: string; };
+  naturo: { name: string; slug: string; bio: string; photoUrl: string | null; city: string | null; address: string | null; specialties: string[]; primaryColor: string; accentColor: string; instagram?: string | null; facebook?: string | null; websiteUrl?: string | null; };
   categories: { id: number; name: string; durationMinutes: number; priceCents: number; location: string; description: string | null; color: string; }[];
 }
 
@@ -203,6 +204,13 @@ export default function PublicPage() {
                 ))}
               </div>
             )}
+            <SocialLinks
+              instagram={naturo.instagram}
+              facebook={naturo.facebook}
+              websiteUrl={naturo.websiteUrl}
+              color={primary}
+              className="mb-6 -mt-2"
+            />
             <Link href={bookHref} className="btn-primary-naturo" style={{ background: primary }} data-testid="cta-hero-book">
               Prendre rendez-vous <ArrowRight className="h-4 w-4" />
             </Link>
