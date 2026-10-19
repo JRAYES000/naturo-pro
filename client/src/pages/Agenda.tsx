@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { consumeNewIntent } from "@/lib/url-intent";
 import { Calendar as BigCalendar, dateFnsLocalizer, Views } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -116,6 +117,10 @@ export default function Agenda() {
     | { mode: "edit"; appt: Appointment }
     | null
   >(null);
+  // Raccourci « Nouveau rendez-vous » du tableau de bord.
+  useEffect(() => {
+    if (consumeNewIntent()) setDialogState({ mode: "create", start: new Date(), end: new Date(Date.now() + 60 * 60000) });
+  }, []);
 
   const { data: appts = [], isLoading: apptsLoading } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
   const { data: cats = [], isLoading: catsLoading } = useQuery<AppointmentCategory[]>({ queryKey: ["/api/categories"] });
