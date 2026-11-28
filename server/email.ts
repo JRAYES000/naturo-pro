@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Email module — Resend wrapper + templates HTML pour Naturo Pro
+// Email module — Emailit (système) + Resend (clés des praticiennes) + templates HTML pour Naturo Pro
 // Phase 0.7 — Rappels J-1 + récap quotidien praticienne
 // ─────────────────────────────────────────────────────────────────────────────
 import { Resend } from "resend";
@@ -22,6 +22,8 @@ export type SendResult = { ok: true; id: string } | { ok: false; error: string }
 
 export interface EmailConfig {
   apiKey: string;
+  /** Transport : « emailit » pour la config système, « resend » (défaut) pour la clé d'une praticienne. */
+  provider?: "emailit" | "resend";
   fromAddress: string;
   fromName?: string | null;
   replyTo?: string | null;
@@ -52,6 +54,7 @@ export function unverifiedDomainFallback(
   if (!system || !/domain is not verified/i.test(error)) return null;
   if (cfg.apiKey === system.apiKey && cfg.fromAddress === system.fromAddress) return null;
   return {
+    ...(system.provider ? { provider: system.provider } : {}),
     apiKey: system.apiKey,
     fromAddress: system.fromAddress,
     fromName: cfg.fromName || system.fromName || null,
@@ -93,6 +96,9 @@ async function sendEmailOnce(
   if (!cfg.apiKey || !cfg.fromAddress) {
     return { ok: false, error: "Configuration email incomplète" };
   }
+  if (cfg.provider === "emailit") {
+    return sendViaEmailit(cfg, to, subject, html, text, attachments, headers);
+  }
   try {
     const resend = getResend(cfg.apiKey);
     const from = cfg.fromName
@@ -114,6 +120,50 @@ async function sendEmailOnce(
     }
     const id = (res as any)?.data?.id || "ok";
     return { ok: true, id };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
+/**
+ * Envoi par l'API Emailit (https://api.emailit.com/v2/emails), sans dépendance.
+ * Sert la config système (confirmation d'inscription, mot de passe, diffusions) ;
+ * les clés Resend des praticiennes restent sur Resend.
+ */
+async function sendViaEmailit(
+  cfg: EmailConfig,
+  to: string,
+  subject: string,
+  html: string,
+  text?: string,
+  attachments?: EmailAttachment[],
+  headers?: Record<string, string>,
+): Promise<SendResult> {
+  try {
+    const from = cfg.fromName ? `${cfg.fromName} <${cfg.fromAddress}>` : cfg.fromAddress;
+    const payload: any = { from, to, subject, html };
+    if (text) payload.text = text;
+    if (cfg.replyTo) payload.reply_to = cfg.replyTo;
+    if (headers && Object.keys(headers).length) payload.headers = headers;
+    if (attachments && attachments.length > 0) {
+      payload.attachments = attachments.map((a) => ({
+        filename: a.filename,
+        content: Buffer.isBuffer(a.content) ? a.content.toString("base64") : a.content,
+        content_type: a.contentType || "application/octet-stream",
+      }));
+    }
+    const r = await fetch("https://api.emailit.com/v2/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const body: any = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const msg = body?.message || body?.error?.message || body?.error || `HTTP ${r.status}`;
+      return { ok: false, error: String(msg) };
+    }
+    return { ok: true, id: String(body?.id || body?.data?.id || "ok") };
   } catch (e: any) {
     return { ok: false, error: e?.message || String(e) };
   }
@@ -461,14 +511,17 @@ export function renderReviewRequestEmail(d: ReviewRequestTemplateData): { subjec
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM EMAILS — Phase 3 Lot 1 (signup confirmation, password reset)
-// Utilise RESEND_API_KEY système (pas la clé personnelle de la praticienne).
+// Utilise EMAILIT_API_KEY système (repli RESEND_API_KEY) (pas la clé personnelle de la praticienne).
 // ─────────────────────────────────────────────────────────────────────────────
 export function getSystemEmailConfig(): EmailConfig | null {
+  const fromAddress = process.env.MAIL_FROM || process.env.SYSTEM_FROM_EMAIL || "noreply@ecole-naturo.fr";
+  const fromName = process.env.MAIL_FROM_NAME || process.env.SYSTEM_FROM_NAME || "Naturo Pro";
+  const emailitKey = process.env.EMAILIT_API_KEY || "";
+  if (emailitKey) return { provider: "emailit", apiKey: emailitKey, fromAddress, fromName };
+  // Repli : ancienne clé système Resend, tant qu'Emailit n'est pas posé.
   const apiKey = process.env.RESEND_API_KEY || "";
-  const fromAddress = process.env.SYSTEM_FROM_EMAIL || "noreply@ecole-naturo.fr";
-  const fromName = process.env.SYSTEM_FROM_NAME || "Naturo Pro";
   if (!apiKey) return null;
-  return { apiKey, fromAddress, fromName };
+  return { provider: "resend", apiKey, fromAddress, fromName };
 }
 
 export function renderWelcomeVerifyEmail(opts: {

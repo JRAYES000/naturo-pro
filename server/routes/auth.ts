@@ -145,7 +145,7 @@ export function registerAuthRoutes(app: Express, ctx: RouteContext): void {
         });
         await sendEmail(sysCfg, email, tpl.subject, tpl.html, tpl.text);
       } else {
-        console.warn("[register] RESEND_API_KEY non configuré, email de confirmation non envoyé");
+        console.warn("[register] EMAILIT_API_KEY non configuré, email de confirmation non envoyé");
       }
     } catch (e: any) {
       console.error("[register] welcome email failed:", e?.message || e);
