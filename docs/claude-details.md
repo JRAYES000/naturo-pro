@@ -73,7 +73,7 @@ tant que toute URL inconnue répondait 200. **Après un push, vérifier que `Dé
 
 ## Email
 
-Email : **Resend** (`server/email.ts`), API HTTP. Une clé **par praticienne**
+Email : **Emailit** pour la config système (`EMAILIT_API_KEY`), **Resend** pour les clés des praticiennes (`server/email.ts`), API HTTP. Une clé **par praticienne**
 (`users.resendApiKey`, configurée dans `server/routes/profile.ts`), `RESEND_API_KEY` système en
 repli. **Il n'y a plus aucun Mailjet dans le code.** Une adresse Gmail/Orange ne se vérifie
 pas chez Resend : sur « domain is not verified », `sendEmail` renvoie par la clé système, au

@@ -34,7 +34,7 @@ en `success`.
 
 ## Stack
 
-- Email : **Resend** (`server/email.ts`), clé par praticienne, `RESEND_API_KEY` système en repli,
+- Email : système par **Emailit** (`EMAILIT_API_KEY`, `MAIL_FROM`, `MAIL_FROM_NAME`) ; **Resend** (`server/email.ts`), clé par praticienne, `RESEND_API_KEY` système en repli,
   y compris sur domaine non vérifié. Plus aucun Mailjet. ↗
 - IA : **OpenRouter uniquement**, malgré les noms `server/mistral.ts` et `mistral-embed`. ↗
 - Node 24, sans champ `engines` dans `package.json` ; `@types/node` encore en 20.x.
