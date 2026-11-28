@@ -16,7 +16,7 @@ Voir `.env.example` à la racine pour la liste complète et leur format.
 |---|---|
 | `DB_*` | Panneau hébergeur (création DB MySQL) |
 | `SESSION_SECRET` | Générer une fois : `openssl rand -hex 32` |
-| `MAILJET_API_KEY` / `MAILJET_API_SECRET` | Dashboard Mailjet → API Key Management |
+| `EMAILIT_API_KEY` | Emailit → API keys (clé « sending » verrouillée sur ecole-naturo.fr) ; `MAIL_FROM` / `MAIL_FROM_NAME` = expéditeur système |
 | `GOOGLE_*` | Console Google Cloud → APIs & Services → Credentials |
 | `PUBLIC_URL` | URL réelle de l'app (ex: `https://app.example.com`) |
 
